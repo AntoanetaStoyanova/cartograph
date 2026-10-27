@@ -2,7 +2,6 @@
 
 from invoke import Context, task
 
-
 # ---------------------------------------------------------------------------
 # Qualité du code
 # ---------------------------------------------------------------------------
@@ -11,7 +10,7 @@ from invoke import Context, task
 @task
 def lint(c: Context) -> None:
     """Vérifie le code avec Ruff (lint)."""
-    c.run("uv run ruff check .")
+    c.run("uv run ruff check --no-fix .")
 
 
 @task

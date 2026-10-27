@@ -11,11 +11,16 @@
 > ## [YYYY-MM-DD] — <titre court de la session>
 > ### Fait
 > ### Reste à faire
-> ### Références
+
+- Supprimer ou garder les 3 `.log` de lancements manuels dans `src/cartograph/log/` (ignorés par Git).
+- Commit de FND-01 sur `develop` quand Antoaneta le demande.
+- Feuille de route : [roadmap-lots](../docs/plans/roadmap-lots.md), COL-T8 (sans code) avant ORC-01, puis `/workspace-plan COL-01` (client TCGdex, catalogue FR/EN/JA, prix par produit Cardmarket).
+
+### Références
 
 ---
 
-## [2026-10-27] — Revue de la spec M2 et feuille de route
+## [2026-10-27] — Spec M2, feuille de route, FND-00 et FND-01
 
 ### Fait
 
@@ -42,10 +47,31 @@
 - Jeton HTTPS de WSL révoqué sur GitHub ; push Windows vérifié (`git push --dry-run` OK).
 - **Lot FND-00 terminé** : toutes les cases cochées, FND-00 coché dans `docs/plans/roadmap-lots.md`.
 - README : section Prérequis réécrite (WSL 2 et pourquoi, SSH, uv, VS Code + WSL, lien vers le plan FND-00) ; URL de clone corrigée (SSH, pseudo manquant). CONTRIBUTING : titre « dbtidy » → « cartograph ».
+- Plan lot-fnd-01-socle — Étape 1 : Environnement WSL et fichiers ignorés (en cours, interrompue). `.venv` Windows supprimé, `uv sync` sous WSL (Python 3.13.0, `uv.lock` inchangé). `import cartograph` échouait → `pyproject.toml` : `where = ["src"]`, `include` retiré ; import OK. `.gitignore` : retiré `src/cartograph/config/` et `docs/` (specs et plans non versionnés, décidé avec Antoaneta), ajouté `logs/` ; `uv.lock` et `log/` n'y étaient déjà plus. Ruff a corrigé des espaces dans `__main__.py` et `tasks/__init__.py`.
+
+- Décidé : docstrings au format NumPy (plan et spec FND-01 corrigés, ils disaient Google).
+- Plan lot-fnd-01-socle — Étape 2 : Module de logs codé. `setup_logging(name, log_dir=None, level)` idempotent, console sur stderr, fichier seulement si `log_dir` ; `tests/test_log.py` (5 tests, dont stderr) verts.
+- Plan lot-fnd-01-socle — Étape 3 : beartype codé. `uv add beartype` (0.23.1) ; `beartype_this_package()` et docstring corrigée dans `src/cartograph/__init__.py` ; `tests/test_beartype.py` vert.
+- `inv ci` lancé par Antoaneta (`uv run` ou `.venv` activé, pas d'invoke apt) : ruff et mypy verts, 6 tests verts, couverture 84 % < 88 % à cause de `__main__.py` (test prévu à l'Étape 5). Interpréteur VS Code choisi. Étapes 1 à 3 cochées dans le plan, critères correspondants cochés dans la spec.
+- Décidé : pas de `settings.toml` ni de registre JSON des modèles ; constante `LANGUAGES` dans `config/__init__.py`. La correspondance langue → modèle viendra avec le lot des modèles (dict typé, fichier seulement si config par environnement). Plan et spec FND-01 mis à jour (Étape 4, décisions Configuration / Validation, critère).
+- Plan lot-fnd-01-socle — Étape 4 : Configuration des langues faite. `src/cartograph/config/__init__.py` (`LANGUAGES = ("fr", "en")`), `tests/test_config.py` ; ruff, mypy et test verts.
+- Mesuré dans TCGdex : 22 155 cartes FR, 23 770 EN, 13 006 JA (186 sets) ; japonais : prix Cardmarket sur 28 cartes sur 30 tirées au hasard, aucun prix TCGplayer, `idProduct` propres.
+- Décidé : collecte japonaise dès le départ (catalogue chaque semaine, prix chaque jour) pour constituer l'historique ; prix collectés une fois par produit Cardmarket (européen commun, japonais à part, ~13 000 appels de plus par jour sauf si T4 couvre le japonais) ; modèle A sans les cartes japonaises ; scan / OCR / modèle japonais restent P3 (JPN-01), faits si le temps le permet. Spec maîtresse mise à jour (langues, F1, sources, orchestration, modèle A, T6, points ouverts) ; COL-01 dans `roadmap-lots.md` ; `LANGUAGES = ("fr", "en", "ja")`, plan et spec FND-01 alignés.
+- Plan lot-fnd-01-socle — Étape 5 : Point d'entrée fait. `__main__.py` réécrit (journalise le démarrage et `Langues : fr, en, ja`, docstrings NumPy), `tests/test_main.py` ; ligne FND-01 de `roadmap-lots.md` mise à jour (tâches invoke reportées à COL-02, FND-02, APP-01). ruff, mypy et 8 tests verts, couverture 100 %.
+- Décidé : `python -m cartograph` écrit ses logs dans `logs/cartograph_<AAAAMMJJ_HHMMSS>.log` (`LOG_DIR` dans `__main__.py`, `logs/` ignoré par Git) ; test `test_main_writes_log_file` ajouté ; spec et plan FND-01 mis à jour. 9 tests verts, couverture 100 %.
+- Antoaneta a ajouté `get_chemin()` dans `__main__.py` (logs dans `src/cartograph/log/`). Constaté : fichiers `.log` dans le dossier source versionné (3 non suivis), `test_main_writes_log_file` en échec (8/9), `print()` et `try/except` contraires au CONTRIBUTING. Proposé : `ROOT_DIR = Path(__file__).resolve().parents[2]`, `LOG_DIR = ROOT_DIR / "logs"`, en attente de validation.
+- Décidé par Antoaneta : logs dans `src/cartograph/log/` via `get_chemin()`. Docstring de `get_chemin` corrigée (résumé sur une ligne ; exemple ensuite retiré par Antoaneta, titre `Examples` resté vide) et test `test_get_chemin_points_to_package_folder` ajouté (vert).
+- `.gitignore` : ajouté `src/cartograph/log/*.log`. `tests/test_main.py` : fixture `isolated_logger` qui redirige `PROJECT_DIR` vers `tmp_path` ; `test_main_writes_log_file` vert, les tests n'écrivent plus dans `src/cartograph/log/`. 10 tests verts, couverture 95,56 %. Ruff rouge : F821 `logger` non défini dans le `except` de `main()` (modification d'Antoaneta en cours).
+- Antoaneta : `print()` retirés de `main()`, `inv ci` vert (10 tests, couverture 95,56 %). Constaté : le `except` (lignes 40-41, non couvertes) appelle `logger` qui n'existe pas si `get_chemin` ou `setup_logging` échoue (`UnboundLocalError`) ; `setup_logging` appelé deux fois ; f-strings dans `logger.info` ; docstring de `main()` dit encore `logs/`. Proposé : retirer le `try/except`, en attente de validation.
+- `main()` simplifié par Antoaneta (plus de `try/except`, un seul `setup_logging`, logs `%s`) ; docstring corrigée (`src/cartograph/log/`). ruff, mypy, 10 tests verts, couverture 100 % ; `inv ci` vert chez Antoaneta. Spec et plan FND-01 alignés (décision Logs, `.gitignore`, tests).
+- Décidé : option A pour Ruff, `fix = true` gardé dans `pyproject.toml`, `--no-fix` dans la tâche `lint` (`tasks/__init__.py`) : `inv lint` / `inv ci` vérifient sans modifier les fichiers.
+- Rotation des logs : `setup_logging(..., max_files=10)` ; `_prune_logs` supprime les plus anciens `<name>_*.log` avant de créer le nouveau (tri par nom = ordre chronologique) ; `mkdir` rétabli (il avait été commenté). 4 tests ajoutés dans `tests/test_log.py`. `inv ci` vert : 14 tests, couverture 100 %. Spec et plan FND-01 mis à jour.
+- **Lot FND-01 terminé** : plan et spec entièrement cochés, FND-01 coché dans `docs/plans/roadmap-lots.md`.
+- Constaté : `invoke ci` = `pre=[check, test]`, corps vide (normal) ; `[tool.ruff] fix = true` fait modifier les fichiers par `inv lint` / `inv ci` (décision d'Antoaneta en attente).
 
 ### Reste à faire
 
-- Exécuter [lot-fnd-01-socle](../docs/plans/lot-fnd-01-socle.md) — Étape 1 : Environnement WSL et fichiers ignorés.
+- [lot-fnd-01-socle](../docs/plans/lot-fnd-01-socle.md) — Étape 5 : dans `main()`, retirer le `try/except` et le second `setup_logging`, corriger la docstring ; supprimer les 3 `.log` existants ; décision « Logs » de la spec et du plan FND-01 à mettre à jour. Puis critères de fin : Antoaneta lance `uv run inv ci` ; si vert, cocher « inv ci passe » (plan et spec), « critères de la spec », puis FND-01 dans `roadmap-lots.md`. Suite : COL-T8 (sans code) avant ORC-01, puis COL-01.
 - Feuille de route : [roadmap-lots](../docs/plans/roadmap-lots.md), COL-T8 (sans code) avant ORC-01.
 
 ### Références
@@ -56,3 +82,4 @@
 - [Spec lot-fnd-01-socle](../docs/specs/lot-fnd-01-socle.md)
 - [Plan lot-fnd-01-socle](../docs/plans/lot-fnd-01-socle.md)
 - [Plan lot-fnd-00-poste](../docs/plans/lot-fnd-00-poste.md)
+- [log/__init__.py](../src/cartograph/log/__init__.py), [cartograph/__init__.py](../src/cartograph/__init__.py), [test_log.py](../tests/test_log.py), [test_beartype.py](../tests/test_beartype.py), [config/__init__.py](../src/cartograph/config/__init__.py), [test_config.py](../tests/test_config.py), [__main__.py](../src/cartograph/__main__.py), [test_main.py](../tests/test_main.py)
