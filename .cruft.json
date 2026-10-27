@@ -1,0 +1,18 @@
+{
+  "template": "https://github.com/AntoanetaStoyanova/python-project-template",
+  "commit": "7ccbe2cd513af39ec26d5c1dca45ca3d7611b00c",
+  "checkout": null,
+  "context": {
+    "cookiecutter": {
+      "project_name": "cartograph",
+      "project_slug": "cartograph",
+      "author": "Antoaneta Stoyanova",
+      "description": "Une plateforme de données qui suit les prix des cartes Pokémon, identifie une carte à partir d’une photo et estime sa valeur.",
+      "python_version": "3.13",
+      "_template": "https://github.com/AntoanetaStoyanova/python-project-template",
+      "_commit": "7ccbe2cd513af39ec26d5c1dca45ca3d7611b00c",
+      "github_username": "AntoanetaStoyanova"
+    }
+  },
+  "directory": null
+}
