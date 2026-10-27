@@ -29,7 +29,7 @@ Le cœur du projet porte sur les cartes françaises ; tout le reste est ordonné
 | Priorité | Contenu |
 | --- | --- |
 | P1, cœur obligatoire | Collecte quotidienne des prix et hebdomadaire du catalogue depuis TCGdex ; stockage en snapshots Parquet ; modèles dbt staging, intermediate et marts avec tests ; dashboard de collection et de marché ; scan par embeddings avec évaluation chiffrée ; modèle A de prix attendu ; documentation et démonstration reproductible |
-| P2, important | lecture du numéro de carte par OCR pour départager les réimpressions ; recoupement avec pokemontcg.io et rapprochement des identifiants ; index d'embeddings mis à jour de façon incrémentale ; intégration continue complète ; Docker (image et docker compose) ; suivi des expériences avec MLflow |
+| P2, important | lecture du numéro de carte par OCR pour départager les réimpressions ; index d'embeddings mis à jour de façon incrémentale ; intégration continue complète ; Docker (image et docker compose) ; suivi des expériences avec MLflow |
 | P3, bonus | Modèle B de tendance à 4 semaines (exploratoire) ; méthode hybride de scan ; scan continu par webcam (quasi temps réel) ; comparaison de deux modèles d'embeddings ; test de robustesse sur cartes japonaises ; fine-tuning de l'embedding (décision fin mars 2027) ; orchestration avec Dagster |
 | Exclu | Application mobile ; scan en vrai temps réel (30 images par seconde) ; entraînement d'un modèle de zéro ; conseil d'achat ou d'investissement ; déploiement en production |
 
@@ -63,7 +63,7 @@ Vingt-deux décisions structurent le projet ; chacune a une raison et une altern
 | Sujet | Choix | Raison | Alternative écartée |
 | --- | --- | --- | --- |
 | Source principale | TCGdex | Cartes et images en français, prix intégrés, pas de clé | pokemontcg.io seul (catalogue en anglais uniquement) |
-| Source de recoupement (P2) | pokemontcg.io | Clé gratuite à 20 000 requêtes par jour, prix TCGplayer et Cardmarket | Scrydex (payant) |
+| Source de recoupement | Aucune (abandonné le 27 octobre 2026) | TCGdex couvre déjà catalogue, Cardmarket et TCGplayer | pokemontcg.io (inscriptions fermées, fin du service le 1er mars 2027) ; Scrydex (payant, contraire à N1) |
 | Planification | GitHub Actions | Tourne sans ton PC, utile en travaillant les weekends | Tâche planifiée locale |
 | Stockage de référence | Snapshots Parquet datés dans des Releases mensuelles | Historique par ajout, jamais réécrit | Fichier DuckDB versionné dans Git, ou fichiers quotidiens commités dans Git |
 | Base analytique | DuckDB | Lit le Parquet directement, sans serveur | PostgreSQL avec pgvector |
@@ -97,11 +97,11 @@ Vingt-deux exigences découpent le projet ; leurs identifiants serviront de réf
 
 | Id | Exigence | Priorité |
 | --- | --- | --- |
-| F1 | Collecter chaque jour les prix (une fois par produit Cardmarket : un prix commun aux langues européennes, un prix propre à chaque carte japonaise) et chaque semaine le catalogue (une fois par langue, japonais compris) depuis TCGdex, ou depuis tcgdex/price-history si T4 le permet ; conserver dès la phase 0 ou 1 la réponse brute de pokemontcg.io (exploitation en P2) | P1 |
-| F2 | Exploiter les données de pokemontcg.io pour recouper les prix de TCGdex | P2 |
+| F1 | Collecter chaque jour les prix (une fois par produit Cardmarket : un prix commun aux langues européennes, un prix propre à chaque carte japonaise) et chaque semaine le catalogue (une fois par langue, japonais compris) depuis TCGdex, ou depuis tcgdex/price-history si T4 le permet | P1 |
+| F2 | ~~Exploiter les données de pokemontcg.io pour recouper les prix de TCGdex~~ (abandonné le 27 octobre 2026 : pokemontcg.io fermé aux inscriptions et arrêté le 1er mars 2027) | — |
 | F3 | Conserver quelques jours la réponse brute et un snapshot Parquet daté par exécution, archivés dans des Releases mensuelles | P1 |
 | F4 | Alerter par e-mail (GitHub) quand la collecte échoue et par healthchecks.io quand elle ne tourne pas, tester la fraîcheur après chaque collecte, et permettre un relancement manuel | P1 |
-| F5 | Rapprocher les identifiants de cartes entre les deux sources | P2 |
+| F5 | ~~Rapprocher les identifiants de cartes entre les deux sources~~ (abandonné le 27 octobre 2026, avec F2) | — |
 | F6 | Construire les couches staging, intermediate et marts avec dbt | P1 |
 | F7 | Tester la qualité des données (unicité, valeurs nulles, relations, prix négatifs, complétude) | P1 |
 | F8 | Télécharger les images des cartes françaises en basse résolution (au départ, puis pour les seules nouvelles cartes), hors du dépôt public | P1 |
@@ -139,7 +139,7 @@ Le projet doit rester gratuit, reproductible et fiable avec très peu de temps d
 | N11 | Conteneurisation (P2) | Un docker compose up lance l'application et MLflow ; l'image est construite en CI |
 | N12 | Surveillance | Un échec de collecte déclenche l'e-mail de GitHub ; un test de fraîcheur dbt tourne après chaque collecte ; healthchecks.io envoie un e-mail si aucun signal de fin de collecte n'arrive en 26 heures |
 | N13 | Continuité du cron | Le workflow de collecte vit dans le dépôt de données pour recevoir des commits quotidiens et éviter la suspension après 60 jours sans commit |
-| N14 | Sécurité de l'automatisation | Actions épinglées par version, Dependabot, permissions minimales, secrets (pokemontcg.io, Hugging Face, healthchecks.io, Kaggle en P3) jamais dans le dépôt |
+| N14 | Sécurité de l'automatisation | Actions épinglées par version, Dependabot, permissions minimales, secrets (jeton du dépôt privé `cartograph-prices`, Hugging Face, healthchecks.io, Kaggle en P3) jamais dans le dépôt |
 | N15 | Vitesse de la CI | Cache des dépendances, clone superficiel, workflows séparés avec filtres de chemins, annulation des exécutions obsolètes |
 | N16 | Taille du dépôt | Aucune donnée quotidienne n'est commitée ; la taille réelle du dépôt est mesurée et suivie dans le manifeste, et le seuil visé est fixé après le test T3 de la porte 0 |
 
@@ -150,7 +150,7 @@ Les données viennent de deux APIs gratuites et s'organisent en trois couches, a
 **Sources :**
 
 - TCGdex : cartes, sets, images et prix Cardmarket (EUR) et TCGplayer (USD) par carte, en français et dans d'autres langues, sans clé ni limite stricte publiée. Les prix sont identiques pour toutes les langues européennes (même `idProduct` Cardmarket) ; les cartes japonaises sont des produits distincts. Les prix sont séparés par finition (normale et holo chez Cardmarket ; normal, holofoil et reverse chez TCGplayer). L'endpoint de liste ne renvoie que l'identifiant et le nom : les prix demandent un appel par carte (22 155 cartes françaises, 23 770 anglaises et 13 006 japonaises dans 186 sets au 27 octobre 2026). Japonais : prix Cardmarket présents sur 28 cartes sur 30 tirées au hasard, aucun prix TCGplayer. La complétude sur les sets que tu possèdes reste à mesurer (T6).
-- pokemontcg.io (collecté dès la phase 0 ou 1, exploité en P2 pour le recoupement) : catalogue en anglais et prix, avec une clé gratuite à 20 000 requêtes par jour. Le service serait passé sous Scrydex (payant) : la clé gratuite est à reconfirmer en phase 0, et la source est abandonnée si elle devient payante.
+- pokemontcg.io : abandonné le 27 octobre 2026. Vérifié ce jour : inscriptions fermées (« New account registrations are no longer available »), clés existantes valables jusqu'au 1er mars 2027, successeur Scrydex payant (à partir de 29 $/mois). TCGdex couvre déjà le catalogue et les prix Cardmarket et TCGplayer.
 - tcgdex/price-history : dépôt public sous licence MIT, à explorer pour amorcer l'historique et, s'il est complet et mis à jour chaque jour, pour remplacer les appels carte par carte (profondeur et format inconnus).
 
 **Tables principales :**
@@ -162,7 +162,6 @@ Les données viennent de deux APIs gratuites et s'organisent en trois couches, a
 | Staging (silver) | `stg_tcgdex__prices` | Prix par marché et par finition, avec devise, moyennes sur 1, 7 et 30 jours quand elles existent | Une ligne par carte, marché, finition et date |
 | Staging (silver) | `stg_collection` | Collection personnelle lue depuis le Parquet désigné par la variable `collection_path` | Une ligne par carte possédée |
 | Intermediate | `int_rarity_mapping` | Correspondance entre les noms de rareté des sources (nom d'origine conservé) et un niveau ordonné, construite à partir des valeurs réellement collectées | Une ligne par nom de rareté |
-| Intermediate | `int_card_id_mapping` | (P2) Correspondance entre identifiants TCGdex et pokemontcg.io, avec méthode et niveau de confiance | Une ligne par carte |
 | Marts (gold) | `dim_card`, `dim_set` | Dimensions propres pour les analyses et l'application | Une ligne par carte, par set |
 | Marts (gold) | `fct_price_snapshot` | Historique complet des prix, alimenté par ajout | Une ligne par carte, marché, finition et date |
 | Marts (gold) | `fct_collection_value` | Valeur de la collection personnelle dans le temps | Une ligne par date |
@@ -180,7 +179,7 @@ Une tâche GitHub Actions quotidienne télécharge les prix (et le catalogue une
 
 1. **Déclenchement** : un cron quotidien et un déclenchement manuel (`workflow_dispatch`) pour relancer en cas d'échec ou rejouer une collecte avec des paramètres (langue, date). Le cron est décalé de l'heure pile (par exemple 03:17 UTC), car les déclenchements à l'heure pile peuvent être retardés.
 2. **Langues et fréquence** : le catalogue est collecté chaque semaine pour chaque langue de la configuration (français, anglais et japonais) ; les prix sont collectés chaque jour, une fois par produit Cardmarket : une fois par carte pour les langues européennes, plus une fois par carte japonaise (environ 13 000 appels de plus par jour, sauf si T4 couvre le japonais). Si tcgdex/price-history est complet et à jour (T4), il remplace les appels carte par carte pour les prix.
-3. **Appels** : TCGdex en source principale, pokemontcg.io collecté dès la phase 0 ou 1 pour ne perdre aucun jour de prix (exploitation en P2) ; pagination, pauses entre requêtes, nouvelle tentative après une erreur temporaire, clé lue dans les secrets GitHub.
+3. **Appels** : TCGdex, seule source ; pagination, pauses entre requêtes, nouvelle tentative après une erreur temporaire ; jeton du dépôt privé `cartograph-prices` lu dans les secrets GitHub.
 4. **Données brutes** : le JSON de chaque source reste quelques jours en artefact du workflow, pour le débogage, et une archive compressée par mois va dans une Release. Il n'est jamais commité chaque jour : pour un catalogue de dizaines de milliers de cartes, il dépasserait sans doute le Parquet (à mesurer, test T3 de la porte 0).
 5. **Snapshot** : les prix sont écrits dans `prices-AAAA-MM-JJ.parquet`, et le catalogue hebdomadaire dans `cards-AAAA-MM-JJ.parquet` (compression zstd, triés par identifiant de carte). Relancer le même jour remplace le fichier du jour, sans créer de doublon.
 6. **Stockage durable hors de l'historique Git** : chaque fichier est ajouté à la Release du mois (`data-AAAA-MM`) et y reste : ni fusion ni suppression, environ 31 fichiers par mois. Si T3 montre une reconstruction trop lente, un fichier mensuel fusionné s'ajoute à côté des quotidiens, sans les supprimer. Une copie locale des fichiers sert de sauvegarde. Selon la documentation de GitHub, un fichier de Release doit rester sous 2 Gio et une Release accepte jusqu'à 1000 fichiers, sans limite de taille totale ni de bande passante.
@@ -347,11 +346,11 @@ La CI se déclenche à chaque modification du code et vérifie le code, les tran
 
 Le dépôt étant public, rien de personnel, de secret ou de protégé par un droit d'auteur n'y est publié.
 
-- **Secrets** : la clé pokemontcg.io vit dans les secrets GitHub et dans un fichier `.env` ignoré par Git ; un contrôle automatique des secrets est activé sur le dépôt.
+- **Secrets** : les jetons (dépôt privé `cartograph-prices`, Hugging Face, healthchecks.io) vivent dans les secrets GitHub et dans un fichier `.env` ignoré par Git ; un contrôle automatique des secrets est activé sur le dépôt.
 - **Images des cartes** : elles appartiennent à The Pokémon Company ; elles restent hors du dépôt, dans un dossier local ignoré par Git ou, pour le calcul des embeddings, sur la machine éphémère de GitHub Actions, sans être publiées ni mises en cache. Le dépôt contient seulement les scripts pour les télécharger.
 - **Données personnelles** : ni liste de tes cartes, ni photo qui permettrait de t'identifier ; le dépôt contient un jeu d'exemple. Les photos de test sont dans un dossier ignoré, ou publiées en version dégradée si tu le souhaites.
 - **Conditions des APIs** : les limites et les conditions d'usage de chaque source sont notées dans la documentation, et les requêtes restent raisonnables.
-- **Données publiées** : avant de republier l'historique de prix dans le dépôt public, les conditions d'utilisation de TCGdex, de pokemontcg.io et des données Cardmarket et TCGplayer qu'ils relaient sont vérifiées (le caractère public d'une donnée n'autorise pas sa republication) ; le projet n'est ni produit ni soutenu par Nintendo ni The Pokémon Company, et le dépôt l'indique dans le README.
+- **Données publiées** : tranché le 27 octobre 2026 (test T8). Le catalogue TCGdex est sous licence MIT et peut être republié avec attribution, sans les images. Les prix ne sont jamais republiés : TCGplayer déclare que « pricing information and card databases are the property of TCGplayer, Inc. » et interdit le scraping sans permission, et les prix Cardmarket relèvent du droit européen des bases de données (directive 96/9/CE), que la licence MIT de TCGdex ne peut pas lever. Les prix bruts (Cardmarket et TCGplayer) et le JSON brut sont stockés dans les Releases d'un dépôt privé `cartograph-prices`, alimenté par le workflow du dépôt public `cartograph-data` avec un jeton ; aucun artefact GitHub Actions ni journal d'exécution du dépôt public ne contient de prix (ils sont publics) ; seuls le code, le manifeste (sans prix), le catalogue TCGdex et des résultats dérivés (agrégats, sorties des modèles, qualité des données) sont publiés ; l'application et la démonstration tournent en local ou avec un jeton de lecture ; le projet n'est ni produit ni soutenu par Nintendo ni The Pokémon Company, et le dépôt l'indique dans le README.
 - **Licence** : une licence est choisie pour le code (par exemple MIT) ; les données collectées gardent leur licence d'origine.
 - **Éthique de la prédiction** : les prix prédits sont présentés comme une analyse, pas comme un conseil d'achat ou d'investissement.
 - **Environnement professionnel** : aucun outil, donnée ou code de ton employeur n'entre dans le projet.
@@ -366,7 +365,7 @@ Le dépôt étant public, rien de personnel, de secret ou de protégé par un dr
 
 Les portes sont des points de contrôle : si l'une n'est pas franchie, les bonus sont supprimés avant de toucher au cœur. Le calendrier suppose une journée de travail par weekend et une soutenance en septembre 2027 ; il se redimensionne dès que l'école précise ses critères et que tu confirmes ton temps disponible.
 
-**Répartition des éléments P2 :** la lecture du numéro par OCR se fait en phase 2, juste après les embeddings (l'arrêt de fin mars s'applique aux deux méthodes) ; la collecte de pokemontcg.io démarre dès la phase 0 ou 1, car un jour de prix non collecté est perdu ; le recoupement et le rapprochement des identifiants dans dbt viennent en phase 3, seulement si le temps le permet, et sont les premiers candidats à la suppression ; le modèle A est construit au début de la phase 3 (avril), avant le modèle B et avant Docker, et sa référence « moyenne par rareté et par set » est un modèle dbt de la phase 1.
+**Répartition des éléments P2 :** la lecture du numéro par OCR se fait en phase 2, juste après les embeddings (l'arrêt de fin mars s'applique aux deux méthodes) ; pokemontcg.io, le recoupement et le rapprochement des identifiants sont abandonnés le 27 octobre 2026 ; le modèle A est construit au début de la phase 3 (avril), avant le modèle B et avant Docker, et sa référence « moyenne par rareté et par set » est un modèle dbt de la phase 1.
 
 **Décision sur le fine-tuning :** fin mars 2027, à l'arrêt du scan (voir Scan d'une carte). C'est un jalon du calendrier, à reporter dans les lots dès le découpage en phases.
 
@@ -379,13 +378,13 @@ La phase 0 se termine par une décision écrite sur neuf tests, dont six sont bl
 | Test | Méthode | Critère de réussite | Si échec |
 | --- | --- | --- | --- |
 | T1. Prix par langue (bloquant, tranché le 27 octobre 2026) | Comparer le `idProduct` et les prix Cardmarket d'une même carte en français, anglais et allemand dans TCGdex | Les prix français diffèrent des prix anglais | Échec constaté sur 4 cartes (même `idProduct`, mêmes prix) : modèle A reformulé en prix de référence Cardmarket du produit ; pipeline et scan inchangés |
-| T2. Couverture française et variantes (bloquant) | Calculer, pour les sets que tu possèdes, la part des cartes françaises qui ont une fiche et un prix ; vérifier aussi que les variantes que tu possèdes (par exemple l'Évoli à tampon « Tournée Pokémon 2025 ») existent comme cartes séparées | Au moins 90 % des cartes des sets que tu possèdes (seuil proposé), et chacune de tes variantes est une carte distincte dans TCGdex | Restreindre le périmètre aux sets bien couverts, ou compléter avec pokemontcg.io ; si une variante n'existe pas comme carte séparée, le scan l'attribue à la version de base et la limite est annoncée |
+| T2. Couverture française et variantes (bloquant) | Calculer, pour les sets que tu possèdes, la part des cartes françaises qui ont une fiche et un prix ; vérifier aussi que les variantes que tu possèdes (par exemple l'Évoli à tampon « Tournée Pokémon 2025 ») existent comme cartes séparées | Au moins 90 % des cartes des sets que tu possèdes (seuil proposé), et chacune de tes variantes est une carte distincte dans TCGdex | Restreindre le périmètre aux sets bien couverts ; si une variante n'existe pas comme carte séparée, le scan l'attribue à la version de base et la limite est annoncée |
 | T3. Taille et durée de la collecte (bloquant) | Collecter une fois tout le catalogue ; mesurer la durée de la collecte des prix, le JSON brut, le Parquet complet et le Parquet en delta ; extrapoler sur 365 jours | Extrapolation chiffrée ; Parquet annuel sous environ 1 Go et reconstruction de la base en moins de 10 minutes et collecte quotidienne des prix en moins de 2 heures (500 Mo restent un objectif de confort) ; les fichiers étant dans des Releases, les vraies contraintes sont le temps de reconstruction et les 14 Go de disque d'une machine GitHub | Passer au Parquet en delta, réduire les champs conservés, ou héberger les données sur Hugging Face ; si la collecte est trop longue, passer par tcgdex/price-history |
 | T4. Historique de tcgdex/price-history (informatif) | Cloner le dépôt ; relever les dossiers, la profondeur, le format, la date du dernier commit et la licence ; vérifier s'il est assez complet et à jour pour servir de source quotidienne des prix | Au moins 6 mois d'historique exploitable : le modèle B démarre alors en avril, juste après le modèle A, et passe de P3 à P2 | Le modèle B attend l'historique de la propre collecte (environ 6 mois en avril 2027) et reste en P3, exploratoire |
 | T5. Collecte automatique (bloquant) | Sept jours consécutifs de collecte sans échec ; un échec volontaire déclenche l'e-mail ; le test de fraîcheur échoue quand il le doit ; une collecte désactivée volontairement déclenche l'alerte de healthchecks.io | Sept jours sans trou et les deux alertes reçues ; ce test ne couvre pas le seuil de 60 jours, à refaire après le jour 60 | Corriger avant de passer à la phase 1 |
 | T6. Japonais (informatif) | Tester le code ja de TCGdex sur les sets de tes cartes japonaises physiques (comptées en T7) | Couverture suffisante pour un test de robustesse du scan | Abandonner le test de scan japonais ; la collecte japonaise (catalogue et prix) continue, sans conséquence sur le reste |
 | T7. Cartes physiques (bloquant) | Compter séparément tes cartes physiques françaises et japonaises, les photographier ; vérifier que les françaises existent en français dans TCGdex | Au moins 60 cartes françaises retrouvables dans TCGdex (visée avec marge ; 50 au strict minimum) | Emprunter des cartes dès maintenant pour viser 60 ; sinon réduire le périmètre du scan |
-| T8. Conditions de redistribution des prix (bloquant) | Lire les conditions d'utilisation de TCGdex, de pokemontcg.io et des données Cardmarket et TCGplayer qu'ils relaient | Republication de l'historique autorisée ou tolérée | Publier des agrégats seulement, ou passer le dépôt de données en privé, ce qui fait perdre les machines gratuites et illimitées (dépôt privé : 2 processeurs, 8 Go et un quota mensuel) |
+| T8. Conditions de redistribution des prix (bloquant) | Lire les conditions d'utilisation de TCGdex, de pokemontcg.io et des données Cardmarket et TCGplayer qu'ils relaient | Republication de l'historique autorisée ou tolérée | Publier des agrégats seulement, ou passer le dépôt de données en privé, ce qui fait perdre les machines gratuites et illimitées (dépôt privé : 2 processeurs, 8 Go et un quota mensuel). **Tranché le 27 octobre 2026 : échec pour les prix** (TCGplayer revendique ses prix, Cardmarket protégé par le droit des bases de données) ; repli mixte : `cartograph-data` public pour le calcul, prix bruts dans le dépôt privé `cartograph-prices`, seuls catalogue TCGdex et agrégats publiés |
 | T9. Embeddings sur CPU (informatif) | Calculer les embeddings de 500 images basse résolution sur un runner GitHub Actions et sur ton PC, avec le modèle retenu | Index complet (environ 22 000 cartes) extrapolé sous 3 heures sur un runner | Indexation initiale sur Kaggle (GPU), mises à jour toujours sur CPU dans GitHub Actions ; ou modèle plus petit |
 
 La porte est franchie quand T1, T2, T3, T5, T7 et T8 sont passés, ou tranchés par écrit dans ce document avec la décision prise en cas d'échec ; T4, T6 et T9 informent sans bloquer. Date limite : fin novembre 2026.
@@ -410,21 +409,21 @@ Le risque principal est de passer l'année sur le scan au détriment du pipeline
 | Le scan par webcam est trop lent ou trop imprécis | Bonus sans valeur | Le scan par photo reste la démonstration principale ; le mode webcam est supprimé en premier |
 | Docker complique l'environnement sous Windows | Temps perdu | Docker limité à l'application et à MLflow ; le reste fonctionne sans conteneur, sous Ubuntu ou WSL |
 | Les Releases sont limitées ou indisponibles | Perte d'accès aux snapshots | Copie locale des fichiers ; dépôt de jeu de données sur Hugging Face en option |
-| pokemontcg.io devient payant | Pas de recoupement des prix | Abandonner F2 et F5, sans conséquence sur le cœur |
 | La décision sur le fine-tuning est oubliée | Scan imprécis sans recours prévu | Décision écrite fin mars 2027, inscrite comme jalon du calendrier |
 
 ## Hypothèses à confirmer et points ouverts
 
-Vingt-deux points sont suivis, dont quatre levés le 27 octobre 2026 ; les premiers se règlent dès la phase 0 (fin octobre et novembre 2026).
+Vingt-trois points sont suivis, dont six levés le 27 octobre 2026 ; les premiers se règlent dès la phase 0 (fin octobre et novembre 2026).
 
 - [ ] **Contenu de `tcgdex/price-history`** : profondeur de l'historique, format des fichiers, mise à jour réelle, et possibilité de l'utiliser comme source quotidienne des prix (le dépôt a été vu mais pas exploré).
 - [x] **Prix par langue** : tranché le 27 octobre 2026 : les prix TCGdex sont ceux du produit Cardmarket, identiques pour les langues européennes (test T1) ; modèle A reformulé.
 - [ ] **Complétude du français et du japonais** dans TCGdex pour les sets que tu possèdes (catalogue global mesuré le 27 octobre 2026 : 13 006 cartes japonaises, prix Cardmarket sur 28 sur 30).
-- [ ] **Quotas et conditions** : revérifier sur les pages officielles les limites de pokemontcg.io, de TCGdex et de Kaggle avant de les citer en soutenance ; celles de GitHub (Pages, Releases, GHCR, CodeQL, machines Actions) ont été relues dans sa documentation et ses annonces le 26 octobre 2026.
+- [ ] **Quotas et conditions** : revérifier sur les pages officielles les limites de TCGdex et de Kaggle avant de les citer en soutenance ; celles de GitHub (Pages, Releases, GHCR, CodeQL, machines Actions) ont été relues dans sa documentation et ses annonces le 26 octobre 2026.
 - [x] **Workflows planifiés d'un dépôt public** : suspension après 60 jours sans activité confirmée par la documentation officielle de GitHub ; à surveiller après le lancement.
 - [ ] **Critères de l'école** : date exacte de la soutenance, livrables (rapport, code, démonstration), règle de validation des modules par le projet, technologies imposées.
 - [ ] **Temps réel disponible** par weekend, pour ajuster la taille des lots.
 - [ ] **Cartes réelles** : nombre de cartes françaises (environ 50 à 70 cartes physiques, toutes réservées au réglage et au test ; voir T7) et japonaises.
+- [x] **Redistribution des données** : tranché le 27 octobre 2026 (test T8) : prix jamais republiés, stockés dans le dépôt privé `cartograph-prices` ; catalogue TCGdex (MIT) et agrégats publiés.
 - [x] **Collecte japonaise** : tranché le 27 octobre 2026 : catalogue et prix japonais collectés dès le départ pour l'historique ; exclus du modèle A.
 - [ ] **Japonais** : décider si le test de robustesse du scan (et un modèle japonais) est conservé selon la couverture de TCGdex et le temps disponible (P3).
 - [ ] **Licence du dépôt** : choisir la licence du code.
@@ -441,7 +440,7 @@ Vingt-deux points sont suivis, dont quatre levés le 27 octobre 2026 ; les premi
 
 **Ajoutés le 27 octobre 2026 :**
 
-- [ ] **pokemontcg.io** : vérifier que la clé gratuite existe toujours depuis le passage sous Scrydex ; sinon, abandonner F2 et F5.
+- [x] **pokemontcg.io** : tranché le 27 octobre 2026 : inscriptions fermées, fin du service le 1er mars 2027, Scrydex payant ; source abandonnée avec F2 et F5.
 - [ ] **healthchecks.io** : créer le compte gratuit et le contrôle de la collecte.
 - [ ] **Fine-tuning** : décision écrite fin mars 2027, à l'arrêt du scan, d'après les résultats sur le jeu de réglage.
 - [ ] **Calendrier** : reconstruire le découpage en phases, perdu à l'export Markdown, en y inscrivant ce jalon.
@@ -474,3 +473,13 @@ Les chiffres de quotas et de couverture viennent d'extraits de résultats de rec
 - [À propos des Releases](https://docs.github.com/en/repositories/releasing-projects-on-github/about-releases)
 - [Fonctions de sécurité de GitHub en 2020 : code scanning et secret scanning gratuits sur les dépôts publics](https://github.blog/security/application-security/github-security-features-highlights-from-2020)
 - [Question de la communauté sur le statut « currently free » de GHCR](https://github.com/orgs/community/discussions/183054)
+
+**Vérifications du 27 octobre 2026 (tests T8 et pokemontcg.io) :**
+
+- [Licence MIT de tcgdex/cards-database](https://raw.githubusercontent.com/tcgdex/cards-database/master/LICENSE)
+- [Prix relayés par TCGdex](https://tcgdex.dev/markets-prices)
+- [Conditions générales de Cardmarket](https://www.cardmarket.com/en/Policies/GeneralTermsAndConditions/D)
+- [Conditions d'utilisation de TCGplayer](https://help.tcgplayer.com/hc/en-us/articles/205004918-Terms-of-ServiceTCGplayer)
+- [API TCGplayer : plus de nouvel accès](https://docs.tcgplayer.com/docs/getting-started)
+- [Documentation pokemontcg.io : inscriptions fermées, fin le 1er mars 2027](https://docs.pokemontcg.io/)
+- [Tarifs Scrydex](https://scrydex.com/pricing)

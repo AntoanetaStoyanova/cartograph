@@ -26,10 +26,10 @@ Lister les lots du projet par action, avec leurs dépendances, puis un ordre d'e
 |     | Id | Lot | Exigences | Dépôt | Livrable vérifiable | Dépend de | Prio |
 | --- | -- | --- | --------- | ----- | ------------------- | --------- | ---- |
 | [x] | COL-T1 | Prix par langue (T1) | T1 | — | Tranché le 27 octobre 2026, consigné dans la spec maîtresse | — | P1 |
-| [ ] | COL-T8 | Conditions de redistribution (T8) | T8, N1 | — | Note écrite sur TCGdex, pokemontcg.io, Cardmarket, TCGplayer : republication autorisée, tolérée ou non, et décision de visibilité du dépôt de données | — | P1 |
+| [x] | COL-T8 | Conditions de redistribution (T8) | T8, N1 | — | Note écrite sur TCGdex, pokemontcg.io, Cardmarket, TCGplayer : republication autorisée, tolérée ou non, et décision de visibilité du dépôt de données. Fait le 27 octobre 2026 : option mixte, prix dans le dépôt privé `cartograph-prices` ([annexe](annex.md)) | — | P1 |
 | [ ] | COL-01 | Client TCGdex | F1, N3, N10 | code | Récupération du catalogue (par langue, japonais compris) et des prix (une fois par produit Cardmarket : européen commun, japonais à part) avec pauses et nouvelles tentatives ; tests sur réponses enregistrées | FND-01 | P1 |
 | [ ] | COL-02 | Snapshots Parquet | F3, N3 | code | `prices-AAAA-MM-JJ.parquet` quotidien et `cards-AAAA-MM-JJ.parquet` hebdomadaire, zstd, triés ; relancer le même jour remplace le fichier ; tâche `inv collect` | COL-01 | P1 |
-| [ ] | COL-03 | Brut pokemontcg.io | F1, N1 | code | Clé gratuite reconfirmée (Scrydex) ; réponse brute collectée et conservée, sans exploitation | COL-02, STO-01 | P1 |
+| — | COL-03 | ~~Brut pokemontcg.io~~ | F1, N1 | — | Abandonné le 27 octobre 2026 : inscriptions fermées, fin du service le 1er mars 2027, Scrydex payant | — | — |
 | [ ] | COL-T3 | Taille et durée de la collecte (T3) | T3, N16 | — | Mesures (durée, JSON, Parquet complet, delta) et extrapolation sur 365 jours, décision écrite | COL-02 | P1 |
 | [ ] | COL-T4 | Exploration de tcgdex/price-history (T4) | T4 | — | Note : profondeur, format, fraîcheur, licence ; décision source quotidienne oui / non et priorité du modèle B | — | P1 |
 | [ ] | COL-T2 | Couverture française et variantes (T2) | T2 | — | Part des cartes de tes sets avec fiche et prix, variantes vérifiées, décision écrite | COL-01, SCN-T7 | P1 |
@@ -39,9 +39,9 @@ Lister les lots du projet par action, avec leurs dépendances, puis un ordre d'e
 |     | Id | Lot | Exigences | Dépôt | Livrable vérifiable | Dépend de | Prio |
 | --- | -- | --- | --------- | ----- | ------------------- | --------- | ---- |
 | [ ] | ORC-01 | Dépôt de données et workflow planifié | F1, N13, N14, N15 | data | `cartograph-data` créé ; cron décalé + `workflow_dispatch` avec paramètres, `concurrency`, délai max, permissions minimales, installation du collecteur depuis `cartograph` ; une exécution manuelle réussit | COL-02, COL-T8 | P1 |
-| [ ] | STO-01 | Releases mensuelles et manifeste | F3, N13, N16 | data | Fichier du jour ajouté à `data-AAAA-MM`, manifeste (tailles, lignes, empreintes) commité chaque jour | ORC-01 | P1 |
+| [ ] | STO-01 | Releases mensuelles et manifeste | F3, N13, N16 | data | Fichier du jour ajouté à `data-AAAA-MM` dans le dépôt privé `cartograph-prices` (jeton dans les secrets), manifeste sans prix (tailles, lignes, empreintes) commité chaque jour | ORC-01 | P1 |
 | [ ] | STO-02 | Reconstruction de la base | N2 | code | `inv rebuild` télécharge les Releases et reconstruit le `.duckdb` local, jamais versionné | STO-01, FND-02 | P1 |
-| [ ] | STO-03 | Archivage du brut | F3 | data | JSON brut en artefact quelques jours, archive compressée mensuelle en Release | STO-01 | P1 |
+| [ ] | STO-03 | Archivage du brut | F3 | data | JSON brut envoyé directement dans le dépôt privé `cartograph-prices` (pas d'artefact : ils sont publics sur un dépôt public), archive compressée mensuelle en Release ; aucun prix dans les journaux d'exécution | STO-01 | P1 |
 
 ## Étape 4 — Surveillance (SUR)
 
@@ -139,8 +139,8 @@ Lister les lots du projet par action, avec leurs dépendances, puis un ordre d'e
 | [ ] | ANO-01 | Prix anormaux | F18 | code | Cartes sur ou sous-évaluées et variations anormales dans Marché | MLA-03, APP-01 | P2 |
 | [ ] | DCK-01 | Docker compose | F21, N11 | code | `docker compose up` lance l'application, MLflow et la reconstruction de la base | APP-05, MLF-01 | P2 |
 | [ ] | DCK-02 | Image en CI | N11 | code | Image construite et testée en CI, publiée sur GHCR | DCK-01, CI-01 | P2 |
-| [ ] | PTC-01 | Rapprochement des identifiants | F5 | code | Staging pokemontcg.io et `int_card_id_mapping` avec méthode et confiance | COL-03, DBT-04 | P2 |
-| [ ] | PTC-02 | Recoupement des prix | F2 | code | Comparaison des prix entre sources, test d'écart anormal | PTC-01 | P2 |
+| — | PTC-01 | ~~Rapprochement des identifiants~~ | F5 | — | Abandonné le 27 octobre 2026, avec COL-03 | — | — |
+| — | PTC-02 | ~~Recoupement des prix~~ | F2 | — | Abandonné le 27 octobre 2026, avec COL-03 | — | — |
 | [ ] | MLB-01 | Modèle B (si T4 favorable) | F15 | code | Tendance à 4 semaines contre prix inchangé et moyenne mobile, évaluée par cohortes | MLA-02, COL-T4 | P2 ou P3 |
 
 ## Étape 14 — Actions P3 (supprimables)
@@ -159,14 +159,14 @@ Lister les lots du projet par action, avec leurs dépendances, puis un ordre d'e
 
 Déduit des dépendances. Les lots de mesure et de lecture (T4, T7, T8…) peuvent s'intercaler pendant que la collecte tourne.
 
-1. **Mettre la collecte en route** : FND-00 → FND-01 → COL-T8 → COL-01 → COL-02 → ORC-01 → STO-01 → SUR-01 → SUR-T5 (tourne sept jours en fond) → COL-03 → STO-03
+1. **Mettre la collecte en route** : FND-00 → FND-01 → COL-T8 → COL-01 → COL-02 → ORC-01 → STO-01 → SUR-01 → SUR-T5 (tourne sept jours en fond) → STO-03
 2. **Porte 0** : DOC-01 → COL-T3 → COL-T4 → SCN-T7 → COL-T2 → EMB-T9 → P0-DEC
 3. **Pipeline de données** : CI-01 → FND-02 → STO-02 → DBT-01 → DBT-02 → DBT-03 → DBT-04 → QUA-01 → QUA-02 → CI-02 → DBT-05 → DBT-06 → SUR-02 (dès 60 jours de collecte)
 4. **Application, première version** : APP-01 → APP-02 → APP-04
 5. **Scan** : SCN-02 → EMB-01 → EMB-02 → SCN-01 → SCN-03 → OCR-01 (P2) → OCR-02 (P2) → SCN-D1
 6. **Modèle A** : MLA-01 → MLF-01 (P2) → MLA-02 → MLA-03 → APP-05 → APP-03
 7. **Finaliser le cœur** : DOC-02 → DOC-03 → DOC-04
-8. **P2** : CI-03 → EMB-03 → ANO-01 → DCK-01 → DCK-02 → MLB-01 (si P2) → PTC-01 → PTC-02
+8. **P2** : CI-03 → EMB-03 → ANO-01 → DCK-01 → DCK-02 → MLB-01 (si P2)
 9. **P3, supprimables de bas en haut** : FT-01 (si décidé) → HYB-01 → EMB-04 → JPN-01 → MLB-01 (si P3) → PAG-01 → WEB-01
 
 ## Critères de fin

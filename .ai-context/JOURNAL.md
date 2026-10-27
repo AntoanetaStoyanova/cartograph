@@ -11,16 +11,11 @@
 > ## [YYYY-MM-DD] — <titre court de la session>
 > ### Fait
 > ### Reste à faire
-
-- Supprimer ou garder les 3 `.log` de lancements manuels dans `src/cartograph/log/` (ignorés par Git).
-- Commit de FND-01 sur `develop` quand Antoaneta le demande.
-- Feuille de route : [roadmap-lots](../docs/plans/roadmap-lots.md), COL-T8 (sans code) avant ORC-01, puis `/workspace-plan COL-01` (client TCGdex, catalogue FR/EN/JA, prix par produit Cardmarket).
-
-### Références
+> ### Références
 
 ---
 
-## [2026-10-27] — Spec M2, feuille de route, FND-00 et FND-01
+## [2026-10-27] — Spec M2, feuille de route, FND-00, FND-01 et COL-T8
 
 ### Fait
 
@@ -66,13 +61,18 @@
 - `main()` simplifié par Antoaneta (plus de `try/except`, un seul `setup_logging`, logs `%s`) ; docstring corrigée (`src/cartograph/log/`). ruff, mypy, 10 tests verts, couverture 100 % ; `inv ci` vert chez Antoaneta. Spec et plan FND-01 alignés (décision Logs, `.gitignore`, tests).
 - Décidé : option A pour Ruff, `fix = true` gardé dans `pyproject.toml`, `--no-fix` dans la tâche `lint` (`tasks/__init__.py`) : `inv lint` / `inv ci` vérifient sans modifier les fichiers.
 - Rotation des logs : `setup_logging(..., max_files=10)` ; `_prune_logs` supprime les plus anciens `<name>_*.log` avant de créer le nouveau (tri par nom = ordre chronologique) ; `mkdir` rétabli (il avait été commenté). 4 tests ajoutés dans `tests/test_log.py`. `inv ci` vert : 14 tests, couverture 100 %. Spec et plan FND-01 mis à jour.
-- **Lot FND-01 terminé** : plan et spec entièrement cochés, FND-01 coché dans `docs/plans/roadmap-lots.md`.
+- **Lot FND-01 terminé** : plan et spec entièrement cochés, FND-01 coché dans `docs/plans/roadmap-lots.md` ; commité par Antoaneta (`8c1270f`).
 - Constaté : `invoke ci` = `pre=[check, test]`, corps vide (normal) ; `[tool.ruff] fix = true` fait modifier les fichiers par `inv lint` / `inv ci` (décision d'Antoaneta en attente).
+- COL-T8 (conditions de redistribution) : lecture faite. TCGdex : base sous MIT (« Copyright (c) 2021 TCGdex »), aucune condition publiée sur les prix relayés (Cardmarket, TCGplayer) ni sur les images. pokemontcg.io : en fin de vie, inscriptions fermées, clés valables jusqu'au 1er mars 2027, migration vers Scrydex ; aucune condition de redistribution publiée. Cardmarket et TCGplayer : pages de conditions bloquées (403), à lire par Antoaneta ; selon des sources secondaires, TCGplayer revendique ses prix et interdit leur redistribution sans accord écrit. Décision de visibilité en attente.
+- COL-T8 : clause TCGplayer lue par Antoaneta (« pricing information and card databases are the property of TCGplayer, Inc. », scraping interdit sans permission) : republication des prix TCGplayer exclue. Recommandé : option C (`cartograph-data` public, prix bruts Cardmarket et TCGplayer dans un dépôt privé `cartograph-prices`, seuls catalogue TCGdex et résultats dérivés publiés). Antoaneta a copié l'analyse COL-T8 dans `docs/plans/annex.md`.
+- **COL-T8 terminé** : option C validée. Spec maîtresse (Données publiées, T8, points ouverts 23 dont 5 levés) et `roadmap-lots.md` (COL-T8 coché ; STO-01 et STO-03 vers le dépôt privé `cartograph-prices` ; pas d'artefact ni de journal avec des prix, car publics sur un dépôt public) mis à jour. `docs/plans/annex.md` gardé tel quel comme trace.
+- Vérifié : API TCGplayer fermée (« We are no longer granting new API access at this time ») ; pokemontcg.io : inscriptions fermées (échec de création de compte), Scrydex payant (29 $/mois minimum, contraire à N1).
+- Décidé : pokemontcg.io abandonné (inscriptions fermées, fin le 1er mars 2027, Scrydex payant), avec F2 et F5. Spec maîtresse : choix techniques, F1, F2, F5, sources, `int_card_id_mapping` retiré, orchestration, secrets (N14 et sécurité), répartition P2, repli T2, risque, points ouverts (23 dont 6 levés), sources du 27 octobre ajoutées. `roadmap-lots.md` : COL-03, PTC-01, PTC-02 abandonnés et retirés de l'ordre d'exécution.
 
 ### Reste à faire
 
-- [lot-fnd-01-socle](../docs/plans/lot-fnd-01-socle.md) — Étape 5 : dans `main()`, retirer le `try/except` et le second `setup_logging`, corriger la docstring ; supprimer les 3 `.log` existants ; décision « Logs » de la spec et du plan FND-01 à mettre à jour. Puis critères de fin : Antoaneta lance `uv run inv ci` ; si vert, cocher « inv ci passe » (plan et spec), « critères de la spec », puis FND-01 dans `roadmap-lots.md`. Suite : COL-T8 (sans code) avant ORC-01, puis COL-01.
-- Feuille de route : [roadmap-lots](../docs/plans/roadmap-lots.md), COL-T8 (sans code) avant ORC-01.
+- Supprimer ou garder les 3 `.log` de lancements manuels dans `src/cartograph/log/` (ignorés par Git).
+- Feuille de route : [roadmap-lots](../docs/plans/roadmap-lots.md), `/workspace-plan COL-01` (client TCGdex, catalogue FR/EN/JA, prix par produit Cardmarket).
 
 ### Références
 
@@ -82,4 +82,5 @@
 - [Spec lot-fnd-01-socle](../docs/specs/lot-fnd-01-socle.md)
 - [Plan lot-fnd-01-socle](../docs/plans/lot-fnd-01-socle.md)
 - [Plan lot-fnd-00-poste](../docs/plans/lot-fnd-00-poste.md)
+- [Annexe COL-T8](../docs/plans/annex.md)
 - [log/__init__.py](../src/cartograph/log/__init__.py), [cartograph/__init__.py](../src/cartograph/__init__.py), [test_log.py](../tests/test_log.py), [test_beartype.py](../tests/test_beartype.py), [config/__init__.py](../src/cartograph/config/__init__.py), [test_config.py](../tests/test_config.py), [__main__.py](../src/cartograph/__main__.py), [test_main.py](../tests/test_main.py)
