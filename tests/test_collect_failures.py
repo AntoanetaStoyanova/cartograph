@@ -43,7 +43,7 @@ def test_fetch_prices_records_failed_card_and_continues() -> None:
         result = fetch_prices(client, targets)
 
     assert [r["card_id"] for r in result.items] == ["swsh3-136"]
-    assert result.failed == ["pop9-1"]
+    assert result.failed == ["fr/pop9-1"]
 
 
 def test_fetch_catalogue_with_empty_list_returns_nothing() -> None:
@@ -132,3 +132,18 @@ def test_fetch_catalogue_logs_progress(
 
     assert "catalogue fr : 2 / 3 cartes traitées" in caplog.text
     assert "catalogue fr : 3 récupérées, 0 en échec" in caplog.text
+
+
+def test_fetch_prices_failed_ids_keep_language() -> None:
+    targets = [PriceTarget("fr", "x-1", 1), PriceTarget("ja", "x-1", 2)]
+
+    def ja_down(request: httpx.Request) -> httpx.Response:
+        if request.url.path.startswith("/v2/ja/"):
+            return httpx.Response(500)
+        return httpx.Response(200, json={"id": "x-1", "pricing": None})
+
+    with mock_client(ja_down) as client:
+        result = fetch_prices(client, targets)
+
+    assert [r["language"] for r in result.items] == ["fr"]
+    assert result.failed == ["ja/x-1"]

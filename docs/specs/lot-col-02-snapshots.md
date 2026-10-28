@@ -41,23 +41,23 @@ Une commande `inv collect` qui écrit les snapshots datés du jour (`prices-AAAA
 | Tri et compression | Tri par `card_id` puis `language` ; zstd | Spec maîtresse ; lecture et compression meilleures |
 | Date du snapshot | Date UTC du début de l'exécution | Un seul jour par exécution, même si elle passe minuit |
 | Dossier de sortie | `DATA_DIR = <racine>/data`, ignoré par Git ; `snapshots/` (Parquet), `raw/` (JSON brut gzip), `runs/` (résumés) ; dossier modifiable par paramètre | Rien de local dans le dépôt ; le workflow choisira son dossier |
-| Brut | `raw/cards-AAAA-MM-JJ.json.gz` et `raw/prices-AAAA-MM-JJ.json.gz` : réponses complètes, prix compris | F3 ; contient des prix, donc uniquement local ou dépôt privé (STO-03) |
+| Brut | `raw/cards-AAAA-MM-JJ.json.gz` et `raw/prices-AAAA-MM-JJ.json.gz` : réponses complètes, prix compris ; écrit avant la conversion en table : une réponse de forme inattendue fait échouer l'étape sans perdre la collecte (erreur notée par son type seul, son message pouvant contenir un prix) | F3 ; contient des prix, donc uniquement local ou dépôt privé (STO-03) |
 | Idempotence | Écriture dans un fichier temporaire du même dossier puis `os.replace` ; relancer le même jour remplace les fichiers du jour | N3 ; un fichier n'est jamais à moitié écrit |
 | Catalogue | Tout ou rien : si une langue échoue (liste indisponible ou arrêt après `MAX_CONSECUTIVE_FAILURES`), aucun `cards-*.parquet` n'est écrit ; les cartes isolées en échec n'empêchent pas l'écriture | Un catalogue incomplet ferait disparaître des cartes des prix suivants |
-| Catalogue des prix | Le catalogue du jour s'il vient d'être écrit, sinon le `cards-*.parquet` le plus récent du dossier ; aucun catalogue → prix en échec | Échec du catalogue non bloquant (cadrage) ; les cibles se déduisent des colonnes `language`, `card_id`, `id_product` |
+| Catalogue des prix | Le catalogue du jour s'il vient d'être écrit, sinon le `cards-*.parquet` le plus récent du dossier ; aucun catalogue → prix en échec ; langues demandées absentes du catalogue notées (`missing_languages`) et journalisées, échec si aucune n'y figure | Échec du catalogue non bloquant (cadrage) ; les cibles se déduisent des colonnes `language`, `card_id`, `id_product` |
 | Cibles depuis le Parquet | `price_targets` refactorisé autour d'une déduplication commune, utilisable depuis les fiches (COL-01) ou depuis les lignes du catalogue | Une seule règle « première carte par `idProduct` dans l'ordre de `LANGUAGES` » |
 | Résumé | `runs/collect-AAAA-MM-JJ.json` : date, début, fin, et par étape statut (`ok`, `failed`, `skipped`), nombres (récupérées, en échec, ignorées sans `idProduct`), identifiants en échec, fichiers écrits (nom, lignes, octets), catalogue utilisé pour les prix ; aucun prix | Base du manifeste (STO-01) et du résumé d'exécution (SUR-01) |
 | Code de sortie | 0 si chaque étape demandée est `ok` (cartes isolées en échec comprises), 1 sinon | Le workflow échoue et alerte (SUR-01) ; un trou de quelques cartes est suivi par la surveillance |
-| Interface | `python -m cartograph.bin.collect.run [--catalogue] [--no-prices] [--languages fr,en] [--data-dir PATH]` ; `inv collect` avec les mêmes options | Le workflow (ORC-01) choisit le jour du catalogue et passe `--catalogue` ; aucun calendrier dans le code |
+| Interface | `python -m cartograph.bin.collect.run [--catalogue] [--no-prices] [--languages fr,en] [--data-dir PATH]` ; `inv collect` avec les mêmes options | Le workflow (ORC-01) choisit le jour du catalogue et passe `--catalogue` ; aucun calendrier dans le code ; `run.py` est l'orchestrateur (pas de `__main__.py` dans `bin/`, voir CONTRIBUTING) |
 | Import dans `tasks` | `inv collect` lance la commande avec `c.run`, sans importer `cartograph` | Les autres tâches (`lint`, `ci`) ne dépendent pas de `.env` |
 
 ## Critères d'acceptation
 
-- [ ] `inv collect --catalogue` écrit `cards-`, `prices-` (Parquet zstd triés), les deux bruts gzip et le résumé du jour.
-- [ ] `inv collect` sans `--catalogue` utilise le `cards-*.parquet` le plus récent ; sans aucun catalogue, l'étape prix est `failed` et le code de sortie vaut 1.
-- [ ] Relancer le même jour remplace les fichiers du jour, sans doublon.
-- [ ] Le Parquet du catalogue et le résumé ne contiennent aucun prix (test sur les valeurs des fixtures).
-- [ ] Les types des colonnes de prix sont ceux du schéma (test), quels que soient les champs absents.
-- [ ] Une langue en échec n'écrit aucun catalogue, les prix tournent avec le catalogue précédent et le code de sortie vaut 1.
-- [ ] Les tests n'appellent pas le réseau.
-- [ ] `uv run inv ci` passe, couverture ≥ 88 %.
+- [x] `inv collect --catalogue` écrit `cards-`, `prices-` (Parquet zstd triés), les deux bruts gzip et le résumé du jour.
+- [x] `inv collect` sans `--catalogue` utilise le `cards-*.parquet` le plus récent ; sans aucun catalogue, l'étape prix est `failed` et le code de sortie vaut 1.
+- [x] Relancer le même jour remplace les fichiers du jour, sans doublon.
+- [x] Le Parquet du catalogue et le résumé ne contiennent aucun prix (test sur les valeurs des fixtures).
+- [x] Les types des colonnes de prix sont ceux du schéma (test), quels que soient les champs absents.
+- [x] Une langue en échec n'écrit aucun catalogue, les prix tournent avec le catalogue précédent et le code de sortie vaut 1.
+- [x] Les tests n'appellent pas le réseau.
+- [x] `uv run inv ci` passe, couverture ≥ 88 %.

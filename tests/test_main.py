@@ -5,24 +5,17 @@ from pathlib import Path
 import pytest
 
 import cartograph.__main__ as entry
-from cartograph.__main__ import PROJECT_NAME, get_chemin, main
+from cartograph.__main__ import PROJECT_NAME, main
 
 
 @pytest.fixture
 def isolated_logger(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
-    monkeypatch.setattr(entry, "PROJECT_DIR", tmp_path)
-    yield tmp_path / "log"
+    monkeypatch.setattr(entry, "LOG_DIR", tmp_path)
+    yield tmp_path
     logger = logging.getLogger(PROJECT_NAME)
     for handler in logger.handlers[:]:
         handler.close()
         logger.removeHandler(handler)
-
-
-def test_get_chemin_points_to_package_folder() -> None:
-    chemin = get_chemin("log")
-
-    assert chemin.is_absolute()
-    assert chemin == Path(__file__).resolve().parents[1] / "src" / "cartograph" / "log"
 
 
 @pytest.mark.usefixtures("isolated_logger")

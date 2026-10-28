@@ -1,6 +1,13 @@
 import pytest
 
-from cartograph.config import ENV_FILE, LANGUAGES, _require_env
+from cartograph.config import (
+    DATA_DIR,
+    ENV_FILE,
+    LANGUAGES,
+    LOG_DIR,
+    PROJECT_ROOT,
+    _require_env,
+)
 
 
 def test_languages_are_non_empty_and_unique() -> None:
@@ -29,3 +36,9 @@ def test_require_env_missing_raises_clear_error(
 
 def test_env_file_is_at_project_root() -> None:
     assert (ENV_FILE.parent / "pyproject.toml").exists()
+
+
+def test_output_dirs_are_at_project_root_outside_package() -> None:
+    assert PROJECT_ROOT.is_absolute()
+    assert DATA_DIR == PROJECT_ROOT / "data"
+    assert LOG_DIR == PROJECT_ROOT / "logs"

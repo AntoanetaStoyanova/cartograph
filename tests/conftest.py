@@ -40,3 +40,21 @@ def tcgdex_client() -> Iterator[TcgdexClient]:
         transport=httpx.MockTransport(fixture_route), sleep=lambda _: None
     ) as client:
         yield client
+
+
+def price_values(node: Any) -> set[str]:
+    if isinstance(node, dict):
+        values = set()
+        for key, value in node.items():
+            if key == "pricing" and value is not None:
+                cardmarket = value.get("cardmarket") or {}
+                values |= {
+                    str(v)
+                    for k, v in cardmarket.items()
+                    if isinstance(v, float) and k != "idProduct"
+                }
+            values |= price_values(value)
+        return values
+    if isinstance(node, list):
+        return set().union(*(price_values(item) for item in node))
+    return set()

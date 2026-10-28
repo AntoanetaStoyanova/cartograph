@@ -3,10 +3,12 @@ Prix Cardmarket : une requête par produit.
 """
 
 import logging
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
+
+import pyarrow as pa
 
 from cartograph.bin.collect import FetchResult
 from cartograph.bin.collect.batch import fetch_each
@@ -66,15 +68,67 @@ def price_targets(
     >>> price_targets({"en": [card], "fr": [card]})
     [PriceTarget(language='fr', card_id='swsh3-136', id_product=483559)]
     """
+    return _dedupe(
+        (language, card["id"], card_id_product(card))
+        for language, cards in catalogues.items()
+        for card in cards
+    )
+
+
+def price_targets_from_table(table: pa.Table) -> list[PriceTarget]:
+    """
+    Choisit une carte par produit Cardmarket depuis un snapshot du catalogue.
+
+    Même règle que ``price_targets``, appliquée aux colonnes ``language``,
+    ``card_id`` et ``id_product`` (voir ``snapshot.CARD_SCHEMA``).
+
+    Parameters
+    ----------
+    table : pa.Table
+        Table du catalogue, toutes langues confondues.
+
+    Returns
+    -------
+    list[PriceTarget]
+        Une cible par ``id_product`` ; les lignes sans ``id_product`` sont
+        ignorées.
+    """
+    return _dedupe(
+        zip(
+            table.column("language").to_pylist(),
+            table.column("card_id").to_pylist(),
+            table.column("id_product").to_pylist(),
+            strict=True,
+        )
+    )
+
+
+def _dedupe(rows: Iterable[tuple[str, str, int | None]]) -> list[PriceTarget]:
+    """
+    Garde la première carte par produit, langues dans l'ordre de ``LANGUAGES``.
+
+    Parameters
+    ----------
+    rows : Iterable[tuple[str, str, int | None]]
+        Triplets ``(langue, carte, idProduct)`` ; l'ordre des cartes d'une
+        même langue est conservé, les langues hors ``LANGUAGES`` sont ignorées.
+
+    Returns
+    -------
+    list[PriceTarget]
+        Une cible par ``idProduct``.
+    """
+    rank = {language: index for index, language in enumerate(LANGUAGES)}
+    ordered = sorted(
+        (row for row in rows if row[0] in rank), key=lambda row: rank[row[0]]
+    )
     targets: dict[int, PriceTarget] = {}
     skipped = 0
-    for language in LANGUAGES:
-        for card in catalogues.get(language, ()):
-            id_product = _id_product(card)
-            if id_product is None:
-                skipped += 1
-            elif id_product not in targets:
-                targets[id_product] = PriceTarget(language, card["id"], id_product)
+    for language, card_id, id_product in ordered:
+        if id_product is None:
+            skipped += 1
+        elif id_product not in targets:
+            targets[id_product] = PriceTarget(language, card_id, id_product)
     logger.info(
         "prix : %d produits à interroger, %d cartes ignorées sans idProduct",
         len(targets),
@@ -105,7 +159,8 @@ def fetch_prices(
     FetchResult
         Un enregistrement ``{"language", "card_id", "id_product",
         "fetched_at", "pricing"}`` par cible, ``fetched_at`` en UTC
-        ISO 8601 et ``pricing`` brut, et les identifiants en échec.
+        ISO 8601 et ``pricing`` brut, et les cibles en échec au format
+        ``langue/identifiant`` (une carte peut exister dans plusieurs langues).
 
     Raises
     ------
@@ -128,13 +183,25 @@ def fetch_prices(
             "fetched_at": now().astimezone(UTC).isoformat(),
             "pricing": card.get("pricing"),
         },
-        card_id=lambda target: target.card_id,
+        card_id=lambda target: f"{target.language}/{target.card_id}",
         label="prix",
     )
 
 
-def _id_product(card: dict[str, Any]) -> int | None:
-    """Renvoie ``pricing.cardmarket.idProduct`` de la fiche, ``None`` si absent."""
+def card_id_product(card: dict[str, Any]) -> int | None:
+    """
+    Renvoie le produit Cardmarket d'une fiche.
+
+    Parameters
+    ----------
+    card : dict[str, Any]
+        Fiche complète de l'API.
+
+    Returns
+    -------
+    int | None
+        ``pricing.cardmarket.idProduct``, ``None`` si absent.
+    """
     cardmarket = (card.get("pricing") or {}).get("cardmarket") or {}
     id_product: int | None = cardmarket.get("idProduct")
     return id_product

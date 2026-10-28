@@ -14,6 +14,10 @@ prices
     Une carte par produit Cardmarket et récupération de ses prix.
 batch
     Boucle commune : échecs, arrêt sur panne, progression.
+snapshot
+    Chemins datés, tables typées sans prix dans le catalogue, écriture atomique.
+run
+    Enchaînement catalogue puis prix, résumé d'exécution.
 
 Examples
 --------

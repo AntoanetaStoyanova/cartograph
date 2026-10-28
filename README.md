@@ -36,6 +36,23 @@ cp .env.example .env
 uv run python -m cartograph
 ```
 
+## Collecte
+
+```bash
+uv run inv collect                            # prix du jour, avec le dernier catalogue
+uv run inv collect --catalogue                # catalogue puis prix
+uv run inv collect --catalogue --no-prices    # catalogue seul
+uv run inv collect --languages fr,ja --data-dir /tmp/cartograph
+```
+
+Les sorties vont dans `data/` (ignoré par Git), un fichier par jour, remplacé si on relance le même jour :
+
+- `data/snapshots/` : `cards-AAAA-MM-JJ.parquet` (catalogue, sans aucun prix) et `prices-AAAA-MM-JJ.parquet` ;
+- `data/raw/` : réponses brutes de l'API en JSON gzip, **prix compris : jamais publiées** ;
+- `data/runs/` : résumé `collect-AAAA-MM-JJ.json` (statut, nombres, fichiers écrits, sans prix).
+
+Le code de sortie vaut 1 si une étape demandée échoue. Les logs vont dans `logs/`.
+
 ## Mettre à jour depuis le template
 
 ```bash

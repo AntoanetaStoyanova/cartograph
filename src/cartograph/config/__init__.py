@@ -29,6 +29,13 @@ MAX_CONSECUTIVE_FAILURES : int
     Nombre de cartes en échec d'affilée (hors 404) qui arrête une collecte.
 PROGRESS_EVERY : int
     Nombre de cartes entre deux messages de progression.
+DATA_DIR : pathlib.Path
+    Dossier local des sorties de collecte (``snapshots/``, ``raw/``,
+    ``runs/``), ignoré par Git.
+LOG_DIR : pathlib.Path
+    Dossier des fichiers de log, ignoré par Git.
+SNAPSHOT_COMPRESSION : str
+    Codec de compression des snapshots Parquet.
 """
 
 import os
@@ -36,7 +43,8 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-ENV_FILE = Path(__file__).parents[3] / ".env"
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+ENV_FILE = PROJECT_ROOT / ".env"
 
 load_dotenv(ENV_FILE)
 
@@ -81,3 +89,6 @@ MAX_RETRY_AFTER_S = 60.0
 RETRY_STATUSES: frozenset[int] = frozenset({429, 500, 502, 503, 504})
 MAX_CONSECUTIVE_FAILURES = 20
 PROGRESS_EVERY = 1000
+DATA_DIR = PROJECT_ROOT / "data"
+LOG_DIR = PROJECT_ROOT / "logs"
+SNAPSHOT_COMPRESSION = "zstd"

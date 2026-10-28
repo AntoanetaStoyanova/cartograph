@@ -1,5 +1,7 @@
 """Tâches d'automatisation — exécutées via `inv <commande>`."""
 
+import shlex
+
 from invoke import Context, task
 
 # ---------------------------------------------------------------------------
@@ -39,6 +41,32 @@ def test(c: Context) -> None:
 @task(pre=[check, test])  # type: ignore[misc]
 def ci(c: Context) -> None:
     """Lance la suite complète CI : lint, typecheck, tests."""
+
+
+# ---------------------------------------------------------------------------
+# Collecte
+# ---------------------------------------------------------------------------
+
+
+@task
+def collect(
+    c: Context,
+    catalogue: bool = False,
+    prices: bool = True,
+    languages: str = "",
+    data_dir: str = "",
+) -> None:
+    """Collecte les prix du jour (et le catalogue avec --catalogue) dans data/."""
+    args = ["uv run python -m cartograph.bin.collect.run"]
+    if catalogue:
+        args.append("--catalogue")
+    if not prices:
+        args.append("--no-prices")
+    if languages:
+        args.append(f"--languages {shlex.quote(languages)}")
+    if data_dir:
+        args.append(f"--data-dir {shlex.quote(data_dir)}")
+    c.run(" ".join(args))
 
 
 # ---------------------------------------------------------------------------

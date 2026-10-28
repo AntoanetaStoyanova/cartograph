@@ -15,7 +15,7 @@
 
 ---
 
-## [2026-10-28] — Cadrage des flux et de l'application, client HTTP COL-01
+## [2026-10-28] — Cadrage des flux, COL-01 et début de COL-02
 
 ### Fait
 
@@ -36,13 +36,26 @@
 - Commit `ac25a2c` (COL-01 et cadrage) poussé sur `develop`.
 - **Fuite corrigée** : les fixtures contenaient encore de vrais prix Cardmarket dans `variants_detailed[].pricing` (8 fiches, déjà poussées dans `ac25a2c`). Montants remplacés par les valeurs fictives ; Antoaneta choisit un commit de correction, sans réécrire l'historique.
 - `docs/specs/lot-col-02-snapshots.md` et `docs/plans/lot-col-02-snapshots.md` créés. Décisions : `pyarrow` ; prix en colonnes typées fixes + `tcgplayer_json` ; catalogue en colonnes clés + `raw_json` sans aucune clé `pricing` (à toute profondeur) ; écriture atomique, tri `card_id` puis `language`, zstd ; `data/` (snapshots, raw gzip avec prix, runs) ; catalogue tout ou rien, prix avec le dernier catalogue ; résumé `runs/collect-AAAA-MM-JJ.json` sans prix ; code de sortie 1 si une étape échoue ; `inv collect` sans importer `cartograph`.
+- Plan COL-02 précisé : `.gitignore` recevra `/data/` (ancré ; `data/` ignorerait aussi le paquet `src/cartograph/data/`). À noter pour DBT-01 : `*.parquet` est ignoré partout, l'échantillon versionné demandera une exception (`!tests/fixtures/**/*.parquet`).
+- Commit `51973c5` : correction des fixtures (prix fictifs dans `variants_detailed[].pricing`).
+- Plan lot-col-02-snapshots — Étape 1 : Fondations d'écriture. `pyarrow` 26 ajouté ; `.gitignore` : `/data/` (vérifié avec `git check-ignore`, `src/cartograph/data/` non ignoré) ; `config` : `PROJECT_ROOT`, `DATA_DIR`, `SNAPSHOT_COMPRESSION` ; `bin/collect/snapshot.py` (`SnapshotPaths`, `snapshot_paths`, `write_parquet`, `write_json_gz`, `_write_atomic` : `mkstemp` dans le dossier cible puis `os.replace`, temporaire supprimé en cas d'erreur) ; gzip écrit avec `mtime=0` (même contenu → même fichier) ; `tests/test_collect_snapshot.py` (6 tests, dont un ajouté sur l'échec d'écriture). CI verte (60 tests, couverture 99 %).
+- Chemins regroupés dans `config` : `LOG_DIR = <racine>/logs` (déjà ignoré par Git), `PROJECT_ROOT` résolu ; `get_chemin` et `PROJECT_DIR` supprimés de `__main__.py` (les logs ne s'écrivent plus dans le paquet `src/cartograph/log/`) ; test de `get_chemin` remplacé par `test_output_dirs_are_at_project_root_outside_package` ; note dans la spec FND-01. CI verte (60 tests).
+- Plan lot-col-02-snapshots — Étape 2 : Table des prix. `snapshot.py` : `PRICE_SCHEMA` (horodatages `timestamp[us, UTC]`), `price_table` (champs `x-holo` → `cm_x_holo`, absents → nul, entiers JSON convertis en `float`, `tcgplayer` en JSON trié), champs Cardmarket inconnus journalisés en un seul avertissement (noms seulement). 6 tests ajoutés (dont `tcgplayer_json`). Plan étape 5 précisé : `setup_logging("cartograph", log_dir=LOG_DIR)` au point d'entrée, nom racine pour capter les loggers des modules. CI verte (66 tests, couverture 99 %).
+- Plan lot-col-02-snapshots — Étape 3 : Table du catalogue sans prix. `snapshot.py` : `strip_prices` (copie récursive sans clé `pricing`, entrée non modifiée), `CARD_SCHEMA`, `card_table` (`set_id`/`set_name` lus dans `set`, `updated` en UTC, `raw_json` trié sans prix) ; `prices._id_product` rendu public en `card_id_product` (partagé avec `card_table`). Test anti-fuite : aucune des valeurs de prix des 9 fiches ni le mot `pricing` dans la table sérialisée. 6 tests ajoutés. CI verte (73 tests, couverture 99 %).
+- Plan lot-col-02-snapshots — Étape 4 : Enchaînement de la collecte. `prices.py` : `_dedupe` commun (tri stable par rang dans `LANGUAGES`), `price_targets_from_table` ; `snapshot.write_json` (résumé, atomique) ; `bin/collect/run.py` : `StepReport` (statut, nombres, échecs `langue/identifiant`, fichiers nom/lignes/octets, catalogue source, erreur), `latest_catalogue`, `collect` (catalogue tout ou rien, brut écrit seulement si le catalogue l'est, prix sur le catalogue du jour ou le plus récent, cartes sans `idProduct` comptées depuis le Parquet) ; `price_values` déplacé dans `tests/conftest.py` ; `tests/test_collect_run.py` (11 tests). Décision (après discussion) : pas de `__main__.py` dans `bin/` — un seul `__main__.py` à la racine du paquet (CONTRIBUTING) ; chaque fonctionnalité a son orchestrateur `bin/<module>/run.py` lancé par une tâche `inv` (`python -m cartograph.bin.collect.run`). CI verte (84 tests, couverture 99 %).
+- Plan lot-col-02-snapshots — Étape 5 : Ligne de commande et `inv collect`. `run.main(argv)` (`argparse` : `--catalogue`, `--no-prices`, `--languages` validées contre `LANGUAGES`, `--data-dir` ; `--no-prices` sans `--catalogue` refusé ; `setup_logging("cartograph", log_dir=LOG_DIR)` ; date UTC du jour ; code 0 / 1) ; tâche `inv collect` (`c.run`, sans importer `cartograph`, options passées par `shlex.quote`) ; README « Collecte » ; 6 tests. Critères d'acceptation de la spec cochés (dans la spec et dans les critères de fin du plan). CI verte (90 tests, couverture 99 %).
+
+- Correction : `fetch_prices` note les cibles en échec au format `langue/identifiant` (avant : identifiant seul, ambigu si une même carte existe dans deux langues) ; `run.py` reprend `result.failed` tel quel ; test `test_fetch_prices_failed_ids_keep_language`. CI verte (91 tests).
+
+- Collecte réelle `inv collect --catalogue --languages fr` (Antoaneta) : 1 h 41 (catalogue ≈ 57 min / 22 155 fiches, prix ≈ 44 min / 18 254 produits, ≈ 6,5 req/s), 0 échec, 2 978 cartes sans `idProduct` ; Parquet `cards` 2,7 Mo, `prices` 0,55 Mo ; brut gzip 4,9 Mo + 0,74 Mo ; aucun `pricing` dans `raw_json`. Mesures reportées dans le plan pour COL-T3.
+- **COL-02 terminé** : plan, critères d'acceptation et `roadmap-lots.md` cochés.
+- Revue `/cr` de COL-02 et corrections : brut écrit avant la conversion en table (`run._write_table` : une réponse inattendue fait échouer l'étape sans perdre 1 h 41 de collecte ; erreur notée par son type seul, le message pouvant contenir un prix, T8) ; prix sur un catalogue incomplet signalés (`StepReport.missing_languages`, avertissement, échec si aucune langue demandée n'y figure) ; spec mise à jour ; 4 tests. Points INFO laissés : brut partiel du catalogue non écrit si une langue échoue, `_utc` sur une date sans fuseau. CI verte (95 tests, couverture 99 %).
 
 ### Reste à faire
 
-- Commiter la correction des fixtures (`fix: retire les vrais prix des fixtures TCGdex`).
-- Exécuter docs/plans/lot-col-02-snapshots.md — Étape 1 : Fondations d'écriture.
-- ORC-01 : créer la variable de dépôt `TCGDEX_USER_AGENT` (`gh variable set`) et la passer en `env:` du workflow.
-- Supprimer ou garder les 3 `.log` de lancements manuels dans `src/cartograph/log/` (ignorés par Git).
+- Commit de COL-02 (Antoaneta).
+- Ensuite, selon l'ordre de la roadmap : ORC-01 (dépôt `cartograph-data`, workflow planifié, variable `TCGDEX_USER_AGENT`) ; COL-T3 peut partir des mesures du 28 octobre 2026 (extrapolation en + ja via `list_card_ids`).
+- Supprimer les 3 anciens `.log` de `src/cartograph/log/` (suppression refusée par le mode auto, à faire par Antoaneta), puis retirer la ligne `src/cartograph/log/*.log` du `.gitignore`.
 - COL-T4 (exploration de `tcgdex/price-history`) possible en parallèle.
 
 ### Références
@@ -52,6 +65,8 @@
 - `src/cartograph/bin/collect/catalogue.py`, `tests/conftest.py`, `tests/test_collect_catalogue.py`, `tests/fixtures/tcgdex/`
 - `src/cartograph/bin/collect/prices.py`, `tests/test_collect_prices.py`
 - `src/cartograph/bin/collect/batch.py`, `tests/test_collect_failures.py`
+- `src/cartograph/bin/collect/snapshot.py`, `tests/test_collect_snapshot.py`
+- `src/cartograph/bin/collect/run.py`, `tests/test_collect_run.py`, `tasks/__init__.py`, `README.md`
 - [../docs/specs/lot-col-02-snapshots.md](../docs/specs/lot-col-02-snapshots.md), [../docs/plans/lot-col-02-snapshots.md](../docs/plans/lot-col-02-snapshots.md)
 
 ## [2026-10-27] — Spec M2, feuille de route, FND-00, FND-01, COL-T8 et plan COL-01
