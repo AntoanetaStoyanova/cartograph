@@ -15,7 +15,7 @@
 
 ---
 
-## [2026-10-28] — Cadrage des flux, COL-01 et début de COL-02
+## [2026-10-28] — Cadrage des flux, COL-01, COL-02, COL-T3 et plan ORC-01
 
 ### Fait
 
@@ -50,11 +50,13 @@
 - Collecte réelle `inv collect --catalogue --languages fr` (Antoaneta) : 1 h 41 (catalogue ≈ 57 min / 22 155 fiches, prix ≈ 44 min / 18 254 produits, ≈ 6,5 req/s), 0 échec, 2 978 cartes sans `idProduct` ; Parquet `cards` 2,7 Mo, `prices` 0,55 Mo ; brut gzip 4,9 Mo + 0,74 Mo ; aucun `pricing` dans `raw_json`. Mesures reportées dans le plan pour COL-T3.
 - **COL-02 terminé** : plan, critères d'acceptation et `roadmap-lots.md` cochés.
 - Revue `/cr` de COL-02 et corrections : brut écrit avant la conversion en table (`run._write_table` : une réponse inattendue fait échouer l'étape sans perdre 1 h 41 de collecte ; erreur notée par son type seul, le message pouvant contenir un prix, T8) ; prix sur un catalogue incomplet signalés (`StepReport.missing_languages`, avertissement, échec si aucune langue demandée n'y figure) ; spec mise à jour ; 4 tests. Points INFO laissés : brut partiel du catalogue non écrit si une langue échoue, `_utc` sur une date sans fuseau. CI verte (95 tests, couverture 99 %).
+- **COL-T3 passé** (`docs/specs/col-t3-taille-duree.md`) : listes API fr 22 155 / en 23 770 / ja 13 006 (en recouvre fr à 22 062) ; ≈ 30 400 produits par jour ; prix ≈ 1 h 13 (< 2 h), jour du catalogue ≈ 3 h 46 (< 6 h) ; Parquet annuel ≈ 715 Mo (prix 335 + catalogue 380, < 1 Go, au-dessus du confort de 500 Mo) ; brut ≈ 1,1 Go/an ; reconstruction simulée sur 365 fichiers (11,1 M lignes) en ~1 s. Aucun repli ; delta du catalogue en piste P2 ; délai max d'ORC-01 ≈ 5 h ; alerte SUR-01 si prix > 2 h. COL-T3 coché dans la roadmap.
+- `docs/specs/lot-orc-01-workflow.md` et `docs/plans/lot-orc-01-workflow.md` créés. Décisions : catalogue conservé dans une Release publique `catalogue` de `cartograph-data` (téléchargé les jours sans catalogue) ; prix et brut envoyés dès ORC-01 dans la Release `data-AAAA-MM` de `cartograph-prices` (une machine Actions est effacée en fin de job : sans envoi, les jours seraient perdus) ; code installé depuis `main` de `cartograph` (paramètre `code_ref`) par clone + `uv sync --frozen --no-dev` ; catalogue le lundi ; `timeout-minutes: 300` ; embeddings (EMB-03), manifeste (STO-01), dbt (QUA-02) et alertes (SUR-01) hors périmètre ; contrôle par `actionlint` et `zizmor`.
 
 ### Reste à faire
 
-- Commit de COL-02 (Antoaneta).
-- Ensuite, selon l'ordre de la roadmap : ORC-01 (dépôt `cartograph-data`, workflow planifié, variable `TCGDEX_USER_AGENT`) ; COL-T3 peut partir des mesures du 28 octobre 2026 (extrapolation en + ja via `list_card_ids`).
+- Exécuter docs/plans/lot-orc-01-workflow.md — Étape 1 : Dépôts et accès.
+- Avant : commit de COL-02 avec la note COL-T3 (Antoaneta), fusion de `develop` dans `main`.
 - Supprimer les 3 anciens `.log` de `src/cartograph/log/` (suppression refusée par le mode auto, à faire par Antoaneta), puis retirer la ligne `src/cartograph/log/*.log` du `.gitignore`.
 - COL-T4 (exploration de `tcgdex/price-history`) possible en parallèle.
 
@@ -68,6 +70,8 @@
 - `src/cartograph/bin/collect/snapshot.py`, `tests/test_collect_snapshot.py`
 - `src/cartograph/bin/collect/run.py`, `tests/test_collect_run.py`, `tasks/__init__.py`, `README.md`
 - [../docs/specs/lot-col-02-snapshots.md](../docs/specs/lot-col-02-snapshots.md), [../docs/plans/lot-col-02-snapshots.md](../docs/plans/lot-col-02-snapshots.md)
+- [../docs/specs/col-t3-taille-duree.md](../docs/specs/col-t3-taille-duree.md)
+- [../docs/specs/lot-orc-01-workflow.md](../docs/specs/lot-orc-01-workflow.md), [../docs/plans/lot-orc-01-workflow.md](../docs/plans/lot-orc-01-workflow.md)
 
 ## [2026-10-27] — Spec M2, feuille de route, FND-00, FND-01, COL-T8 et plan COL-01
 
