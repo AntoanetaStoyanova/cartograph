@@ -33,7 +33,7 @@ Collecte entièrement automatique : chaque jour, un workflow de `cartograph-data
 - Embeddings des nouvelles cartes (EMB-03, P2) : l'étape s'ajoutera au même workflow.
 - Manifeste sans prix commité chaque jour (STO-01) ; d'ici là, le cron ne risque pas la suspension des 60 jours.
 - Archive mensuelle du brut (STO-03), `dbt build` et fraîcheur (QUA-02), healthchecks.io et résumé dans la page d'exécution (SUR-01).
-- Épinglage des actions par SHA et Dependabot (CI-03) : actions épinglées par version majeure ici.
+- Dependabot (CI-03).
 - Paramètre de date : les prix d'un jour passé ne se rejouent pas, la collecte prend toujours la date UTC du jour.
 - Aucun changement du code `cartograph` attendu : `--data-dir` existe, les logs vont dans `logs/` du clone.
 
@@ -50,11 +50,13 @@ Collecte entièrement automatique : chaque jour, un workflow de `cartograph-data
 | Délai maximal | `timeout-minutes: 300` | COL-T3 : ≈ 3 h 46 le jour du catalogue, limite GitHub 6 h |
 | Paramètres manuels | Passés aux scripts par `env:`, jamais en `${{ }}` dans `run:` | Pas d'injection de commande depuis les paramètres (N14) |
 | Permissions | `permissions: {}` au niveau du workflow, `contents: write` sur le job (Release `catalogue`) | Moindre privilège ; le dépôt privé passe par `PRICES_TOKEN` |
+| Épinglage des actions | Par SHA de commit, version en commentaire (`checkout` v7.0.1, `setup-uv` v10.3.3) | `setup-uv` n'a plus d'étiquette majeure ; zizmor signale les références mobiles ; CI-03 ajoutera Dependabot |
+| Dernier catalogue | Téléchargé dès que les prix sont demandés, même le jour du catalogue | Si la collecte du catalogue échoue, les prix utilisent le précédent |
 | Contrôle du workflow | `actionlint` et `zizmor` lancés par `uvx` avant chaque push | Erreurs de syntaxe et failles connues des workflows détectées sans exécuter 4 h de collecte |
 
 ## Critères d'acceptation
 
-- [ ] `cartograph-data` (public) et `cartograph-prices` (privé) existent ; variable et secret configurés.
+- [x] `cartograph-data` (public) et `cartograph-prices` (privé) existent ; variable et secret configurés.
 - [ ] `collect.yml` passe `actionlint` et `zizmor` sans alerte haute.
 - [ ] Une exécution manuelle avec `catalogue` réussit : `cards-AAAA-MM-JJ.parquet` dans la Release `catalogue`, prix et brut dans `data-AAAA-MM` de `cartograph-prices`.
 - [ ] Une exécution manuelle sans `catalogue` réussit en lisant le catalogue de la Release.
