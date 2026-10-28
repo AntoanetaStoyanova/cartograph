@@ -33,12 +33,15 @@
 - Plan lot-col-01-client-tcgdex — Étape 4 : Cas limites et logs. `bin/collect/batch.py` (`fetch_each`, boucle commune : carte en échec notée dans `failed` et collecte poursuivie, arrêt après `MAX_CONSECUTIVE_FAILURES` échecs d'affilée hors 404, progression toutes les `PROGRESS_EVERY` cartes, totaux) ; `config` : `MAX_CONSECUTIVE_FAILURES = 20`, `PROGRESS_EVERY = 1000` ; `price_targets` journalise produits et cartes ignorées sans `idProduct` ; docstring du paquet avec exemple (`doctest: +SKIP`) ; `tests/conftest.py` (`fixture_route`, `mock_client`) ; `tests/test_collect_failures.py` (9 tests). Choix : un 404 ne compte pas dans les échecs d'affilée mais ne remet pas le compteur à zéro. CI verte (45 tests, couverture 99 %).
 - **COL-01 terminé** : plan et critères d'acceptation de la spec cochés, COL-01 coché dans `roadmap-lots.md`.
 - Revue `/cr` de COL-01 et corrections : réponse non JSON → `TcgdexError` (plantait toute la collecte) ; `follow_redirects=True` ; `Retry-After` plafonné (`MAX_RETRY_AFTER_S = 60`) ; `.env` chargé par chemin explicite (`ENV_FILE`) et `_require_env` avec message clair ; fautes des commentaires de `client.py` corrigées ; 7 tests ajoutés (53 au total, couverture 99 %). Variables GitHub Actions : `TCGDEX_USER_AGENT` en variable de dépôt (`vars.`), secrets réservés aux jetons (STO-01, EMB).
+- Commit `ac25a2c` (COL-01 et cadrage) poussé sur `develop`.
+- **Fuite corrigée** : les fixtures contenaient encore de vrais prix Cardmarket dans `variants_detailed[].pricing` (8 fiches, déjà poussées dans `ac25a2c`). Montants remplacés par les valeurs fictives ; Antoaneta choisit un commit de correction, sans réécrire l'historique.
+- `docs/specs/lot-col-02-snapshots.md` et `docs/plans/lot-col-02-snapshots.md` créés. Décisions : `pyarrow` ; prix en colonnes typées fixes + `tcgplayer_json` ; catalogue en colonnes clés + `raw_json` sans aucune clé `pricing` (à toute profondeur) ; écriture atomique, tri `card_id` puis `language`, zstd ; `data/` (snapshots, raw gzip avec prix, runs) ; catalogue tout ou rien, prix avec le dernier catalogue ; résumé `runs/collect-AAAA-MM-JJ.json` sans prix ; code de sortie 1 si une étape échoue ; `inv collect` sans importer `cartograph`.
 
 ### Reste à faire
 
-- Commit de COL-01 (cadrage, spec, code, tests).
+- Commiter la correction des fixtures (`fix: retire les vrais prix des fixtures TCGdex`).
+- Exécuter docs/plans/lot-col-02-snapshots.md — Étape 1 : Fondations d'écriture.
 - ORC-01 : créer la variable de dépôt `TCGDEX_USER_AGENT` (`gh variable set`) et la passer en `env:` du workflow.
-- Planifier COL-02 Snapshots Parquet (`/workspace-plan lot-col-02-snapshots`).
 - Supprimer ou garder les 3 `.log` de lancements manuels dans `src/cartograph/log/` (ignorés par Git).
 - COL-T4 (exploration de `tcgdex/price-history`) possible en parallèle.
 
@@ -49,6 +52,7 @@
 - `src/cartograph/bin/collect/catalogue.py`, `tests/conftest.py`, `tests/test_collect_catalogue.py`, `tests/fixtures/tcgdex/`
 - `src/cartograph/bin/collect/prices.py`, `tests/test_collect_prices.py`
 - `src/cartograph/bin/collect/batch.py`, `tests/test_collect_failures.py`
+- [../docs/specs/lot-col-02-snapshots.md](../docs/specs/lot-col-02-snapshots.md), [../docs/plans/lot-col-02-snapshots.md](../docs/plans/lot-col-02-snapshots.md)
 
 ## [2026-10-27] — Spec M2, feuille de route, FND-00, FND-01, COL-T8 et plan COL-01
 

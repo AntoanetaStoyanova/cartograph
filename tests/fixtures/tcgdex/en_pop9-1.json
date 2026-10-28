@@ -37,18 +37,18 @@
           "updated": "2026-10-27T17:48:09.445Z",
           "unit": "EUR",
           "idProduct": 278552,
-          "avg": 32.5,
-          "low": 25,
-          "trend": 33.61,
-          "avg1": 28,
-          "avg7": 24.42,
-          "avg30": 20.04,
+          "avg": 4045.37,
+          "low": 4046.37,
+          "trend": 4047.37,
+          "avg1": 4048.37,
+          "avg7": 4049.37,
+          "avg30": 4050.37,
           "avg-holo": null,
           "low-holo": null,
-          "trend-holo": 3.11,
-          "avg1-holo": 3.11,
-          "avg7-holo": 2,
-          "avg30-holo": 2
+          "trend-holo": 4051.37,
+          "avg1-holo": 4052.37,
+          "avg7-holo": 4053.37,
+          "avg30-holo": 4054.37
         },
         "tcgplayer": null
       }
