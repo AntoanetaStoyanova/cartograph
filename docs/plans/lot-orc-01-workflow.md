@@ -14,18 +14,18 @@ Un workflow de `cartograph-data` collecte chaque jour sans intervention, publie 
 
 ## Étape 1 — Dépôts et accès
 
-- [ ] Antoaneta, sur GitHub :
+- [x] Antoaneta, sur GitHub :
   - créer `cartograph-data` (public) et `cartograph-prices` (privé), sans fichier initial ;
   - jeton à grain fin limité à `cartograph-prices`, permission `Contents: Read and write`, expiration notée dans le journal ;
   - dans `cartograph-data` : secret `PRICES_TOKEN`, variable `TCGDEX_USER_AGENT` (même valeur que `.env`).
-- [ ] `../cartograph-data/README.md` : rôle du dépôt, lien vers `cartograph`, catalogue TCGdex sous licence MIT avec attribution, aucun prix publié (prix dans un dépôt privé), mention « ni produit ni soutenu par Nintendo ni The Pokémon Company ».
-- [ ] `../cartograph-data/.gitignore` : `data/`, `code/`, `logs/`.
-- [ ] `git init`, branche `main`, remote SSH ; premier push par Antoaneta.
-- [ ] Vérification : `README.md` visible sur GitHub, secret et variable listés dans les réglages.
+- [x] `../cartograph-data/README.md` : rôle du dépôt, lien vers `cartograph`, catalogue TCGdex sous licence MIT avec attribution, aucun prix publié (prix dans un dépôt privé), mention « ni produit ni soutenu par Nintendo ni The Pokémon Company ».
+- [x] `../cartograph-data/.gitignore` : `data/`, `code/`, `logs/`.
+- [x] `git init`, branche `main`, remote SSH ; premier push par Antoaneta (`e683c34`).
+- [x] Vérification : `cartograph-data` public en ligne avec `main` à `e683c34` ; `cartograph-prices` privé (404 anonyme, accessible en SSH, vide) ; secret et variable déclarés par Antoaneta (non lisibles sans `gh`).
 
 ## Étape 2 — Workflow de collecte
 
-- [ ] `.github/workflows/collect.yml` :
+- [x] `.github/workflows/collect.yml` :
   - `on.schedule` `17 3 * * *` ; `on.workflow_dispatch.inputs` : `catalogue` (booléen, `false`), `prices` (booléen, `true`), `languages` (texte, vide = toutes), `code_ref` (texte, `main`) ;
   - `permissions: {}` ; `concurrency: {group: collect, cancel-in-progress: false}` ;
   - job `collect` : `ubuntu-latest`, `timeout-minutes: 300`, `permissions: contents: write` ;
@@ -34,19 +34,21 @@ Un workflow de `cartograph-data` collecte chaque jour sans intervention, publie 
   - étape `plan` : calcule `catalogue` (paramètre, ou cron et lundi) et les options de `run` ; paramètres lus par `env:` ;
   - sans catalogue : télécharge le dernier `cards-*.parquet` de la Release `catalogue` dans `data/snapshots/` (`gh release view --json assets`, tri par nom) ;
   - `uv run --frozen python -m cartograph.bin.collect.run --data-dir "$GITHUB_WORKSPACE/data" …`, `TCGDEX_USER_AGENT` depuis `vars`.
-- [ ] Vérification : `uvx --from actionlint-py actionlint` et `uvx zizmor .github/workflows/collect.yml` sans alerte haute ; corrections notées.
+- [x] Vérification : `uvx --from actionlint-py --with shellcheck-py bash -c 'actionlint'` (shellcheck compris) et `uvx zizmor --persona=pedantic` sans alerte ; corrections : nom du job, commentaire sur `contents: write`. Actions épinglées par SHA (zizmor l'exige pour `setup-uv`, qui n'a pas d'étiquette majeure). Logique bash simulée en local (lundi, paramètres, injection dans `languages` restée un seul argument, dernier catalogue) ; clone de `main` + `uv sync --frozen --no-dev` + `--help` testés.
 
 ## Étape 3 — Publication des sorties
 
-- [ ] Étapes après la collecte, avec `if: ${{ !cancelled() }}` :
+- [x] Étapes après la collecte, avec `if: ${{ !cancelled() }}` (étape `summary` : date et statut lus dans `collect-*.json` avec `jq`, nombres affichés sans prix) :
   - catalogue : si `data/snapshots/cards-<date du résumé>.parquet` existe, créer la Release `catalogue` si absente puis `gh release upload --clobber` (`GITHUB_TOKEN`) ;
   - prix et brut : `GH_TOKEN=${{ secrets.PRICES_TOKEN }}`, créer `data-AAAA-MM` dans `cartograph-prices` si absente, envoyer `prices-*.parquet` et `raw/*.json.gz` avec `--clobber` ;
   - `actions/upload-artifact` : `data/runs/collect-*.json` et `code/logs/*.log`, `retention-days: 7`, jamais `data/raw/` ni `data/snapshots/`.
-- [ ] Le job échoue si la collecte a échoué, après les publications (code de sortie conservé dans une sortie d'étape).
-- [ ] Vérification : `actionlint`, `zizmor` ; relecture que seuls le catalogue, le résumé et le log sont publics.
+- [x] Le job échoue si la collecte a échoué, après les publications : `continue-on-error` sur la collecte, dernière étape en échec si `steps.collect.outcome == 'failure'` ; délai de 270 min sur l'étape de collecte pour laisser le temps de publier avant les 300 min du job.
+- [x] Vérification : `actionlint` (avec shellcheck), `zizmor --persona=pedantic` sans alerte ; étapes de publication simulées en local sur les sorties du 28 octobre avec un faux `gh` (catalogue → `catalogue`, prix + deux bruts → `data-2026-10`) ; relecture : seuls le catalogue, le résumé et le log sont publics.
 
 ## Étape 4 — Exécutions manuelles et documentation
 
+- [x] Antoaneta : premier commit dans `cartograph-prices` (`03ffe70`) (README « Add a README » sur GitHub) ; sans commit, `gh release create` échoue sur un dépôt vide.
+- [x] Commit et push de `collect.yml` dans `cartograph-data` (`5c1ddef`, le cron démarre au push).
 - [ ] Exécution manuelle `catalogue: true` (toutes langues) : fichiers présents dans les deux Releases ; durées et débit relevés dans le résumé.
 - [ ] Exécution manuelle `catalogue: false` : catalogue lu depuis la Release, prix envoyés.
 - [ ] Relance le même jour : fichiers remplacés, aucun doublon dans les Releases.
