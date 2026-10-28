@@ -30,7 +30,7 @@ Lister les lots du projet par action, avec leurs dépendances, puis un ordre d'e
 | [x] | COL-01 | Client TCGdex | F1, N3, N10 | code | Récupération du catalogue (par langue, japonais compris) et des prix (une fois par produit Cardmarket : européen commun, japonais à part) avec pauses et nouvelles tentatives ; tests sur réponses enregistrées | FND-01 | P1 |
 | [x] | COL-02 | Snapshots Parquet | F3, N3 | code | `prices-AAAA-MM-JJ.parquet` quotidien et `cards-AAAA-MM-JJ.parquet` hebdomadaire, zstd, triés ; relancer le même jour remplace le fichier ; tâche `inv collect` | COL-01 | P1 |
 | — | COL-03 | ~~Brut pokemontcg.io~~ | F1, N1 | — | Abandonné le 27 octobre 2026 : inscriptions fermées, fin du service le 1er mars 2027, Scrydex payant | — | — |
-| [ ] | COL-T3 | Taille et durée de la collecte (T3) | T3, N16 | — | Mesures (durée, JSON, Parquet complet, delta) et extrapolation sur 365 jours, décision écrite | COL-02 | P1 |
+| [x] | COL-T3 | Taille et durée de la collecte (T3) | T3, N16 | — | Mesures (durée, JSON, Parquet complet, delta) et extrapolation sur 365 jours, décision écrite ([note](../specs/col-t3-taille-duree.md) : passé) | COL-02 | P1 |
 | [ ] | COL-T4 | Exploration de tcgdex/price-history (T4) | T4 | — | Note : profondeur, format, fraîcheur, licence ; décision source quotidienne oui / non et priorité du modèle B | — | P1 |
 | [ ] | COL-T2 | Couverture française et variantes (T2) | T2 | — | Part des cartes de tes sets avec fiche et prix, variantes vérifiées, décision écrite | COL-01, SCN-T7 | P1 |
 
