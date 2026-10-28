@@ -1,6 +1,6 @@
 # Spécification du projet final M2 : plateforme de données Pokémon TCG
 
-Oct 26, 2026 · @antoaneta · mis à jour le 27 octobre 2026
+Oct 26, 2026 · @antoaneta · mis à jour le 28 octobre 2026
 
 ## Contexte et objectifs
 
@@ -28,7 +28,7 @@ Le cœur du projet porte sur les cartes françaises ; tout le reste est ordonné
 
 | Priorité | Contenu |
 | --- | --- |
-| P1, cœur obligatoire | Collecte quotidienne des prix et hebdomadaire du catalogue depuis TCGdex ; stockage en snapshots Parquet ; modèles dbt staging, intermediate et marts avec tests ; dashboard de collection et de marché ; scan par embeddings avec évaluation chiffrée ; modèle A de prix attendu ; documentation et démonstration reproductible |
+| P1, cœur obligatoire | Collecte quotidienne des prix et hebdomadaire du catalogue depuis TCGdex ; stockage en snapshots Parquet ; modèles dbt staging, intermediate et marts avec tests ; application (scan, collection avec marge sur prix payé, fiche carte, marché, coulisses) ; scan par embeddings avec évaluation chiffrée ; modèle A de prix attendu ; documentation et démonstration reproductible |
 | P2, important | lecture du numéro de carte par OCR pour départager les réimpressions ; index d'embeddings mis à jour de façon incrémentale ; intégration continue complète ; Docker (image et docker compose) ; suivi des expériences avec MLflow |
 | P3, bonus | Modèle B de tendance à 4 semaines (exploratoire) ; méthode hybride de scan ; scan continu par webcam (quasi temps réel) ; comparaison de deux modèles d'embeddings ; test de robustesse sur cartes japonaises ; fine-tuning de l'embedding (décision fin mars 2027) ; orchestration avec Dagster |
 | Exclu | Application mobile ; scan en vrai temps réel (30 images par seconde) ; entraînement d'un modèle de zéro ; conseil d'achat ou d'investissement ; déploiement en production |
@@ -58,7 +58,7 @@ Le volume de données reste modeste : un catalogue de l'ordre de plusieurs dizai
 
 ## Décisions d'architecture
 
-Vingt-deux décisions structurent le projet ; chacune a une raison et une alternative écartée, à défendre en soutenance.
+Vingt-trois décisions structurent le projet ; chacune a une raison et une alternative écartée, à défendre en soutenance.
 
 | Sujet | Choix | Raison | Alternative écartée |
 | --- | --- | --- | --- |
@@ -72,8 +72,9 @@ Vingt-deux décisions structurent le projet ; chacune a une raison et une altern
 | Recherche par similarité | Calcul direct avec NumPy | Quelques dizaines de milliers de vecteurs suffisent | FAISS ou pgvector, gardés pour comparer |
 | Lecture du numéro de carte (OCR, P2) | EasyOCR et PaddleOCR comparés | Gratuits, tournent sur CPU | Tesseract seul |
 | Machine learning | scikit-learn, LightGBM ou XGBoost, MLflow en local | Tournent sur CPU, traçables | Réseaux récurrents (LSTM) |
-| Application | Streamlit en local | Rapide à construire seule | Interface web séparée avec API |
+| Application | Locale, outil choisi au prototype APP-T1 (NiceGUI recommandé, repli Dash Mantine) ; toute la logique dans `cartograph.bin`, l'interface ne fait que l'appeler (décidé le 28 octobre 2026) | Rendu professionnel en restant en Python ; changer d'outil ne touche pas au reste du code | Streamlit (rendu de prototype) ; interface web séparée avec API (deux bases de code) |
 | Historique initial | Explorer le dépôt tcgdex/price-history | Licence MIT, mis à jour chaque jour, dossiers en français | Démarrer sans historique |
+| Workflow de collecte | Un seul workflow quotidien : le jour du catalogue (hebdomadaire ou à la demande), il enchaîne catalogue, prix et embeddings des nouvelles cartes ; un échec du catalogue ne bloque pas les prix (décidé le 28 octobre 2026) | Les prix dépendent de la liste des produits issue du catalogue : l'ordre est garanti, pas de chevauchement, une seule surveillance | Deux workflows (prix quotidien, catalogue hebdomadaire) à horaires séparés |
 | Emplacement du workflow planifié | Dans le dépôt de données | Les commits quotidiens évitent la suspension du cron après 60 jours sans commit | Workflow dans le dépôt de code, qui resterait sans commit |
 | Modèle et index d'embeddings | Hugging Face Hub, avec la révision exacte du modèle | Versionnés, téléchargeables par le projet et par Kaggle | Fichiers dans le dépôt GitHub |
 | Nouvelles cartes à embedder | Étape de GitHub Actions après la collecte : téléchargement temporaire des images, calcul sur CPU, publication de l'index sur Hugging Face | Aucune intervention manuelle ; les images ne vivent que sur la machine éphémère et ne sont jamais publiées | Issue automatique puis notebook Kaggle lancé à la main le weekend |
@@ -82,7 +83,7 @@ Vingt-deux décisions structurent le projet ; chacune a une raison et une altern
 | Rotation des fichiers | Aucune fusion : chaque Release mensuelle garde ses fichiers quotidiens ; un fichier mensuel fusionné ne s'ajoute, sans rien supprimer, que si T3 montre une reconstruction trop lente | Environ 31 fichiers par Release, loin de la limite de 1000 ; aucun risque de perte, historique jamais réécrit | Fusion mensuelle puis suppression des quotidiens ; DuckDB seul (fichier local jetable, pas une source durable) |
 | Surveillance | E-mail d'échec de GitHub, test de fraîcheur dbt après chaque collecte, signal envoyé à healthchecks.io (offre gratuite) en fin de collecte | Trois contrôles sans maintenance ; healthchecks.io alerte même si GitHub ne lance pas le cron | Cron hebdomadaire, issue d'échec et contrôle externe lancé depuis ta machine |
 | Commandes du projet | invoke (`tasks/`, fourni par le template) et `uv.lock` pour figer les versions | En Python, multiplateforme, compatible avec `cruft update` | Makefile |
-| Collection personnelle | Fichier Parquet local hors dépôt, jeu d'exemple Parquet versionné ; dbt lit le chemin dans la variable `collection_path` | Colonnes typées, même format que les snapshots ; le même modèle tourne en CI sur l'exemple et en local sur la vraie collection | CSV ; collection dans un dépôt privé ou un secret GitHub |
+| Collection personnelle | Journal d'événements (ajout, retrait, correction ; prix payé facultatif) en Parquet local hors dépôt, par ajout seulement ; jeu d'exemple versionné ; dbt lit le chemin dans la variable `collection_path` et en déduit l'état et la valeur (décidé le 28 octobre 2026) | Valeur exacte à toute date passée, marge par achat, erreurs corrigées sans rien effacer ; même principe que les snapshots ; le même modèle tourne en CI sur l'exemple et en local sur la vraie collection | État modifié sur place (perd l'historique) ; CSV ; collection dans un dépôt privé ou un secret GitHub |
 | Couches dbt | staging (`stg_`), intermediate (`int_`), marts (`fct_`, `dim_`, `mart_`) ; les données brutes sont déclarées comme sources | Conventions de dbt ; bronze, silver et gold correspondent aux sources, au staging et aux marts | Préfixes bronze, silver et gold |
 
 ## Architecture globale
@@ -112,8 +113,8 @@ Vingt-deux exigences découpent le projet ; leurs identifiants serviront de réf
 | F13 | Évaluer les méthodes de scan sur toutes les cartes réelles disponibles (50 à 70 environ) (top-1, top-5, temps, intervalles de confiance) | P1 |
 | F14 | Estimer le prix Cardmarket attendu de chaque produit (modèle A), en début de phase 3, contre la référence « moyenne par rareté et par set » (repli : moyenne par rareté) construite en dbt dès la phase 1 | P1 |
 | F15 | Prédire la tendance du prix à 4 semaines (modèle B, exploratoire) | P3 |
-| F16 | Gérer une collection personnelle et calculer sa valeur dans le temps | P1 |
-| F17 | Présenter scan, collection et marché dans une application Streamlit | P1 |
+| F16 | Gérer une collection personnelle (journal d'ajouts et de retraits, prix payé facultatif), calculer sa valeur dans le temps et la marge entre prix payé et prix du jour | P1 |
+| F17 | Présenter scan, collection, fiche carte, marché et coulisses dans une application locale (outil choisi au prototype APP-T1) | P1 |
 | F18 | Signaler les cartes dont le prix s'écarte du prix attendu ou varie de façon anormale | P2 |
 | F19 | Après chaque collecte, embedder automatiquement dans GitHub Actions les cartes absentes de l'index et publier l'index à jour ; lister dans le résumé de l'exécution les cartes dont l'image est indisponible, avec la raison, réessayées à la collecte suivante | P2 |
 | F20 | Scanner en continu avec la webcam, avec vote sur plusieurs images | P3 |
@@ -160,10 +161,11 @@ Les données viennent de deux APIs gratuites et s'organisent en trois couches, a
 | Sources (bronze) | `raw_tcgdex_cards`, `raw_tcgdex_prices`, `raw_ptcg_cards` (conservé dès la phase 0 ou 1, exploité en P2) | Parquet quotidiens (prix) et hebdomadaires (catalogue), déclarés dans `sources.yml` | Une ligne par carte et par snapshot |
 | Staging (silver) | `stg_tcgdex__cards`, `stg_tcgdex__sets` | Cartes et sets typés et dédoublonnés, avec langue, rareté, type, numéro, date de sortie | Une ligne par carte et par langue |
 | Staging (silver) | `stg_tcgdex__prices` | Prix par marché et par finition, avec devise, moyennes sur 1, 7 et 30 jours quand elles existent | Une ligne par carte, marché, finition et date |
-| Staging (silver) | `stg_collection` | Collection personnelle lue depuis le Parquet désigné par la variable `collection_path` | Une ligne par carte possédée |
+| Staging (silver) | `stg_collection` | Journal de la collection lu depuis le Parquet désigné par la variable `collection_path` | Une ligne par événement (ajout, retrait, correction) |
 | Intermediate | `int_rarity_mapping` | Correspondance entre les noms de rareté des sources (nom d'origine conservé) et un niveau ordonné, construite à partir des valeurs réellement collectées | Une ligne par nom de rareté |
 | Marts (gold) | `dim_card`, `dim_set` | Dimensions propres pour les analyses et l'application | Une ligne par carte, par set |
 | Marts (gold) | `fct_price_snapshot` | Historique complet des prix, alimenté par ajout | Une ligne par carte, marché, finition et date |
+| Marts (gold) | `fct_collection` | État courant de la collection, prix payé, prix du jour et marge | Une ligne par carte, finition et état possédés |
 | Marts (gold) | `fct_collection_value` | Valeur de la collection personnelle dans le temps | Une ligne par date |
 | Marts (gold) | `mart_price_trends` | Tendances par set et par rareté, cartes aux prix anormaux | Une ligne par set, rareté et date |
 | Marts (gold) | `mart_price_baseline` | Prix moyen par rareté et par set, avec repli sur la moyenne par rareté quand le set manque ; référence à battre du modèle A (phase 1) | Une ligne par set, rareté et date |
@@ -171,13 +173,13 @@ Les données viennent de deux APIs gratuites et s'organisent en trois couches, a
 | IA | scan\_evaluation | Photo, carte réelle, méthode, cinq meilleures cartes proposées, temps | Une ligne par photo et par méthode |
 | IA | ml\_predictions | Prédictions des modèles A et B, avec version du modèle | Une ligne par carte, date et modèle |
 
-La collection personnelle (quelles cartes tu possèdes) est un fichier Parquet local, hors du dépôt public ; le dépôt contient un jeu d'exemple au même format. dbt lit le chemin dans la variable `collection_path` : en CI, elle désigne le jeu d'exemple ; en local, la vraie collection. Le volume réel du catalogue français est à mesurer lors de la première collecte. Le modèle d'embeddings et l'index sont publiés sur Hugging Face Hub (compte gratuit), avec la révision exacte du modèle.
+La collection personnelle est un journal d'événements en Parquet local, hors du dépôt public : chaque scan validé ou saisie ajoute une ligne (date, carte, langue, finition, état, prix payé facultatif, origine), jamais réécrite ; le dépôt contient un jeu d'exemple au même format. dbt lit le chemin dans la variable `collection_path` : en CI, elle désigne le jeu d'exemple ; en local, la vraie collection. Le volume réel du catalogue français est à mesurer lors de la première collecte. Le modèle d'embeddings et l'index sont publiés sur Hugging Face Hub (compte gratuit), avec la révision exacte du modèle.
 
 ## Collecte et stockage
 
 Une tâche GitHub Actions quotidienne télécharge les prix (et le catalogue une fois par semaine), puis dépose de nouveaux fichiers datés : l'historique se construit par ajout et ne dépend jamais de ton ordinateur.
 
-1. **Déclenchement** : un cron quotidien et un déclenchement manuel (`workflow_dispatch`) pour relancer en cas d'échec ou rejouer une collecte avec des paramètres (langue, date). Le cron est décalé de l'heure pile (par exemple 03:17 UTC), car les déclenchements à l'heure pile peuvent être retardés.
+1. **Déclenchement** : un seul workflow, lancé par un cron quotidien ; le jour du catalogue (hebdomadaire, ou à la demande par paramètre), il enchaîne catalogue, prix puis embeddings des nouvelles cartes, et un échec du catalogue n'empêche pas de collecter les prix avec le catalogue précédent. Un déclenchement manuel (`workflow_dispatch`) pour relancer en cas d'échec ou rejouer une collecte avec des paramètres (langue, date). Le cron est décalé de l'heure pile (par exemple 03:17 UTC), car les déclenchements à l'heure pile peuvent être retardés.
 2. **Langues et fréquence** : le catalogue est collecté chaque semaine pour chaque langue de la configuration (français, anglais et japonais) ; les prix sont collectés chaque jour, une fois par produit Cardmarket : une fois par carte pour les langues européennes, plus une fois par carte japonaise (environ 13 000 appels de plus par jour, sauf si T4 couvre le japonais). Si tcgdex/price-history est complet et à jour (T4), il remplace les appels carte par carte pour les prix.
 3. **Appels** : TCGdex, seule source ; pagination, pauses entre requêtes, nouvelle tentative après une erreur temporaire ; jeton du dépôt privé `cartograph-prices` lu dans les secrets GitHub.
 4. **Données brutes** : le JSON de chaque source reste quelques jours en artefact du workflow, pour le débogage, et une archive compressée par mois va dans une Release. Il n'est jamais commité chaque jour : pour un catalogue de dizaines de milliers de cartes, il dépasserait sans doute le Parquet (à mesurer, test T3 de la porte 0).
@@ -255,7 +257,7 @@ Si le nombre de cartes réelles est insuffisant, le jeu est complété par des p
 - chaîne : capture, détection et redressement de la carte (OpenCV), embedding, recherche du plus proche voisin, vote sur les dernières images ;
 - l'OCR ne tourne que sur une image stabilisée, car il est trop lent pour chaque image ;
 - mesure : top-1 sur une image contre top-1 avec vote, pour chiffrer le gain ;
-- le scan tourne sur la machine hôte (fenêtre OpenCV, puis Streamlit si possible), jamais dans Docker, où l'accès à la webcam est difficile sous Windows et WSL ;
+- le scan tourne sur la machine hôte (fenêtre OpenCV, puis l'application si possible), jamais dans Docker, où l'accès à la webcam est difficile sous Windows et WSL ;
 - une webcam d'ordinateur rend le petit texte illisible, ce qui pénalise l'OCR plus que les embeddings.
 
 ## Machine learning
@@ -297,19 +299,20 @@ Deux modèles complémentaires : le modèle A fonctionne dès le catalogue dispo
 
 ## Application et dashboard
 
-L'application Streamlit tourne en local et couvre trois usages : scanner une carte, suivre sa collection, lire le marché.
+L'application tourne en local et couvre quatre parcours : scanner et ranger une carte, suivre sa collection, lire le marché, montrer les coulisses. Le détail (flux, écrans, marge sur prix payé) est dans [cadrage-flux.md](cadrage-flux.md) ; l'outil est choisi au prototype APP-T1.
 
 | Page | Contenu | Exigences |
 | --- | --- | --- |
-| Scan | Envoi d'une photo, affichage des 5 meilleures cartes candidates avec leur score, validation de la bonne carte, ajout à la collection ; mode webcam continu en P3 | F10, F11, F16 |
-| Ma collection | Valeur totale et son évolution dans le temps, répartition par set et par rareté, cartes les plus chères | F16 |
-| Marché | Tendances de prix par set et par rareté, complétude des données, cartes aux prix anormaux, prix attendu et tendance prédite pour une carte | F14, F15, F18 |
-| Qualité et suivi | Fraîcheur des données, résultats des tests, dernière collecte réussie | F4, F7 |
+| Fiche carte | Écran pivot : image (chargée depuis TCGdex), set, rareté, numéro, historique des prix par finition, prix attendu (modèle A) avec marge d'erreur ; si possédée, marge sur prix payé et courbe depuis l'achat, tendance du modèle B en pointillés (P3) | F14, F15, F16 |
+| Scan | Envoi d'une photo, 5 meilleures candidates avec leur score, validation, état, finition et prix payé facultatif, ajout au journal de collection puis fiche carte ; mode webcam continu en P3 | F10, F11, F16 |
+| Ma collection | Inventaire filtrable avec prix du jour, valeur totale et évolution, marge sur prix payé (indicateur en pourcentage, vert si payé moins cher, rouge sinon), répartition par set et rareté, complétion par set, historique des ajouts et retraits | F16 |
+| Marché | Tendances de prix par set et par rareté, cartes aux prix anormaux, recherche vers la fiche carte | F17, F18 |
+| Coulisses | Fraîcheur, complétude, résultats des tests, dernière collecte réussie, résultats du scan | F4, F7, F13 |
 
 **Choix de conception :**
 
 - l'application lit uniquement les tables gold et les index ; elle ne modifie jamais les données collectées ;
-- la collection personnelle est stockée dans un fichier Parquet local, hors du dépôt public, avec un jeu d'exemple pour la démonstration ;
+- la collection personnelle est un journal d'événements en Parquet local, hors du dépôt public, avec un jeu d'exemple pour la démonstration ; le prix payé n'est jamais publié ;
 - chaque prédiction affichée indique le nom du modèle et sa marge d'erreur mesurée, pour éviter une fausse impression de certitude ;
 - une démonstration enregistrée (vidéo ou captures) sert de plan B en cas de panne le jour de la soutenance.
 
@@ -334,7 +337,7 @@ La CI se déclenche à chaque modification du code et vérifie le code, les tran
 | Sécurité | Dependabot, actions épinglées, contrôle des secrets, CodeQL | Dépendances à jour et aucun secret publié (gratuits sur un dépôt public, selon GitHub) |
 | Branches | Protection de la branche principale | Aucune fusion si une vérification obligatoire échoue |
 
-**Environnements :** `uv.lock` pour figer les versions, des tâches invoke (`tasks/`) pour les commandes principales (collecte, build dbt, tests, application), et un Dockerfile avec un docker compose (application Streamlit, interface MLflow, reconstruction de la base) pour reproduire l'environnement.
+**Environnements :** `uv.lock` pour figer les versions, des tâches invoke (`tasks/`) pour les commandes principales (collecte, build dbt, tests, application), et un Dockerfile avec un docker compose (application, interface MLflow, reconstruction de la base) pour reproduire l'environnement.
 
 **Jeux d'essai :** un petit échantillon de snapshots et une collection d'exemple, en Parquet, sont versionnés dans le dépôt pour faire tourner la CI sans appeler les APIs.
 

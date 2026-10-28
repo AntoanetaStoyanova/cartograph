@@ -1,0 +1,116 @@
+{
+  "category": "Pokemon",
+  "id": "SV7-065",
+  "illustrator": "Mékayu",
+  "image": "https://assets.tcgdex.net/ja/SV/SV7/065",
+  "localId": "065",
+  "name": "ギモー",
+  "rarity": "Common",
+  "set": {
+    "cardCount": {
+      "official": 102,
+      "total": 135
+    },
+    "id": "SV7",
+    "name": "ステラミラクル"
+  },
+  "variants": {
+    "firstEdition": false,
+    "holo": false,
+    "normal": true,
+    "reverse": false,
+    "wPromo": false
+  },
+  "variants_detailed": [
+    {
+      "type": "normal",
+      "size": "standard",
+      "thirdParty": {
+        "cardmarket": 779079,
+        "tcgplayer": 567920
+      },
+      "variantId": "endfynwn4n10gzq",
+      "pricing": {
+        "cardmarket": {
+          "updated": "2026-10-27T17:48:09.396Z",
+          "unit": "EUR",
+          "idProduct": 779079,
+          "avg": 0.03,
+          "low": 0.02,
+          "trend": 0.03,
+          "avg1": 0.02,
+          "avg7": 0.03,
+          "avg30": 0.03,
+          "avg-holo": null,
+          "low-holo": null,
+          "trend-holo": 0,
+          "avg1-holo": null,
+          "avg7-holo": null,
+          "avg30-holo": null
+        },
+        "tcgplayer": null
+      }
+    }
+  ],
+  "dexId": [
+    860
+  ],
+  "hp": 90,
+  "types": [
+    "Darkness"
+  ],
+  "description": "負の 感情を 吸い取って エネルギーにしている ポケモン。 マイナス思考の 人に 人気。",
+  "stage": "Stage1",
+  "attacks": [
+    {
+      "cost": [
+        "Colorless",
+        "Colorless"
+      ],
+      "name": "ひっぱたく",
+      "damage": 40
+    },
+    {
+      "cost": [
+        "Darkness",
+        "Colorless",
+        "Colorless"
+      ],
+      "name": "やみのキバ",
+      "damage": 70
+    }
+  ],
+  "weaknesses": [
+    {
+      "type": "Grass",
+      "value": "×2"
+    }
+  ],
+  "retreat": 1,
+  "regulationMark": "H",
+  "legal": {
+    "standard": true,
+    "expanded": false
+  },
+  "updated": "2026-09-25T23:45:43.885Z",
+  "pricing": {
+    "cardmarket": {
+      "updated": "2026-10-27T17:48:09.396Z",
+      "unit": "EUR",
+      "idProduct": 779079,
+      "avg": 4074.37,
+      "low": 4075.37,
+      "trend": 4076.37,
+      "avg1": 4077.37,
+      "avg7": 4078.37,
+      "avg30": 4079.37,
+      "avg-holo": null,
+      "low-holo": null,
+      "trend-holo": 4080.37,
+      "avg1-holo": null,
+      "avg7-holo": null,
+      "avg30-holo": null
+    },
+    "tcgplayer": null
+  }
+}

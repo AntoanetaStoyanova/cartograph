@@ -27,7 +27,7 @@ Lister les lots du projet par action, avec leurs dépendances, puis un ordre d'e
 | --- | -- | --- | --------- | ----- | ------------------- | --------- | ---- |
 | [x] | COL-T1 | Prix par langue (T1) | T1 | — | Tranché le 27 octobre 2026, consigné dans la spec maîtresse | — | P1 |
 | [x] | COL-T8 | Conditions de redistribution (T8) | T8, N1 | — | Note écrite sur TCGdex, pokemontcg.io, Cardmarket, TCGplayer : republication autorisée, tolérée ou non, et décision de visibilité du dépôt de données. Fait le 27 octobre 2026 : option mixte, prix dans le dépôt privé `cartograph-prices` ([annexe](annex.md)) | — | P1 |
-| [ ] | COL-01 | Client TCGdex | F1, N3, N10 | code | Récupération du catalogue (par langue, japonais compris) et des prix (une fois par produit Cardmarket : européen commun, japonais à part) avec pauses et nouvelles tentatives ; tests sur réponses enregistrées | FND-01 | P1 |
+| [x] | COL-01 | Client TCGdex | F1, N3, N10 | code | Récupération du catalogue (par langue, japonais compris) et des prix (une fois par produit Cardmarket : européen commun, japonais à part) avec pauses et nouvelles tentatives ; tests sur réponses enregistrées | FND-01 | P1 |
 | [ ] | COL-02 | Snapshots Parquet | F3, N3 | code | `prices-AAAA-MM-JJ.parquet` quotidien et `cards-AAAA-MM-JJ.parquet` hebdomadaire, zstd, triés ; relancer le même jour remplace le fichier ; tâche `inv collect` | COL-01 | P1 |
 | — | COL-03 | ~~Brut pokemontcg.io~~ | F1, N1 | — | Abandonné le 27 octobre 2026 : inscriptions fermées, fin du service le 1er mars 2027, Scrydex payant | — | — |
 | [ ] | COL-T3 | Taille et durée de la collecte (T3) | T3, N16 | — | Mesures (durée, JSON, Parquet complet, delta) et extrapolation sur 365 jours, décision écrite | COL-02 | P1 |
@@ -38,7 +38,7 @@ Lister les lots du projet par action, avec leurs dépendances, puis un ordre d'e
 
 |     | Id | Lot | Exigences | Dépôt | Livrable vérifiable | Dépend de | Prio |
 | --- | -- | --- | --------- | ----- | ------------------- | --------- | ---- |
-| [ ] | ORC-01 | Dépôt de données et workflow planifié | F1, N13, N14, N15 | data | `cartograph-data` créé ; cron décalé + `workflow_dispatch` avec paramètres, `concurrency`, délai max, permissions minimales, installation du collecteur depuis `cartograph` ; une exécution manuelle réussit | COL-02, COL-T8 | P1 |
+| [ ] | ORC-01 | Dépôt de données et workflow planifié | F1, N13, N14, N15 | data | `cartograph-data` créé ; cron décalé + `workflow_dispatch` avec paramètres, `concurrency`, délai max, permissions minimales, installation du collecteur depuis `cartograph` ; un seul workflow (le jour du catalogue ou sur paramètre : catalogue, puis prix, puis embeddings ; échec du catalogue non bloquant pour les prix) ; une exécution manuelle réussit | COL-02, COL-T8 | P1 |
 | [ ] | STO-01 | Releases mensuelles et manifeste | F3, N13, N16 | data | Fichier du jour ajouté à `data-AAAA-MM` dans le dépôt privé `cartograph-prices` (jeton dans les secrets), manifeste sans prix (tailles, lignes, empreintes) commité chaque jour | ORC-01 | P1 |
 | [ ] | STO-02 | Reconstruction de la base | N2 | code | `inv rebuild` télécharge les Releases et reconstruit le `.duckdb` local, jamais versionné | STO-01, FND-02 | P1 |
 | [ ] | STO-03 | Archivage du brut | F3 | data | JSON brut envoyé directement dans le dépôt privé `cartograph-prices` (pas d'artefact : ils sont publics sur un dépôt public), archive compressée mensuelle en Release ; aucun prix dans les journaux d'exécution | STO-01 | P1 |
@@ -59,7 +59,7 @@ Lister les lots du projet par action, avec leurs dépendances, puis un ordre d'e
 | [ ] | DBT-02 | Staging des prix | F6 | code | `stg_tcgdex__prices` au grain carte × marché × finition × date, avec devise | DBT-01 | P1 |
 | [ ] | DBT-03 | Intermediate rareté | F6 | code | `int_rarity_mapping` construit sur les valeurs réellement collectées | DBT-01 | P1 |
 | [ ] | DBT-04 | Marts du catalogue et des prix | F6 | code | `dim_card`, `dim_set`, `fct_price_snapshot` incrémental | DBT-02, DBT-03 | P1 |
-| [ ] | DBT-05 | Collection personnelle | F16 | code | `stg_collection` via la variable `collection_path`, Parquet d'exemple versionné, `fct_collection_value` | DBT-04 | P1 |
+| [ ] | DBT-05 | Collection personnelle | F16 | code | Journal d'événements : `stg_collection` via la variable `collection_path`, Parquet d'exemple versionné, `fct_collection` (état, prix payé, marge), `fct_collection_value` | DBT-04 | P1 |
 | [ ] | DBT-06 | Référence et tendances | F14, F17 | code | `mart_price_baseline` (repli par rareté), `mart_price_trends` | DBT-04 | P1 |
 
 ## Étape 6 — Qualité des données (QUA)
@@ -103,15 +103,18 @@ Lister les lots du projet par action, avec leurs dépendances, puis un ordre d'e
 | [ ] | MLA-02 | Références et LightGBM | F14 | code | Référence recalculée sur l'entraînement, régression linéaire, LightGBM ; métriques médianes et IC par bootstrap | MLA-01 | P1 |
 | [ ] | MLA-03 | Prédictions publiées | F14 | code | Table `ml_predictions` avec version du modèle et marge d'erreur mesurée | MLA-02 | P1 |
 
-## Étape 11 — Application Streamlit (APP)
+## Étape 11 — Application (APP)
+
+Voir [cadrage-flux.md](../specs/cadrage-flux.md). Toute la logique (lecture DuckDB, scan, marge, valeur) vit dans `cartograph.bin` ; l'interface ne fait que l'appeler.
 
 |     | Id | Lot | Exigences | Dépôt | Livrable vérifiable | Dépend de | Prio |
 | --- | -- | --- | --------- | ----- | ------------------- | --------- | ---- |
-| [ ] | APP-01 | Socle et page Marché | F17 | code | Application lancée par `inv app`, lecture des marts seulement, tendances et complétude | DBT-06 | P1 |
-| [ ] | APP-02 | Page Ma collection | F16, F17 | code | Valeur totale et évolution, répartitions, cartes les plus chères | DBT-05, APP-01 | P1 |
-| [ ] | APP-03 | Page Scan | F11, F16, F17 | code | Envoi d'une photo, top-5 avec score, validation et ajout au Parquet de collection | SCN-01, APP-02 | P1 |
-| [ ] | APP-04 | Page Qualité et suivi | F4, F7, F17 | code | Fraîcheur, résultats des tests, dernière collecte réussie | QUA-02, APP-01 | P1 |
-| [ ] | APP-05 | Prix attendu dans Marché | F14, F17 | code | Prix attendu affiché avec nom du modèle et marge d'erreur | MLA-03, APP-01 | P1 |
+| [ ] | APP-T1 | Prototype de l'outil | F17 | code | Fiche carte et inventaire sur le jeu d'exemple en NiceGUI ; décision écrite (NiceGUI ou repli Dash Mantine) | DBT-05 | P1 |
+| [ ] | APP-01 | Socle, fiche carte et Marché | F17 | code | Application lancée par `inv app`, lecture des marts seulement ; fiche carte (historique par finition), tendances et complétude | APP-T1, DBT-06 | P1 |
+| [ ] | APP-02 | Ma collection | F16, F17 | code | Inventaire filtrable, valeur et évolution, marge sur prix payé (indicateur vert / rouge, courbe depuis l'achat), complétion par set, historique des ajouts et retraits | DBT-05, APP-01 | P1 |
+| [ ] | APP-03 | Scan | F11, F16, F17 | code | Envoi d'une photo, top-5 avec score, validation (état, finition, prix payé facultatif), événement ajouté au journal, fiche carte affichée | SCN-01, APP-02 | P1 |
+| [ ] | APP-04 | Coulisses | F4, F7, F13, F17 | code | Fraîcheur, résultats des tests, dernière collecte réussie ; résultats du scan une fois SCN-03 fait | QUA-02, APP-01 | P1 |
+| [ ] | APP-05 | Prix attendu dans la fiche carte | F14, F17 | code | Prix attendu affiché avec nom du modèle et marge d'erreur | MLA-03, APP-01 | P1 |
 
 ## Étape 12 — Documentation et démonstration (DOC)
 
@@ -162,7 +165,7 @@ Déduit des dépendances. Les lots de mesure et de lecture (T4, T7, T8…) peuve
 1. **Mettre la collecte en route** : FND-00 → FND-01 → COL-T8 → COL-01 → COL-02 → ORC-01 → STO-01 → SUR-01 → SUR-T5 (tourne sept jours en fond) → STO-03
 2. **Porte 0** : DOC-01 → COL-T3 → COL-T4 → SCN-T7 → COL-T2 → EMB-T9 → P0-DEC
 3. **Pipeline de données** : CI-01 → FND-02 → STO-02 → DBT-01 → DBT-02 → DBT-03 → DBT-04 → QUA-01 → QUA-02 → CI-02 → DBT-05 → DBT-06 → SUR-02 (dès 60 jours de collecte)
-4. **Application, première version** : APP-01 → APP-02 → APP-04
+4. **Application, première version** : APP-T1 → APP-01 → APP-02 → APP-04
 5. **Scan** : SCN-02 → EMB-01 → EMB-02 → SCN-01 → SCN-03 → OCR-01 (P2) → OCR-02 (P2) → SCN-D1
 6. **Modèle A** : MLA-01 → MLF-01 (P2) → MLA-02 → MLA-03 → APP-05 → APP-03
 7. **Finaliser le cœur** : DOC-02 → DOC-03 → DOC-04

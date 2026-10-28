@@ -1,0 +1,119 @@
+{
+  "category": "Pokemon",
+  "id": "pop9-1",
+  "illustrator": "Kagemaru Himeno",
+  "image": "https://assets.tcgdex.net/en/pop/pop9/1",
+  "localId": "1",
+  "name": "Garchomp",
+  "rarity": "Rare",
+  "set": {
+    "cardCount": {
+      "official": 17,
+      "total": 17
+    },
+    "id": "pop9",
+    "logo": "https://assets.tcgdex.net/en/pop/pop9/logo",
+    "name": "POP Series 9",
+    "symbol": "https://assets.tcgdex.net/univ/pop/pop9/symbol"
+  },
+  "variants": {
+    "firstEdition": false,
+    "holo": false,
+    "normal": true,
+    "reverse": false,
+    "wPromo": false
+  },
+  "variants_detailed": [
+    {
+      "type": "normal",
+      "size": "standard",
+      "thirdParty": {
+        "tcgplayer": 85622,
+        "cardmarket": 278552
+      },
+      "variantId": "endfynwn4n10gzq",
+      "pricing": {
+        "cardmarket": {
+          "updated": "2026-10-27T17:48:09.445Z",
+          "unit": "EUR",
+          "idProduct": 278552,
+          "avg": 32.5,
+          "low": 25,
+          "trend": 33.61,
+          "avg1": 28,
+          "avg7": 24.42,
+          "avg30": 20.04,
+          "avg-holo": null,
+          "low-holo": null,
+          "trend-holo": 3.11,
+          "avg1-holo": 3.11,
+          "avg7-holo": 2,
+          "avg30-holo": 2
+        },
+        "tcgplayer": null
+      }
+    }
+  ],
+  "dexId": [
+    445
+  ],
+  "hp": 130,
+  "types": [
+    "Colorless"
+  ],
+  "evolveFrom": "Gabite",
+  "description": "It flies at speeds equal to a jet fighter plane. It never allows its prey to escape.",
+  "stage": "Stage2",
+  "attacks": [
+    {
+      "cost": [
+        "Colorless"
+      ],
+      "name": "Dragon Rage",
+      "effect": "Flip 2 coins. If either of them is tails, this attack does nothing.",
+      "damage": 80
+    },
+    {
+      "cost": [
+        "Colorless",
+        "Colorless",
+        "Colorless"
+      ],
+      "name": "Jet Sword",
+      "effect": "Discard 2 Energy attached to Garchomp and this attack does 10 damage to each of your opponent's Benched Pokémon. (Don't apply Weakness and Resistance for Benched Pokémon.)",
+      "damage": 100
+    }
+  ],
+  "weaknesses": [
+    {
+      "type": "Colorless",
+      "value": "+30"
+    }
+  ],
+  "retreat": 0,
+  "legal": {
+    "standard": false,
+    "expanded": false
+  },
+  "updated": "2026-08-12T20:57:19+01:00",
+  "pricing": {
+    "cardmarket": {
+      "updated": "2026-10-27T17:48:09.445Z",
+      "unit": "EUR",
+      "idProduct": 278552,
+      "avg": 4045.37,
+      "low": 4046.37,
+      "trend": 4047.37,
+      "avg1": 4048.37,
+      "avg7": 4049.37,
+      "avg30": 4050.37,
+      "avg-holo": null,
+      "low-holo": null,
+      "trend-holo": 4051.37,
+      "avg1-holo": 4052.37,
+      "avg7-holo": 4053.37,
+      "avg30-holo": 4054.37
+    },
+    "tcgplayer": null
+  }
+}

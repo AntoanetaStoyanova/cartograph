@@ -1,0 +1,42 @@
+import json
+import re
+from collections.abc import Callable, Iterator
+from pathlib import Path
+from typing import Any
+
+import httpx
+import pytest
+
+from cartograph.bin.collect.client import TcgdexClient
+
+FIXTURES_DIR = Path(__file__).parent / "fixtures" / "tcgdex"
+_ROUTE = re.compile(r"^/v2/(?P<language>[^/]+)/cards(?:/(?P<card_id>.+))?$")
+
+
+def load_fixture(name: str) -> Any:
+    return json.loads((FIXTURES_DIR / f"{name}.json").read_text(encoding="utf-8"))
+
+
+def fixture_route(request: httpx.Request) -> httpx.Response:
+    match = _ROUTE.match(request.url.path)
+    if match is None:
+        return httpx.Response(404)
+    language, card_id = match["language"], match["card_id"]
+    name = f"{language}_cards" if card_id is None else f"{language}_{card_id}"
+    if not (FIXTURES_DIR / f"{name}.json").exists():
+        return httpx.Response(404)
+    return httpx.Response(200, json=load_fixture(name))
+
+
+def mock_client(handler: Callable[[httpx.Request], httpx.Response]) -> TcgdexClient:
+    return TcgdexClient(
+        transport=httpx.MockTransport(handler), max_retries=0, sleep=lambda _: None
+    )
+
+
+@pytest.fixture
+def tcgdex_client() -> Iterator[TcgdexClient]:
+    with TcgdexClient(
+        transport=httpx.MockTransport(fixture_route), sleep=lambda _: None
+    ) as client:
+        yield client

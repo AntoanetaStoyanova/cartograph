@@ -27,6 +27,7 @@ Mise en place pas à pas : [lot-fnd-00-poste](docs/plans/lot-fnd-00-poste.md).
 git clone git@github.com:AntoanetaStoyanova/cartograph.git
 cd cartograph
 uv sync
+cp .env.example .env
 ```
 
 ## Utilisation

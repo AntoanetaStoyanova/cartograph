@@ -1,0 +1,116 @@
+{
+  "category": "Pokemon",
+  "id": "S7D-019",
+  "illustrator": "kodama",
+  "localId": "019",
+  "name": "ガラル サンダー",
+  "rarity": "Rare",
+  "set": {
+    "cardCount": {
+      "official": 67,
+      "total": 90
+    },
+    "id": "S7D",
+    "name": "摩天パーフェクト"
+  },
+  "variants": {
+    "firstEdition": false,
+    "holo": true,
+    "normal": false,
+    "reverse": false,
+    "wPromo": false
+  },
+  "variants_detailed": [
+    {
+      "type": "holo",
+      "size": "standard",
+      "thirdParty": {
+        "cardmarket": 571601,
+        "tcgplayer": 569342
+      },
+      "variantId": "jr7oetx1mqug9",
+      "pricing": {
+        "cardmarket": {
+          "updated": "2026-10-27T22:08:34.018Z",
+          "unit": "EUR",
+          "idProduct": 571601,
+          "avg": 0.63,
+          "low": 0.08,
+          "trend": 0.67,
+          "avg1": 0.5,
+          "avg7": 0.66,
+          "avg30": 0.64,
+          "avg-holo": null,
+          "low-holo": null,
+          "trend-holo": 0,
+          "avg1-holo": null,
+          "avg7-holo": null,
+          "avg30-holo": null
+        },
+        "tcgplayer": null
+      }
+    }
+  ],
+  "dexId": [
+    145
+  ],
+  "hp": 110,
+  "types": [
+    "Fighting"
+  ],
+  "description": "ひと蹴りで ダンプカーを 粉々に する 脚力を もつ。 時速 ３００キロで 山を 駆けるという。",
+  "stage": "Basic",
+  "abilities": [
+    {
+      "type": "Ability",
+      "name": "けんきゃくチャージ",
+      "effect": "自分の番に、このカードを手札からベンチに出したとき、1回使える。自分の手札から[闘]エネルギーを2枚まで選び、このポケモンにつける。"
+    }
+  ],
+  "attacks": [
+    {
+      "cost": [
+        "Fighting",
+        "Fighting",
+        "Colorless"
+      ],
+      "name": "ザッパーキック",
+      "effect": "のぞむなら、このポケモンについているエネルギーを、すべてトラッシュする。その場合、相手のバトルポケモンをマヒにする。",
+      "damage": 70
+    }
+  ],
+  "weaknesses": [
+    {
+      "type": "Psychic",
+      "value": "x2"
+    }
+  ],
+  "resistances": [],
+  "retreat": 0,
+  "regulationMark": "E",
+  "legal": {
+    "standard": false,
+    "expanded": false
+  },
+  "updated": "2026-09-25T23:45:19.648Z",
+  "pricing": {
+    "cardmarket": {
+      "updated": "2026-10-27T22:08:34.018Z",
+      "unit": "EUR",
+      "idProduct": 571601,
+      "avg": 4067.37,
+      "low": 4068.37,
+      "trend": 4069.37,
+      "avg1": 4070.37,
+      "avg7": 4071.37,
+      "avg30": 4072.37,
+      "avg-holo": null,
+      "low-holo": null,
+      "trend-holo": 4073.37,
+      "avg1-holo": null,
+      "avg7-holo": null,
+      "avg30-holo": null
+    },
+    "tcgplayer": null
+  }
+}

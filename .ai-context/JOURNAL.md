@@ -15,7 +15,42 @@
 
 ---
 
-## [2026-10-27] — Spec M2, feuille de route, FND-00, FND-01 et COL-T8
+## [2026-10-28] — Cadrage des flux et de l'application, client HTTP COL-01
+
+### Fait
+
+- Session ouverte (`/workspace-init`).
+- `docs/specs/cadrage-flux.md` créé : vue d'ensemble des flux (Mermaid), 10 flux FX1 à FX10 (déclencheur, entrée, sortie, visibilité, lots), séquence quotidienne, frontière public / privé, parcours et écrans de l'application (fiche carte proposée comme écran pivot), options d'outil (Streamlit, Dash, Evidence.dev, Gradio). En attente de validation ; COL-01 suspendu jusque-là.
+- Cadrage complété : collection centrée sur l'utilisateur (scan → inventaire complet, plus-value, complétion par set) et stockée en journal d'événements `collection_events.parquet` (ajout seulement, état et valeur déduits par dbt). Streamlit jugé pas assez professionnel par Antoaneta ; options comparées, NiceGUI recommandé (Python, FastAPI dessous, API dans le même processus), à confirmer par un prototype d'un weekend (APP-T1), repli Dash Mantine.
+- Cadrage : marge sur prix payé ajoutée (indicateur en % vert / rouge par carte et pour la collection, courbe du prix depuis l'achat, tendance du modèle B en pointillés en P3 ; prix payé facultatif et local). Outil d'interface reporté au prototype APP-T1 (début de la phase application) ; logique hors interface dans `cartograph.bin` ; webcam (P3) en fenêtre OpenCV, indépendante de l'outil.
+- **Cadrage validé** : collection en journal d'événements, un seul workflow de collecte (catalogue puis prix puis embeddings le jour du catalogue, échec du catalogue non bloquant). Reporté dans la spec maîtresse (23 décisions, F16, F17, `fct_collection`, collecte, application : 5 pages dont fiche carte et coulisses, Streamlit retiré) et dans `roadmap-lots.md` (APP-T1 ajouté, APP-01 à APP-05 revus, DBT-05, ORC-01, ordre d'exécution).
+- Plan lot-col-01-client-tcgdex — Étape 1 : Client HTTP. `httpx` ajouté ; `config/__init__.py` (URL, pause, délai, tentatives, attente) ; `collect/__init__.py` ; `collect/client.py` (`TcgdexClient`, `TcgdexError`, `CardNotFoundError`) ; `tests/test_collect_client.py` (9 tests). Choix : `MAX_RETRIES` compte les nouvelles tentatives (5 appels au plus) ; paramètre `timeout` ajouté au constructeur ; la pause s'applique entre deux `get_json`, l'attente de nouvelle tentative la remplace. CI verte, couverture 99 %.
+- Correction après relecture d'Antoaneta : `RETRY_STATUSES` passé dans `config` ; `User-Agent` lu dans `.env` (`TCGDEX_USER_AGENT`, obligatoire, chargé par `python-dotenv`) ; `.env.example` créé et cité dans le README ; docstrings de `client.py` complétées (`__init__`, `__enter__`, `__exit__`, `_retry_after`). Les workflows GitHub (ORC-01) devront définir `TCGDEX_USER_AGENT`.
+- `MAX_RETRIES = 4` confirmé (nouvelles tentatives, 5 appels au plus, 15 s d'attente cumulée) ; spec corrigée. Arrêt de la collecte après `MAX_CONSECUTIVE_FAILURES = 20` échecs d'affilée ajouté à la spec et à l'étape 4 du plan.
+- Paquet `collect` déplacé dans `cartograph/bin/collect/` (convention du projet : `bin/` = modules métier) ; imports des tests, spec et plan COL-01 mis à jour.
+- Plan lot-col-01-client-tcgdex — Étape 2 : Catalogue. Fixtures `tests/fixtures/tcgdex/` (listes fr/en/ja de 3 cartes, 9 fiches dont `exu-%3F`, `swsh3-136` fr/en même `idProduct` 483559, `ja_PMCG6-055` sans prix Cardmarket) ; montants Cardmarket remplacés par des valeurs fictives (dépôt public). `tests/conftest.py` (`load_fixture`, fixture `tcgdex_client` sur `MockTransport`) ; `FetchResult` dans `bin/collect/__init__.py` (partagé avec `prices`) ; `bin/collect/catalogue.py` (`list_card_ids`, `fetch_catalogue`, identifiants encodés : `exu-%3F` → `exu-%253F`, vérifié sur l'API) ; `tests/test_collect_catalogue.py` (4 tests). CI verte, couverture 99 %.
+- Plan lot-col-01-client-tcgdex — Étape 3 : Prix par produit Cardmarket. `bin/collect/prices.py` (`PriceTarget`, `price_targets`, `fetch_prices`) ; `_card_path` rendu public en `card_path` (partagé par `catalogue` et `prices`) ; `fetched_at` converti en UTC même si l'horloge injectée ne l'est pas ; `tests/test_collect_prices.py` (5 tests). CI verte, couverture 99 %.
+- Plan lot-col-01-client-tcgdex — Étape 4 : Cas limites et logs. `bin/collect/batch.py` (`fetch_each`, boucle commune : carte en échec notée dans `failed` et collecte poursuivie, arrêt après `MAX_CONSECUTIVE_FAILURES` échecs d'affilée hors 404, progression toutes les `PROGRESS_EVERY` cartes, totaux) ; `config` : `MAX_CONSECUTIVE_FAILURES = 20`, `PROGRESS_EVERY = 1000` ; `price_targets` journalise produits et cartes ignorées sans `idProduct` ; docstring du paquet avec exemple (`doctest: +SKIP`) ; `tests/conftest.py` (`fixture_route`, `mock_client`) ; `tests/test_collect_failures.py` (9 tests). Choix : un 404 ne compte pas dans les échecs d'affilée mais ne remet pas le compteur à zéro. CI verte (45 tests, couverture 99 %).
+- **COL-01 terminé** : plan et critères d'acceptation de la spec cochés, COL-01 coché dans `roadmap-lots.md`.
+- Revue `/cr` de COL-01 et corrections : réponse non JSON → `TcgdexError` (plantait toute la collecte) ; `follow_redirects=True` ; `Retry-After` plafonné (`MAX_RETRY_AFTER_S = 60`) ; `.env` chargé par chemin explicite (`ENV_FILE`) et `_require_env` avec message clair ; fautes des commentaires de `client.py` corrigées ; 7 tests ajoutés (53 au total, couverture 99 %). Variables GitHub Actions : `TCGDEX_USER_AGENT` en variable de dépôt (`vars.`), secrets réservés aux jetons (STO-01, EMB).
+
+### Reste à faire
+
+- Commit de COL-01 (cadrage, spec, code, tests).
+- ORC-01 : créer la variable de dépôt `TCGDEX_USER_AGENT` (`gh variable set`) et la passer en `env:` du workflow.
+- Planifier COL-02 Snapshots Parquet (`/workspace-plan lot-col-02-snapshots`).
+- Supprimer ou garder les 3 `.log` de lancements manuels dans `src/cartograph/log/` (ignorés par Git).
+- COL-T4 (exploration de `tcgdex/price-history`) possible en parallèle.
+
+### Références
+
+- `docs/plans/lot-col-01-client-tcgdex.md`, `docs/specs/lot-col-01-client-tcgdex.md`, `docs/specs/cadrage-flux.md`
+- `src/cartograph/bin/collect/client.py`, `src/cartograph/config/__init__.py`, `tests/test_collect_client.py`
+- `src/cartograph/bin/collect/catalogue.py`, `tests/conftest.py`, `tests/test_collect_catalogue.py`, `tests/fixtures/tcgdex/`
+- `src/cartograph/bin/collect/prices.py`, `tests/test_collect_prices.py`
+- `src/cartograph/bin/collect/batch.py`, `tests/test_collect_failures.py`
+
+## [2026-10-27] — Spec M2, feuille de route, FND-00, FND-01, COL-T8 et plan COL-01
 
 ### Fait
 
@@ -68,11 +103,13 @@
 - **COL-T8 terminé** : option C validée. Spec maîtresse (Données publiées, T8, points ouverts 23 dont 5 levés) et `roadmap-lots.md` (COL-T8 coché ; STO-01 et STO-03 vers le dépôt privé `cartograph-prices` ; pas d'artefact ni de journal avec des prix, car publics sur un dépôt public) mis à jour. `docs/plans/annex.md` gardé tel quel comme trace.
 - Vérifié : API TCGplayer fermée (« We are no longer granting new API access at this time ») ; pokemontcg.io : inscriptions fermées (échec de création de compte), Scrydex payant (29 $/mois minimum, contraire à N1).
 - Décidé : pokemontcg.io abandonné (inscriptions fermées, fin le 1er mars 2027, Scrydex payant), avec F2 et F5. Spec maîtresse : choix techniques, F1, F2, F5, sources, `int_card_id_mapping` retiré, orchestration, secrets (N14 et sécurité), répartition P2, repli T2, risque, points ouverts (23 dont 6 levés), sources du 27 octobre ajoutées. `roadmap-lots.md` : COL-03, PTC-01, PTC-02 abandonnés et retirés de l'ordre d'exécution.
+- `docs/specs/lot-col-01-client-tcgdex.md` et `docs/plans/lot-col-01-client-tcgdex.md` créés. Constaté : liste `/v2/{lang}/cards` sans prix, un appel par fiche ; GraphQL sans `pricing` ; 404 sur carte inconnue ; `tcgplayer` à `null` sur les cartes testées, même en anglais. Décisions : `httpx` + `MockTransport` ; JSON brut renvoyé (fichiers en COL-02) ; appels séquentiels, pause 0,1 s ; 4 tentatives sur 429 / 5xx / erreur réseau avec `Retry-After` ; 404 sans nouvelle tentative ; carte en échec notée et collecte poursuivie ; une cible de prix par `idProduct` (ordre de `LANGUAGES`), cartes sans `idProduct` ignorées ; aucun prix dans les logs.
 
 ### Reste à faire
 
+- Exécuter docs/plans/lot-col-01-client-tcgdex.md — Étape 1 : Client HTTP.
 - Supprimer ou garder les 3 `.log` de lancements manuels dans `src/cartograph/log/` (ignorés par Git).
-- Feuille de route : [roadmap-lots](../docs/plans/roadmap-lots.md), `/workspace-plan COL-01` (client TCGdex, catalogue FR/EN/JA, prix par produit Cardmarket).
+- COL-T4 (exploration de `tcgdex/price-history`) possible en parallèle.
 
 ### Références
 
@@ -83,4 +120,6 @@
 - [Plan lot-fnd-01-socle](../docs/plans/lot-fnd-01-socle.md)
 - [Plan lot-fnd-00-poste](../docs/plans/lot-fnd-00-poste.md)
 - [Annexe COL-T8](../docs/plans/annex.md)
+- [Spec lot-col-01-client-tcgdex](../docs/specs/lot-col-01-client-tcgdex.md)
+- [Plan lot-col-01-client-tcgdex](../docs/plans/lot-col-01-client-tcgdex.md)
 - [log/__init__.py](../src/cartograph/log/__init__.py), [cartograph/__init__.py](../src/cartograph/__init__.py), [test_log.py](../tests/test_log.py), [test_beartype.py](../tests/test_beartype.py), [config/__init__.py](../src/cartograph/config/__init__.py), [test_config.py](../tests/test_config.py), [__main__.py](../src/cartograph/__main__.py), [test_main.py](../tests/test_main.py)

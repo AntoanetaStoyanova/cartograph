@@ -1,0 +1,110 @@
+{
+  "category": "Pokemon",
+  "id": "exu-%3F",
+  "illustrator": "Kyoko Koizumi",
+  "localId": "%3F",
+  "name": "Unown",
+  "rarity": "Rare",
+  "set": {
+    "cardCount": {
+      "official": 28,
+      "total": 28
+    },
+    "id": "exu",
+    "name": "Unseen Forces Unown Collection"
+  },
+  "variants": {
+    "firstEdition": false,
+    "holo": true,
+    "normal": false,
+    "reverse": false,
+    "wPromo": false
+  },
+  "variants_detailed": [
+    {
+      "type": "holo",
+      "size": "standard",
+      "thirdParty": {
+        "tcgplayer": 90167,
+        "cardmarket": 276646
+      },
+      "variantId": "jr7oetx1mqug9",
+      "pricing": {
+        "cardmarket": {
+          "updated": "2026-10-27T22:08:34.018Z",
+          "unit": "EUR",
+          "idProduct": 276646,
+          "avg": 45.49,
+          "low": 19,
+          "trend": 38.9,
+          "avg1": 80,
+          "avg7": 48.8,
+          "avg30": 30.98,
+          "avg-holo": null,
+          "low-holo": 30,
+          "trend-holo": 23.18,
+          "avg1-holo": 48,
+          "avg7-holo": 16.06,
+          "avg30-holo": 10.97
+        },
+        "tcgplayer": null
+      }
+    }
+  ],
+  "dexId": [
+    201
+  ],
+  "hp": 60,
+  "types": [
+    "Psychic"
+  ],
+  "stage": "Basic",
+  "abilities": [
+    {
+      "type": "Poke-POWER",
+      "name": "Shuffle",
+      "effect": "Once during your turn (before your attack), you may search your deck for another Unown and switch it with Unown. (Any cards attached to Unown, damage counters, Special Conditions, and effects on it are now on the new Pokémon.) If you do, put Unown on top of your deck. Shuffle your deck afterward. You can't use more than 1 Shuffle Poké-Power each turn."
+    }
+  ],
+  "attacks": [
+    {
+      "cost": [
+        "Colorless"
+      ],
+      "name": "Hidden Power",
+      "effect": "Choose a card from your hand and put it face down. Your opponent guesses if that card is a Pokémon, Trainer, or Energy card. Reveal the card. If your opponent guessed wrong, draw 2 cards. Put the card back into your hand."
+    }
+  ],
+  "weaknesses": [
+    {
+      "type": "Psychic",
+      "value": "×2"
+    }
+  ],
+  "retreat": 1,
+  "legal": {
+    "standard": false,
+    "expanded": false
+  },
+  "updated": "2026-08-13T20:26:22+01:00",
+  "pricing": {
+    "cardmarket": {
+      "updated": "2026-10-27T22:08:34.018Z",
+      "unit": "EUR",
+      "idProduct": 276646,
+      "avg": 4034.37,
+      "low": 4035.37,
+      "trend": 4036.37,
+      "avg1": 4037.37,
+      "avg7": 4038.37,
+      "avg30": 4039.37,
+      "avg-holo": null,
+      "low-holo": 4040.37,
+      "trend-holo": 4041.37,
+      "avg1-holo": 4042.37,
+      "avg7-holo": 4043.37,
+      "avg30-holo": 4044.37
+    },
+    "tcgplayer": null
+  }
+}
