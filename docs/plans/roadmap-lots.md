@@ -31,7 +31,7 @@ Lister les lots du projet par action, avec leurs dépendances, puis un ordre d'e
 | [x] | COL-02 | Snapshots Parquet | F3, N3 | code | `prices-AAAA-MM-JJ.parquet` quotidien et `cards-AAAA-MM-JJ.parquet` hebdomadaire, zstd, triés ; relancer le même jour remplace le fichier ; tâche `inv collect` | COL-01 | P1 |
 | — | COL-03 | ~~Brut pokemontcg.io~~ | F1, N1 | — | Abandonné le 27 octobre 2026 : inscriptions fermées, fin du service le 1er mars 2027, Scrydex payant | — | — |
 | [x] | COL-T3 | Taille et durée de la collecte (T3) | T3, N16 | — | Mesures (durée, JSON, Parquet complet, delta) et extrapolation sur 365 jours, décision écrite ([note](../specs/col-t3-taille-duree.md) : passé) | COL-02 | P1 |
-| [ ] | COL-T4 | Exploration de tcgdex/price-history (T4) | T4 | — | Note : profondeur, format, fraîcheur, licence ; décision source quotidienne oui / non et priorité du modèle B | — | P1 |
+| [x] | COL-T4 | Exploration de tcgdex/price-history (T4) | T4 | — | Note : profondeur, format, fraîcheur, licence ; décision source quotidienne oui / non et priorité du modèle B | — | P1 |
 | [ ] | COL-T2 | Couverture française et variantes (T2) | T2 | — | Part des cartes de tes sets avec fiche et prix, variantes vérifiées, décision écrite | COL-01, SCN-T7 | P1 |
 
 ## Étape 3 — Orchestration et stockage (ORC, STO)
@@ -144,7 +144,7 @@ Voir [cadrage-flux.md](../specs/cadrage-flux.md). Toute la logique (lecture Duck
 | [ ] | DCK-02 | Image en CI | N11 | code | Image construite et testée en CI, publiée sur GHCR | DCK-01, CI-01 | P2 |
 | — | PTC-01 | ~~Rapprochement des identifiants~~ | F5 | — | Abandonné le 27 octobre 2026, avec COL-03 | — | — |
 | — | PTC-02 | ~~Recoupement des prix~~ | F2 | — | Abandonné le 27 octobre 2026, avec COL-03 | — | — |
-| [ ] | MLB-01 | Modèle B (si T4 favorable) | F15 | code | Tendance à 4 semaines contre prix inchangé et moyenne mobile, évaluée par cohortes | MLA-02, COL-T4 | P2 ou P3 |
+| [ ] | MLB-01 | Modèle B (si T4 favorable) — sans objet : T4 défavorable le 29 octobre 2026, voir la version P3 | F15 | code | Tendance à 4 semaines contre prix inchangé et moyenne mobile, évaluée par cohortes | MLA-02, COL-T4 | — |
 
 ## Étape 14 — Actions P3 (supprimables)
 
@@ -169,8 +169,8 @@ Déduit des dépendances. Les lots de mesure et de lecture (T4, T7, T8…) peuve
 5. **Scan** : SCN-02 → EMB-01 → EMB-02 → SCN-01 → SCN-03 → OCR-01 (P2) → OCR-02 (P2) → SCN-D1
 6. **Modèle A** : MLA-01 → MLF-01 (P2) → MLA-02 → MLA-03 → APP-05 → APP-03
 7. **Finaliser le cœur** : DOC-02 → DOC-03 → DOC-04
-8. **P2** : CI-03 → EMB-03 → ANO-01 → DCK-01 → DCK-02 → MLB-01 (si P2)
-9. **P3, supprimables de bas en haut** : FT-01 (si décidé) → HYB-01 → EMB-04 → JPN-01 → MLB-01 (si P3) → PAG-01 → WEB-01
+8. **P2** : CI-03 → EMB-03 → ANO-01 → DCK-01 → DCK-02
+9. **P3, supprimables de bas en haut** : FT-01 (si décidé) → HYB-01 → EMB-04 → JPN-01 → MLB-01 (P3, T4 défavorable) → PAG-01 → WEB-01
 
 ## Critères de fin
 

@@ -4,56 +4,76 @@
 
 ## Contexte
 
-Test informatif de la porte 0 ([spec maîtresse](Spécification%20du%20projet%20final%20M2%20plateforme%20de%20données%20Pokémon%20TCG%20(1).md), T4) : le dépôt public `tcgdex/price-history` a été vu mais pas exploré. La spec maîtresse lui prête trois rôles possibles :
+Test informatif de la porte 0 ([spec maîtresse](Spécification%20du%20projet%20final%20M2%20plateforme%20de%20données%20Pokémon%20TCG%20(1).md), T4). `tcgdex/price-history` est un dépôt GitHub de l'équipe TCGdex, distinct de l'API que la collecte interroge. La spec maîtresse lui prêtait trois rôles possibles :
 
-- amorcer l'historique de prix (le modèle B passe de P3 à P2 avec au moins 6 mois d'historique exploitable) ;
+- amorcer l'historique de prix : avec au moins 6 mois d'historique exploitable, le modèle B passe de P3 à P2 ;
 - servir de source quotidienne des prix à la place des appels carte par carte (F1) ;
 - rattraper un jour de collecte manqué.
 
-Premier aperçu par l'API GitHub (29 octobre 2026), à confirmer par l'exploration :
+## Méthode
 
-- dossiers `fr/` et `en/` (137 sets chacun) et `meta/` ; un fichier JSON par carte et par source (`fr/base1/1.ebay.json`, `en/2021swsh/1.tcgplayer.json`) ;
-- sources : **eBay** (fr) et **TCGplayer** (en), **pas Cardmarket** ;
-- `meta/ebay-fr.json` : dernier relevé le 9 juin 2025 ; `meta/tcgplayer-en.json` : 24 septembre 2024 ; dernier commit le 9 juin 2025 ;
-- format eBay : historique par variante et état (`normal-good`), une entrée par date avec `avg`, `count`, `min`, `max` (montants en centimes, à confirmer) ; ventes rares (souvent `count` = 1) ;
-- le README annonce une licence MIT, mais le dépôt n'a pas de fichier `LICENSE` (404) et GitHub n'en détecte aucune.
+- `git clone --depth 1 https://github.com/tcgdex/price-history` dans un dossier temporaire (7 s, 304 Mo sans `.git`), commit `a1edbb9` du 9 juin 2025 ; fraîcheur et licence lues par `gh api`.
+- Script jetable (Python standard + `pyarrow`, lancé avec `uv run python -I`) : parcours des 27 753 fichiers, dates et ventes par carte, plus longue suite de semaines ISO consécutives avec au moins un point, correspondance `<langue>/<set>/<numéro>` avec `set_id` / `local_id` de `cards-2026-10-28.parquet`.
 
-## Objectif
+## Mesures
 
-Une note chiffrée qui répond aux trois rôles par oui ou non, et une décision écrite : priorité du modèle B (P2 ou P3), source quotidienne (oui / non), secours en cas de jour manqué (oui / non).
+### Inventaire et format
 
-## Périmètre
-
-- Clone superficiel du dépôt hors de `cartograph`, inventaire : sources, sets, cartes, variantes, taille.
-- Format des fichiers de chaque source (clés, unités, devise, signification de `avg` et des moyennes sur 1, 7 et 28 jours annoncées).
-- Profondeur et densité de l'historique par source : première et dernière date, jours avec au moins une vente, nombre de ventes par carte, part des cartes avec au moins 6 mois de points réguliers.
-- Fraîcheur : derniers relevés, dernier commit, activité du dépôt.
-- Couverture face à notre catalogue (`cards-2026-10-28.parquet`) : correspondance des identifiants (`set_id` / `local_id`), part des cartes et des produits Cardmarket couverts.
-- Licence : statut réel (README contre absence de `LICENSE`) et conséquence pour un dépôt public.
-- Décision et reports dans la spec maîtresse, la roadmap et le journal.
-
-## Hors périmètre
-
-- Aucun code dans `src/cartograph` ni dans `tasks/` : scripts d'exploration jetables (dossier temporaire), commandes reproduites dans la note.
-- Aucune ingestion de l'historique dans les snapshots ni dans dbt (lot à créer seulement si la décision le justifie).
-- Aucune comparaison de niveau de prix avec Cardmarket sur la même période : nos relevés commencent le 28 octobre 2026, après la fin du dépôt.
-
-## Décisions
-
-| Sujet | Décision | Raison |
+| | `en/` | `fr/` |
 | --- | --- | --- |
-| Emplacement du clone | `git clone --depth 1` dans le dossier temporaire de session, jamais dans `cartograph` | ≈ 1,1 Go ; les fichiers portent déjà l'historique daté, l'historique Git n'apporte que la fraîcheur, lue par l'API |
-| Outils | Python standard (`json`, `pathlib`) et `pyarrow` déjà présent, lancés avec `uv run python -I` | Pas de nouvelle dépendance pour un test informatif |
-| Historique « exploitable » pour le modèle B | Source Cardmarket, ou source dont on montre qu'elle suit Cardmarket ; au moins 6 mois de points au moins hebdomadaires sur une part significative des produits du catalogue | La cible du modèle B est la variation du prix Cardmarket à 4 semaines ; un autre marché (eBay, TCGplayer en dollars) ne mesure pas la même chose |
-| Source quotidienne | Exige un dépôt encore mis à jour et des prix Cardmarket | F1 collecte des prix Cardmarket ; un dépôt arrêté ne remplace pas la collecte |
-| Licence | Sans fichier `LICENSE`, aucune réutilisation publiée tant que le statut n'est pas éclairci (issue ou question aux mainteneurs, à proposer à Antoaneta) | La mention du README seule est fragile pour un dépôt public de données |
-| Forme du livrable | Ce document, complété des sections « Mesures », « Limites » et « Décision », comme la note COL-T3 | Même format que les autres tests de la porte 0 |
+| Source | TCGplayer (marché américain) | eBay |
+| Sets / fichiers (un par carte) | 137 / 14 958 | 137 / 12 795 |
+| Variantes | finition × état (`normal-good`, `reverse-nearmint`, `holo-good`…) | `normal` × état (`good`, `nearmint`, `mint`, `poor`) |
+| Dernier relevé (`meta/*.json`) | 24 septembre 2024 | 9 juin 2025 |
+
+Format d'un fichier : `data.<variante>` contient `avg`, `avg7`, `avg28` (valeurs courantes) et `history`, un relevé par date de vente avec `avg`, `count`, `min`, `max`. Montants entiers, probablement en centimes de la devise du marché (dollars pour TCGplayer : `25` pour une reverse courante).
+
+### Profondeur et densité
+
+| | TCGplayer (`en/`) | eBay (`fr/`) |
+| --- | --- | --- |
+| Période | 12 novembre 2022 → 24 septembre 2024 | 17 novembre 2022 → 9 juin 2025 |
+| Dernière date par carte (médiane) | 22 septembre 2024 | 8 janvier 2025 |
+| Dates avec vente par carte (q1 / médiane / q3) | 54 / 92 / 162 | 2 / 6 / 17 |
+| Ventes par carte (q1 / médiane / q3) | 70 / 140 / 401 | 2 / 6 / 18 |
+| Cartes avec 26 semaines consécutives ou plus | 1 028 (6,9 %) | 312 (2,4 %) |
+
+### Couverture de notre catalogue
+
+- Identifiants alignés sur TCGdex : 14 940 fichiers `en` sur 14 958 et 12 784 `fr` sur 12 795 trouvent leur carte dans le catalogue.
+- Produits Cardmarket correspondants : 13 385 (`en`) et 11 995 (`fr`), sur 29 314 interrogés chaque jour. Aucune carte japonaise.
+
+### Fraîcheur et licence
+
+- Dernier commit le 9 juin 2025 ; plus aucune mise à jour depuis 16 mois (TCGplayer arrêté depuis 13 mois de plus). Dépôt non archivé, 1 issue ouverte.
+- Le README annonce une licence MIT et renvoie à un fichier `LICENSE`, absent du dépôt ; GitHub ne détecte aucune licence (`gh api …/license` : 404).
+
+## Limites
+
+- Unité et devise déduites de quelques valeurs, non documentées.
+- La densité est mesurée sur les dates de vente : une semaine sans vente compte comme un trou, ce qui est la bonne mesure pour une série de prix.
+- Comparaison de niveau avec Cardmarket impossible : nos relevés commencent le 28 octobre 2026, après la fin du dépôt.
+
+## Décision
+
+**T4 défavorable : `tcgdex/price-history` n'est pas utilisé.**
+
+| Rôle | Verdict | Raison |
+| --- | --- | --- |
+| Historique du modèle B | Non | Aucun prix Cardmarket : la cible du modèle B est le prix Cardmarket ; eBay trop clairsemé (6 ventes médianes par carte en deux ans et demi), TCGplayer en dollars sur un autre marché ; seules 2,4 % (eBay) et 6,9 % (TCGplayer) des cartes ont 6 mois de points hebdomadaires |
+| Source quotidienne des prix | Non | Dépôt arrêté depuis juin 2025, pas de Cardmarket |
+| Secours d'un jour manqué | Non | Il s'arrête avant le début de la collecte |
+
+- **Modèle B en P3** (règle de la spec maîtresse) : il s'entraîne sur la collecte propre, commencée le 28 octobre 2026 ; prototype possible dès janvier 2027 (≈ 70 jours), première évaluation en avril (≈ 150 jours).
+- Chaque relevé Cardmarket contient déjà `avg1`, `avg7`, `avg30` et `trend` : une tendance sur 30 jours existe dès le premier jour, sans historique externe.
+- Licence incertaine : même pour une analyse ponctuelle, aucune donnée du dépôt n'est republiée.
+- Second marché : les prix TCGplayer arrivent déjà avec chaque relevé TCGdex (`tcgplayer_json`, 17 587 produits sur 29 314 le 29 octobre 2026) ; à exploiter plus tard si besoin, sans dépendre de ce dépôt.
 
 ## Critères d'acceptation
 
-- [ ] Inventaire chiffré : sources, nombre de sets et de cartes par langue, taille.
-- [ ] Format décrit pour chaque source : clés, unité, devise, sens de `avg`, `count`, `min`, `max` et des moyennes annoncées.
-- [ ] Profondeur et densité mesurées par source (dates extrêmes, distribution des ventes par carte, part des cartes avec 6 mois de points au moins hebdomadaires).
-- [ ] Couverture de notre catalogue mesurée (cartes et produits Cardmarket).
-- [ ] Fraîcheur et licence établies.
-- [ ] Décision écrite pour les trois rôles ; spec maîtresse (décision « Historique initial », F1, risques, question ouverte), `roadmap-lots.md` (COL-T4 coché, MLB-01 P2 ou P3) et journal mis à jour.
+- [x] Inventaire chiffré : sources, nombre de sets et de cartes par langue, taille.
+- [x] Format décrit pour chaque source : clés, unité, devise, sens de `avg`, `count`, `min`, `max` et des moyennes annoncées.
+- [x] Profondeur et densité mesurées par source (dates extrêmes, distribution des ventes par carte, part des cartes avec 6 mois de points au moins hebdomadaires).
+- [x] Couverture de notre catalogue mesurée (cartes et produits Cardmarket).
+- [x] Fraîcheur et licence établies.
+- [x] Décision écrite pour les trois rôles ; spec maîtresse, `roadmap-lots.md` et journal mis à jour.

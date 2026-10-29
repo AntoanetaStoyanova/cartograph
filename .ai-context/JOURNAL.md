@@ -15,7 +15,7 @@
 
 ---
 
-## [2026-10-29] — ORC-01 vérifié, prix quotidiens confirmés, plan COL-T4
+## [2026-10-29] — ORC-01 vérifié, prix quotidiens confirmés, COL-T4 tranché
 
 ### Fait
 
@@ -46,10 +46,11 @@
 
 - `cartograph-data` poussé par Antoaneta (`595ea85`) : cron quotidien `17 3 * * *` en ligne (vérifié par `gh api`). `tcgdex/price-history` écarté (arrêté, pas Cardmarket, licence incertaine) : le modèle B s'entraînera sur la collecte propre ; reste à l'écrire dans la note COL-T4.
 
+- Plan col-t4-price-history — Étapes 1 à 3 (version courte, en une séance) : clone superficiel (304 Mo, commit `a1edbb9` du 9 juin 2025) et script jetable. TCGplayer (`en/`, 14 958 cartes, nov. 2022 → sept. 2024, 140 ventes médianes par carte, 6,9 % des cartes avec 26 semaines consécutives) ; eBay (`fr/`, 12 795 cartes, nov. 2022 → juin 2025, 6 ventes médianes, 2,4 %) ; aucune donnée Cardmarket ni japonaise ; identifiants alignés sur TCGdex (99,9 %) ; aucun fichier `LICENSE`. **T4 défavorable** : dépôt non utilisé, modèle B en P3 sur la collecte propre (prototype possible en janvier, évaluation en avril). `docs/specs/col-t4-price-history.md` réécrite en note (méthode, mesures, limites, décision) ; spec maîtresse (décision « Historique initial », F1, sources, collecte, risque du jour manqué, table des tests, question ouverte fermée) ; `roadmap-lots.md` (COL-T4 coché, MLB-01 en P3 seulement). Plan entièrement coché.
+
 ### Reste à faire
 
-- Exécuter docs/plans/col-t4-price-history.md — Étape 1 : Inventaire et format (version courte proposée, à confirmer par Antoaneta : le dépôt semble inutilisable).
-- Antoaneta : commiter `cartograph` (`docs: retour aux prix quotidiens`).
+- Antoaneta : commiter `docs: note COL-T4, tcgdex/price-history écarté`.
 - Finir docs/plans/lot-orc-01-workflow.md — Étape 4 : vérifier la première exécution planifiée (cron de 03:17 UTC, le 30 octobre si GitHub le déclenche) ; puis ORC-01 coché dans la roadmap.
 - Supprimer les 3 anciens `.log` de `src/cartograph/log/` (suppression refusée par le mode auto, à faire par Antoaneta), puis retirer la ligne `src/cartograph/log/*.log` du `.gitignore`.
 
