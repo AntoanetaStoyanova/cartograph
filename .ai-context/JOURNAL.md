@@ -44,10 +44,12 @@
 - **Retour aux prix quotidiens, catalogue le lundi** (décision d'Antoaneta, sur cette mesure) : un relevé quotidien se ramène à l'hebdomadaire, pas l'inverse ; minutes Actions gratuites. `../cartograph-data/.github/workflows/collect.yml` restauré depuis `5c1ddef` avec `cache-dependency-glob: uv.lock` ; `README.md` de `cartograph-data` corrigé ; `actionlint` et `zizmor` sans alerte. Non poussé.
 - Documents remis en quotidien (changements hebdomadaires de `ddac860` annulés avec `git apply -R` sur la spec maîtresse, `cadrage-flux.md`, `docs/specs/roadmap-lots.md`) ; décision du workflow complétée (mesure des changements quotidiens, hebdomadaire en alternative écartée) ; `col-t3-taille-duree.md` (≈ 905 Mo de Parquet par an en quotidien, prix seuls 1 h 01 et 1 h 32) ; spec et plan ORC-01 (décision « Fréquence », critère « une exécution planifiée réussie » à la place du rattrapage du mardi) ; `roadmap-lots.md`, `README.md`, spec COL-T4.
 
+- `cartograph-data` poussé par Antoaneta (`595ea85`) : cron quotidien `17 3 * * *` en ligne (vérifié par `gh api`). `tcgdex/price-history` écarté (arrêté, pas Cardmarket, licence incertaine) : le modèle B s'entraînera sur la collecte propre ; reste à l'écrire dans la note COL-T4.
+
 ### Reste à faire
 
 - Exécuter docs/plans/col-t4-price-history.md — Étape 1 : Inventaire et format (version courte proposée, à confirmer par Antoaneta : le dépôt semble inutilisable).
-- Antoaneta : commiter et pousser `cartograph-data` (`fix: retour à la collecte quotidienne des prix`) et `cartograph` (`docs: retour aux prix quotidiens`).
+- Antoaneta : commiter `cartograph` (`docs: retour aux prix quotidiens`).
 - Finir docs/plans/lot-orc-01-workflow.md — Étape 4 : vérifier la première exécution planifiée (cron de 03:17 UTC, le 30 octobre si GitHub le déclenche) ; puis ORC-01 coché dans la roadmap.
 - Supprimer les 3 anciens `.log` de `src/cartograph/log/` (suppression refusée par le mode auto, à faire par Antoaneta), puis retirer la ligne `src/cartograph/log/*.log` du `.gitignore`.
 
