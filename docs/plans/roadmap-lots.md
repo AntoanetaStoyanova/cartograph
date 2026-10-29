@@ -28,7 +28,7 @@ Lister les lots du projet par action, avec leurs dépendances, puis un ordre d'e
 | [x] | COL-T1 | Prix par langue (T1) | T1 | — | Tranché le 27 octobre 2026, consigné dans la spec maîtresse | — | P1 |
 | [x] | COL-T8 | Conditions de redistribution (T8) | T8, N1 | — | Note écrite sur TCGdex, pokemontcg.io, Cardmarket, TCGplayer : republication autorisée, tolérée ou non, et décision de visibilité du dépôt de données. Fait le 27 octobre 2026 : option mixte, prix dans le dépôt privé `cartograph-prices` ([annexe](annex.md)) | — | P1 |
 | [x] | COL-01 | Client TCGdex | F1, N3, N10 | code | Récupération du catalogue (par langue, japonais compris) et des prix (une fois par produit Cardmarket : européen commun, japonais à part) avec pauses et nouvelles tentatives ; tests sur réponses enregistrées | FND-01 | P1 |
-| [x] | COL-02 | Snapshots Parquet | F3, N3 | code | `prices-AAAA-MM-JJ.parquet` quotidien et `cards-AAAA-MM-JJ.parquet` hebdomadaire, zstd, triés ; relancer le même jour remplace le fichier ; tâche `inv collect` | COL-01 | P1 |
+| [x] | COL-02 | Snapshots Parquet | F3, N3 | code | `prices-AAAA-MM-JJ.parquet` et `cards-AAAA-MM-JJ.parquet` hebdomadaires, zstd, triés ; relancer le même jour remplace le fichier ; tâche `inv collect` | COL-01 | P1 |
 | — | COL-03 | ~~Brut pokemontcg.io~~ | F1, N1 | — | Abandonné le 27 octobre 2026 : inscriptions fermées, fin du service le 1er mars 2027, Scrydex payant | — | — |
 | [x] | COL-T3 | Taille et durée de la collecte (T3) | T3, N16 | — | Mesures (durée, JSON, Parquet complet, delta) et extrapolation sur 365 jours, décision écrite ([note](../specs/col-t3-taille-duree.md) : passé) | COL-02 | P1 |
 | [ ] | COL-T4 | Exploration de tcgdex/price-history (T4) | T4 | — | Note : profondeur, format, fraîcheur, licence ; décision source quotidienne oui / non et priorité du modèle B | — | P1 |
@@ -38,10 +38,10 @@ Lister les lots du projet par action, avec leurs dépendances, puis un ordre d'e
 
 |     | Id | Lot | Exigences | Dépôt | Livrable vérifiable | Dépend de | Prio |
 | --- | -- | --- | --------- | ----- | ------------------- | --------- | ---- |
-| [ ] | ORC-01 | Dépôt de données et workflow planifié | F1, N13, N14, N15 | data | `cartograph-data` créé ; cron décalé + `workflow_dispatch` avec paramètres, `concurrency`, délai max, permissions minimales, installation du collecteur depuis `cartograph` ; un seul workflow (le jour du catalogue ou sur paramètre : catalogue, puis prix, puis embeddings ; échec du catalogue non bloquant pour les prix) ; une exécution manuelle réussit | COL-02, COL-T8 | P1 |
-| [ ] | STO-01 | Releases mensuelles et manifeste | F3, N13, N16 | data | Fichier du jour ajouté à `data-AAAA-MM` dans le dépôt privé `cartograph-prices` (jeton dans les secrets), manifeste sans prix (tailles, lignes, empreintes) commité chaque jour | ORC-01 | P1 |
+| [ ] | ORC-01 | Dépôt de données et workflow planifié | F1, N13, N14, N15 | data | `cartograph-data` créé ; cron décalé + `workflow_dispatch` avec paramètres, `concurrency`, délai max, permissions minimales, installation du collecteur depuis `cartograph` ; un seul workflow hebdomadaire (lundi, rattrapage le mardi si les fichiers du lundi manquent : catalogue, puis prix, puis embeddings ; échec du catalogue non bloquant pour les prix) ; une exécution manuelle réussit | COL-02, COL-T8 | P1 |
+| [ ] | STO-01 | Releases mensuelles et manifeste | F3, N13, N16 | data | Manifeste sans prix (tailles, lignes, empreintes) commité chaque semaine dans `cartograph-data` (l'envoi dans `data-AAAA-MM` de `cartograph-prices` est fait par ORC-01) | ORC-01 | P1 |
 | [ ] | STO-02 | Reconstruction de la base | N2 | code | `inv rebuild` télécharge les Releases et reconstruit le `.duckdb` local, jamais versionné | STO-01, FND-02 | P1 |
-| [ ] | STO-03 | Archivage du brut | F3 | data | JSON brut envoyé directement dans le dépôt privé `cartograph-prices` (pas d'artefact : ils sont publics sur un dépôt public), archive compressée mensuelle en Release ; aucun prix dans les journaux d'exécution | STO-01 | P1 |
+| [ ] | STO-03 | Archivage du brut | F3 | data | Archive compressée mensuelle du brut en Release de `cartograph-prices` (l'envoi du brut de chaque exécution, sans artefact ni prix dans les journaux, est fait par ORC-01) | STO-01 | P1 |
 
 ## Étape 4 — Surveillance (SUR)
 
@@ -67,7 +67,7 @@ Lister les lots du projet par action, avec leurs dépendances, puis un ordre d'e
 |     | Id | Lot | Exigences | Dépôt | Livrable vérifiable | Dépend de | Prio |
 | --- | -- | --- | --------- | ----- | ------------------- | --------- | ---- |
 | [ ] | QUA-01 | Tests dbt | F7, N5 | code | Tests standards + personnalisés (prix négatif, complétude, couverture ≥ 98 % avec trous acceptés, fraîcheur) | DBT-04 | P1 |
-| [ ] | QUA-02 | dbt après chaque collecte | F7, N5 | data | `dbt build` et tests dans le workflow quotidien ; un échec fait échouer l'exécution | QUA-01, ORC-01 | P1 |
+| [ ] | QUA-02 | dbt après chaque collecte | F7, N5 | data | `dbt build` et tests dans le workflow hebdomadaire ; un échec fait échouer l'exécution | QUA-01, ORC-01 | P1 |
 
 ## Étape 7 — Intégration continue et sécurité (CI)
 

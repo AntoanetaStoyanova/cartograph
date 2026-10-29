@@ -17,10 +17,10 @@ flowchart LR
     end
 
     subgraph GHA["GitHub Actions — dépôt public cartograph-data"]
-        COLL["Collecte<br/>catalogue hebdo, prix quotidien"]
+        COLL["Collecte hebdomadaire<br/>catalogue puis prix"]
         EMB["Embeddings<br/>nouvelles cartes, CPU"]
         DBTQ["dbt build + fraîcheur"]
-        MAN["Manifeste sans prix<br/>commit quotidien"]
+        MAN["Manifeste sans prix<br/>commit hebdomadaire"]
     end
 
     subgraph PUB["Public"]
@@ -70,7 +70,7 @@ flowchart LR
 | Id | Flux | Déclencheur | Entrée | Sortie | Visibilité | Lots |
 | --- | --- | --- | --- | --- | --- | --- |
 | FX1 | Catalogue | Cron hebdomadaire, `workflow_dispatch` | `/v2/{lang}/cards` + une fiche par carte, par langue de `LANGUAGES` | `cards-AAAA-MM-JJ.parquet` dans la Release `data-AAAA-MM` | Public (MIT, sans images) | COL-01, COL-02, STO-01 |
-| FX2 | Prix | Cron quotidien (03:17 UTC), `workflow_dispatch` | Une fiche par `idProduct` Cardmarket (européen commun, japonais à part) | `prices-AAAA-MM-JJ.parquet`, JSON brut mensuel | Privé uniquement | COL-01, COL-02, STO-01, STO-03 |
+| FX2 | Prix | Cron hebdomadaire (lundi 03:17 UTC, rattrapage mardi), `workflow_dispatch` | Une fiche par `idProduct` Cardmarket (européen commun, japonais à part) | `prices-AAAA-MM-JJ.parquet`, JSON brut mensuel | Privé uniquement | COL-01, COL-02, STO-01, STO-03 |
 | FX3 | Amorçage de l'historique | Manuel, une fois (si T4 concluant) | tcgdex/price-history | Snapshots de prix antérieurs au premier jour de collecte | Privé | COL-T4 |
 | FX4 | Index d'embeddings | Initial : manuel ; ensuite : après chaque FX1 | Dernier catalogue, images basse résolution (temporaires) | Index + révision du modèle sur Hugging Face | Public (vecteurs, pas d'images) | SCN-* |
 | FX5 | Surveillance | Fin de chaque FX2 | Résultat de la collecte, `dbt build` | Signal healthchecks.io, manifeste commité, résumé d'exécution | Public, sans prix | SUR-01, QUA-02 |
@@ -80,7 +80,7 @@ flowchart LR
 | FX9 | Prédiction | Manuel, après reconstruction | Marts | `ml_predictions`, expériences MLflow | Local ; résultats agrégés publiables | ML-* |
 | FX10 | Publication | Manuel ou CI (P3) | Docs dbt, tests, agrégats | GitHub Pages | Public, jamais de prix unitaire | F22 |
 
-## Exécution quotidienne
+## Exécution hebdomadaire
 
 ```mermaid
 sequenceDiagram
@@ -92,13 +92,14 @@ sequenceDiagram
     participant HF as Hugging Face
     participant HC as healthchecks.io
 
-    Cron->>API: prix, une fiche par idProduct (pause 0,1 s, 4 tentatives)
-    opt Jour du catalogue
-        Cron->>API: catalogue par langue
-        Cron->>Pub: cards-AAAA-MM-JJ.parquet
-        Cron->>API: images des nouvelles cartes
-        Cron->>HF: index mis à jour
+    opt Mardi
+        Cron->>Pub: fichiers du lundi présents ? oui : arrêt
     end
+    Cron->>API: catalogue par langue
+    Cron->>Pub: cards-AAAA-MM-JJ.parquet
+    Cron->>API: images des nouvelles cartes
+    Cron->>HF: index mis à jour
+    Cron->>API: prix, une fiche par idProduct (pause 0,1 s, 4 tentatives)
     Cron->>Priv: prices-AAAA-MM-JJ.parquet (jeton)
     Cron->>Cron: dbt build + test de fraîcheur
     Cron->>Cron: commit du manifeste (sans prix)
@@ -203,6 +204,7 @@ productivité ; s'il déçoit, repli sur Dash Mantine.
    lecture DuckDB et calculs (marge, valeur) vivent dans `cartograph.bin`. La webcam (P3)
    ne pèse pas dans le choix : elle tourne d'abord dans une fenêtre OpenCV sur la machine
    hôte, indépendante de l'outil.
-4. Un seul workflow de collecte quotidien : le jour du catalogue (hebdomadaire ou sur
-   paramètre), catalogue, puis prix, puis embeddings des nouvelles cartes ; un échec du
-   catalogue ne bloque pas les prix, collectés avec le catalogue précédent.
+4. Un seul workflow de collecte, hebdomadaire depuis le 29 octobre 2026 (lundi, rattrapage
+   le mardi si les fichiers du lundi manquent) : catalogue, puis prix, puis embeddings des
+   nouvelles cartes ; un échec du catalogue ne bloque pas les prix, collectés avec le
+   catalogue précédent.

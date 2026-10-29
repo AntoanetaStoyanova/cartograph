@@ -5,7 +5,7 @@
 
 ## Objectif
 
-Un workflow de `cartograph-data` collecte chaque jour sans intervention, publie le catalogue et envoie prix et brut dans `cartograph-prices`.
+Un workflow de `cartograph-data` collecte chaque semaine sans intervention, publie le catalogue et envoie prix et brut dans `cartograph-prices`.
 
 ## Prérequis
 
@@ -49,16 +49,19 @@ Un workflow de `cartograph-data` collecte chaque jour sans intervention, publie 
 
 - [x] Antoaneta : premier commit dans `cartograph-prices` (`03ffe70`) (README « Add a README » sur GitHub) ; sans commit, `gh release create` échoue sur un dépôt vide.
 - [x] Commit et push de `collect.yml` dans `cartograph-data` (`5c1ddef`, le cron démarre au push).
-- [ ] Exécution manuelle `catalogue: true` (toutes langues) : fichiers présents dans les deux Releases ; durées et débit relevés dans le résumé.
-- [ ] Exécution manuelle `catalogue: false` : catalogue lu depuis la Release, prix envoyés.
-- [ ] Relance le même jour : fichiers remplacés, aucun doublon dans les Releases.
-- [ ] Contrôle : aucun prix dans les logs d'exécution ni dans l'artefact (recherche de `cm_`, `avg`, `trend`, valeurs décimales dans les logs téléchargés).
-- [ ] `docs/specs/col-t3-taille-duree.md` : section « Machine GitHub » (débit, durées réelles, verdict confirmé ou revu).
-- [ ] `README.md` de `cartograph` : section « Collecte automatique » (dépôts, horaire, lundi catalogue, relance manuelle).
-- [ ] `docs/plans/roadmap-lots.md` : ORC-01 coché ; STO-01 réduit au manifeste ; STO-03 réduit à l'archive mensuelle du brut.
+- [x] Exécution manuelle `catalogue: true` (toutes langues) : fichiers présents dans les deux Releases ; durées et débit relevés dans le résumé. (`40717195500`, 28 octobre 2026 : succès en 3 h 45 ; `cards-2026-10-28.parquet` dans `catalogue` ; `prices-2026-10-28.parquet`, `cards-2026-10-28.json.gz`, `prices-2026-10-28.json.gz` dans `data-2026-10` ; 0 échec, 120 HTTP 503 absorbés.)
+- [x] Passage en hebdomadaire (décision du 29 octobre 2026) : `collect.yml` (crons lundi et mardi, job `check` qui saute le mardi si `cards-<lundi>.parquet` et `prices-<lundi>.parquet` sont publiés, catalogue à chaque exécution planifiée, `catalogue` coché par défaut en manuel, `cache-dependency-glob: uv.lock`) ; `actionlint` et `zizmor` sans alerte ; logique du `check` testée sur les vraies Releases (28 octobre → saut, 27 → collecte, Release absente → collecte) ; spec maîtresse, `cadrage-flux.md`, `col-t3-taille-duree.md`, spec ORC-01 et `README.md` mis à jour. Push de `cartograph-data` par Antoaneta.
+- [x] Exécution manuelle `catalogue: false` : catalogue lu depuis la Release, prix envoyés. (`40841546156`, 29 octobre 2026, workflow hebdomadaire `d0e8206` : `check` 3 s, collecte 1 h 1 min ; `cards-2026-10-28.parquet` repris de la Release ; 29 314 produits en 1 h 0 min 45 s (8,0 req/s), 0 échec ; `prices-2026-10-29.parquet` et `prices-2026-10-29.json.gz` dans `data-2026-10` ; aucun prix dans les logs.) (Le cron du 29 octobre à 03:17 UTC ne s'est pas déclenché : aucune exécution à 08:00 UTC, workflow `active`.)
+- [x] Relance le même jour : fichiers remplacés, aucun doublon dans les Releases. (`40857127038`, 29 octobre 2026 : `prices-2026-10-29.parquet` et `.json.gz` remplacés à 11:56 UTC, toujours 5 fichiers dans `data-2026-10` et 1 dans `catalogue` ; 29 314 produits en 1 h 32, 0 échec ; 503 : 28 puis 22 sur les deux exécutions sans catalogue.)
+- [ ] Mardi 3 novembre : le rattrapage saute la collecte (fichiers du lundi 2 présents).
+- [x] Contrôle : aucun prix dans les logs d'exécution ni dans l'artefact (recherche de `cm_`, `avg`, `trend`, valeurs décimales dans les logs téléchargés). (Log du job, log de collecte et résumé : aucune occurrence ; les décimales du log du job sont des numéros de version.)
+- [x] `docs/specs/col-t3-taille-duree.md` : section « Machine GitHub » (débit, durées réelles, verdict confirmé ou revu).
+- [x] `README.md` de `cartograph` : section « Collecte automatique » (dépôts, horaire, lundi catalogue, relance manuelle).
+- [x] `docs/plans/roadmap-lots.md` : STO-01 réduit au manifeste ; STO-03 réduit à l'archive mensuelle du brut.
+- [ ] `docs/plans/roadmap-lots.md` : ORC-01 coché (après le contrôle du mardi 3 novembre).
 
 ## Critères de fin
 
-- [ ] `uv run inv ci` passe dans `cartograph`
-- [ ] `actionlint` et `zizmor` passent sur `cartograph-data`
+- [x] `uv run inv ci` passe dans `cartograph`
+- [x] `actionlint` et `zizmor` passent sur `cartograph-data`
 - [ ] Critères d'acceptation de la spec cochés

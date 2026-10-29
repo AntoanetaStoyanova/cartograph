@@ -53,6 +53,17 @@ Les sorties vont dans `data/` (ignoré par Git), un fichier par jour, remplacé 
 
 Le code de sortie vaut 1 si une étape demandée échoue. Les logs vont dans `logs/`.
 
+## Collecte automatique
+
+Le workflow `Collecte` du dépôt public [`cartograph-data`](https://github.com/AntoanetaStoyanova/cartograph-data) installe ce dépôt depuis `main` et lance la collecte chaque lundi à 03:17 UTC :
+
+- catalogue puis prix (≈ 3 h 45) ; le mardi à la même heure, un rattrapage ne collecte que si les fichiers du lundi manquent ;
+- catalogue publié dans la Release `catalogue` de `cartograph-data` ;
+- prix et brut envoyés dans la Release `data-AAAA-MM` du dépôt privé `cartograph-prices` (secret `PRICES_TOKEN`) ;
+- résumé et log gardés 7 jours en artefact, sans aucun prix.
+
+Relance manuelle : onglet *Actions* de `cartograph-data`, `Collecte`, *Run workflow* (options `catalogue`, `prices`, `languages`, `code_ref`). Relancer le même jour remplace les fichiers du jour. Une exécution sans `catalogue` reprend le dernier catalogue publié.
+
 ## Mettre à jour depuis le template
 
 ```bash

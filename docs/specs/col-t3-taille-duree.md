@@ -45,9 +45,28 @@ Produits Cardmarket à interroger chaque jour, avec les ratios du français :
 
 Simulation : 365 copies d'un fichier de prix de 30 400 lignes, lues avec `pyarrow.dataset`. Elle sous-estime un peu la taille (lignes répétées, mieux compressées) mais mesure bien le temps de lecture ; DuckDB et dbt lisent en flux, sans tout charger en mémoire.
 
+## Machine GitHub
+
+Première exécution manuelle d'ORC-01 (`40717195500`, 28 octobre 2026, `ubuntu-26.04`, toutes langues, catalogue et prix) :
+
+| Étape | Volume | Durée | Débit |
+| --- | --- | --- | --- |
+| Catalogue | 58 687 fiches (fr 22 170, en 23 736, ja 12 781), 0 échec | 2 h 28 min 49 s | 6,6 req/s |
+| Prix | 29 314 produits (9 489 cartes sans `idProduct`), 0 échec | 1 h 15 min 28 s | 6,5 req/s |
+| Job complet | installation ≈ 10 s, publication ≈ 10 s | 3 h 45 min 3 s | |
+
+- Débit identique au local : l'estimation de 3 h 46 est confirmée.
+- 120 HTTP 503 de TCGdex (jamais vus en local), tous absorbés par les nouvelles tentatives, surtout sur la liste et la première carte d'une série.
+- Les listes de l'API ont bougé depuis la mesure locale (en 23 770 → 23 736, ja 13 006 → 12 781) : ce sont les listes, pas des échecs.
+- Tailles réelles : `cards` 8,0 Mo, `prices` 1,35 Mo, brut gzip 15,3 Mo (catalogue) et 1,6 Mo (prix). Les prix de toutes les langues pèsent ≈ 46 o/ligne, plus que l'estimation tirée du français (30 o/ligne) : ≈ 490 Mo par an en quotidien au lieu de 335 Mo.
+
+Verdict confirmé : sous 2 h pour les prix, sous 6 h pour le jour du catalogue.
+
+**Passage en hebdomadaire (29 octobre 2026)** : une exécution par semaine, catalogue puis prix (≈ 3 h 45). Parquet annuel ≈ 52 × (8,0 + 1,35) Mo ≈ **490 Mo**, sous le confort de 500 Mo ; brut gzip ≈ 52 × 16,9 Mo ≈ 880 Mo par an.
+
 ## Limites
 
-- Débit mesuré depuis la France ; celui d'une machine GitHub peut différer. La première exécution manuelle d'ORC-01 le confirmera.
+- Débit mesuré depuis la France, confirmé sur une machine GitHub (section précédente).
 - Taux de produits Cardmarket japonais supposé égal au français ; borne haute donnée.
 - Parquet en delta non mesuré (il faut deux jours de prix) : inutile tant que le Parquet complet tient sous le seuil.
 
@@ -55,7 +74,7 @@ Simulation : 365 copies d'un fichier de prix de 30 400 lignes, lues avec `pyarro
 
 **T3 passé.** Aucun repli nécessaire : Parquet complet quotidien, pas de delta, pas d'hébergement Hugging Face, pas de bascule vers `tcgdex/price-history` pour la durée.
 
-- ORC-01 : un seul job ; délai maximal autour de 5 h le jour du catalogue (≈ 3 h 46 attendus) ; prix seuls ≈ 1 h 15.
+- ORC-01 : un seul job hebdomadaire ; délai maximal autour de 5 h (≈ 3 h 46 attendues, 3 h 45 mesurées) ; prix seuls ≈ 1 h 15 en relance manuelle.
 - SUR-01 : alerter si la collecte des prix dépasse 2 h (signe d'un ralentissement de l'API).
-- Le catalogue pèse plus que les prix sur l'année. Si l'on vise le confort de 500 Mo, la piste est le catalogue en delta (seules les fiches modifiées depuis la semaine précédente), à décider en P2, pas avant.
+- Le catalogue pèse plus que les prix sur l'année. En hebdomadaire, le confort de 500 Mo tient ; s'il fallait descendre, la piste est le catalogue en delta (seules les fiches modifiées depuis la semaine précédente), à décider en P2, pas avant.
 - À revoir après les sept jours de SUR-T5 avec les durées réelles des machines GitHub.
