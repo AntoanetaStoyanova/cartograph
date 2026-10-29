@@ -15,7 +15,7 @@
 
 ---
 
-## [2026-10-29] — ORC-01 : première exécution vérifiée, passage en hebdomadaire
+## [2026-10-29] — ORC-01 vérifié, prix quotidiens confirmés, plan COL-T4
 
 ### Fait
 
@@ -37,15 +37,23 @@
 
 - Critères de fin du plan ORC-01 cochés : `uv run inv ci` (95 tests) et `actionlint` / `zizmor` sur `cartograph-data` ; reste « critères d'acceptation de la spec » (rattrapage du mardi). Documents de `cartograph` non commités (message proposé : `docs: ORC-01 vérifié et collecte hebdomadaire`).
 
+- Question d'Antoaneta sur l'historique pour les modèles : modèle A sans historique (une collecte suffit) ; modèle B ≈ 22 collectes en avril 2027 (≈ 520 000 lignes, mais ≈ 20 semaines indépendantes : exploratoire), l'hebdomadaire ne lui coûte presque rien ; COL-T4 est le levier.
+- `docs/specs/col-t4-price-history.md` et `docs/plans/col-t4-price-history.md` créés. Premier aperçu par `gh api` : sources eBay (fr) et TCGplayer (en), **pas Cardmarket** ; derniers relevés le 9 juin 2025 (eBay) et le 24 septembre 2024 (TCGplayer) ; README « MIT » mais aucun fichier `LICENSE`. Décisions : aucun code de production, clone superficiel hors du dépôt, historique « exploitable » = Cardmarket (ou suivi de Cardmarket démontré) sur 6 mois au moins hebdomadaires, source quotidienne seulement si dépôt vivant et Cardmarket, aucune réutilisation publiée tant que la licence est incertaine ; livrable au format de la note COL-T3.
+
+- Prix du 28 et du 29 octobre comparés (29 314 produits) : en un jour, `trend` change pour 35 %, `avg1` 45 %, `avg7` 36 %, `avg30` 26 %, `avg` / `low` 3-4 % ; Cardmarket recalcule vers 22:55 UTC. TCGplayer présent dans `tcgplayer_json` pour 17 587 produits.
+- **Retour aux prix quotidiens, catalogue le lundi** (décision d'Antoaneta, sur cette mesure) : un relevé quotidien se ramène à l'hebdomadaire, pas l'inverse ; minutes Actions gratuites. `../cartograph-data/.github/workflows/collect.yml` restauré depuis `5c1ddef` avec `cache-dependency-glob: uv.lock` ; `README.md` de `cartograph-data` corrigé ; `actionlint` et `zizmor` sans alerte. Non poussé.
+- Documents remis en quotidien (changements hebdomadaires de `ddac860` annulés avec `git apply -R` sur la spec maîtresse, `cadrage-flux.md`, `docs/specs/roadmap-lots.md`) ; décision du workflow complétée (mesure des changements quotidiens, hebdomadaire en alternative écartée) ; `col-t3-taille-duree.md` (≈ 905 Mo de Parquet par an en quotidien, prix seuls 1 h 01 et 1 h 32) ; spec et plan ORC-01 (décision « Fréquence », critère « une exécution planifiée réussie » à la place du rattrapage du mardi) ; `roadmap-lots.md`, `README.md`, spec COL-T4.
+
 ### Reste à faire
 
-- Finir docs/plans/lot-orc-01-workflow.md — Étape 4 : mardi 3 novembre, vérifier que le rattrapage (`check`) saute la collecte après celle du lundi 2 (fichiers `cards-2026-11-02.parquet` et `prices-2026-11-02.parquet` publiés, job `collect` ignoré) ; puis ORC-01 coché dans la roadmap et critères de fin du plan.
-- Revoir SUR-T5 pour l'hebdomadaire (par exemple : quatre semaines sans trou, ou deux lundis plus un échec volontaire) avant d'écrire SUR-01.
+- Exécuter docs/plans/col-t4-price-history.md — Étape 1 : Inventaire et format (version courte proposée, à confirmer par Antoaneta : le dépôt semble inutilisable).
+- Antoaneta : commiter et pousser `cartograph-data` (`fix: retour à la collecte quotidienne des prix`) et `cartograph` (`docs: retour aux prix quotidiens`).
+- Finir docs/plans/lot-orc-01-workflow.md — Étape 4 : vérifier la première exécution planifiée (cron de 03:17 UTC, le 30 octobre si GitHub le déclenche) ; puis ORC-01 coché dans la roadmap.
 - Supprimer les 3 anciens `.log` de `src/cartograph/log/` (suppression refusée par le mode auto, à faire par Antoaneta), puis retirer la ligne `src/cartograph/log/*.log` du `.gitignore`.
-- COL-T4 (exploration de `tcgdex/price-history`) possible en parallèle : s'il garde un historique quotidien, il compense la granularité perdue.
 
 ### Références
 
+- [../docs/specs/col-t4-price-history.md](../docs/specs/col-t4-price-history.md), [../docs/plans/col-t4-price-history.md](../docs/plans/col-t4-price-history.md)
 - `docs/plans/lot-orc-01-workflow.md`, `docs/specs/lot-orc-01-workflow.md`, `docs/specs/col-t3-taille-duree.md`
 - `README.md`, `../cartograph-data/.github/workflows/collect.yml`, `../cartograph-data/README.md`
 - `docs/specs/roadmap-lots.md`

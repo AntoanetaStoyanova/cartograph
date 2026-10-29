@@ -55,9 +55,9 @@ Le code de sortie vaut 1 si une étape demandée échoue. Les logs vont dans `lo
 
 ## Collecte automatique
 
-Le workflow `Collecte` du dépôt public [`cartograph-data`](https://github.com/AntoanetaStoyanova/cartograph-data) installe ce dépôt depuis `main` et lance la collecte chaque lundi à 03:17 UTC :
+Le workflow `Collecte` du dépôt public [`cartograph-data`](https://github.com/AntoanetaStoyanova/cartograph-data) installe ce dépôt depuis `main` et lance la collecte chaque jour à 03:17 UTC :
 
-- catalogue puis prix (≈ 3 h 45) ; le mardi à la même heure, un rattrapage ne collecte que si les fichiers du lundi manquent ;
+- prix chaque jour (1 h à 1 h 30), avec le dernier catalogue publié ; le lundi, catalogue puis prix (≈ 3 h 45) ;
 - catalogue publié dans la Release `catalogue` de `cartograph-data` ;
 - prix et brut envoyés dans la Release `data-AAAA-MM` du dépôt privé `cartograph-prices` (secret `PRICES_TOKEN`) ;
 - résumé et log gardés 7 jours en artefact, sans aucun prix.

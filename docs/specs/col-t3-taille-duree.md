@@ -62,7 +62,7 @@ Première exécution manuelle d'ORC-01 (`40717195500`, 28 octobre 2026, `ubuntu-
 
 Verdict confirmé : sous 2 h pour les prix, sous 6 h pour le jour du catalogue.
 
-**Passage en hebdomadaire (29 octobre 2026)** : une exécution par semaine, catalogue puis prix (≈ 3 h 45). Parquet annuel ≈ 52 × (8,0 + 1,35) Mo ≈ **490 Mo**, sous le confort de 500 Mo ; brut gzip ≈ 52 × 16,9 Mo ≈ 880 Mo par an.
+Avec les tailles réelles, en quotidien : prix ≈ 365 × 1,35 Mo ≈ 490 Mo et catalogue ≈ 52 × 8,0 Mo ≈ 415 Mo, soit **≈ 905 Mo de Parquet par an** (sous 1 Go, au-dessus du confort de 500 Mo) ; brut gzip ≈ 365 × 1,6 + 52 × 15,3 ≈ 1,4 Go par an. Prix seuls mesurés sur deux exécutions sans catalogue du 29 octobre : 1 h 01 et 1 h 32 (débit TCGdex variable), sous 2 h.
 
 ## Limites
 
@@ -74,7 +74,7 @@ Verdict confirmé : sous 2 h pour les prix, sous 6 h pour le jour du catalogue.
 
 **T3 passé.** Aucun repli nécessaire : Parquet complet quotidien, pas de delta, pas d'hébergement Hugging Face, pas de bascule vers `tcgdex/price-history` pour la durée.
 
-- ORC-01 : un seul job hebdomadaire ; délai maximal autour de 5 h (≈ 3 h 46 attendues, 3 h 45 mesurées) ; prix seuls ≈ 1 h 15 en relance manuelle.
+- ORC-01 : un seul job ; délai maximal autour de 5 h le jour du catalogue (≈ 3 h 46 attendues, 3 h 45 mesurées) ; prix seuls entre 1 h et 1 h 32.
 - SUR-01 : alerter si la collecte des prix dépasse 2 h (signe d'un ralentissement de l'API).
-- Le catalogue pèse plus que les prix sur l'année. En hebdomadaire, le confort de 500 Mo tient ; s'il fallait descendre, la piste est le catalogue en delta (seules les fiches modifiées depuis la semaine précédente), à décider en P2, pas avant.
+- Le catalogue pèse presque autant que les prix sur l'année. Si l'on vise le confort de 500 Mo, la piste est le catalogue en delta (seules les fiches modifiées depuis la semaine précédente), à décider en P2, pas avant.
 - À revoir après les sept jours de SUR-T5 avec les durées réelles des machines GitHub.
