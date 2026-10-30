@@ -15,6 +15,30 @@
 
 ---
 
+## [2026-10-30] — Cron d'ORC-01 jamais déclenché, plan SUR-01
+
+### Fait
+
+- Session ouverte (`/workspace-init`). Commit `docs: note COL-T4…` déjà fait (`850f4f6`).
+- Plan lot-orc-01-workflow — Étape 4 : **bloquée**. À 08:38 UTC, aucune exécution `schedule` dans `cartograph-data` (`total_count` 0) : ni le 29 octobre, ni le 30 octobre à 03:17 UTC, alors que `collect.yml` (`17 3 * * *`) est sur `main` depuis `595ea85` (29 octobre, 12:47 UTC), workflow `active`, Actions fonctionnelles (3 exécutions manuelles réussies). Aucun incident Actions sur githubstatus.com depuis le 26 octobre. Deux occasions manquées : ce n'est plus un simple retard. Cases « exécution planifiée » et « ORC-01 coché » laissées vides. Dépôt public, non fork, non archivé, Actions sans restriction : rien dans la configuration n'empêche le cron. Hypothèses : dépôt trop récent (créé le 28 octobre), cron modifié trois fois en 24 h.
+- Workflow `Collecte` désactivé puis réactivé (accord d'Antoaneta) pour réenregistrer le cron : `active`, `updated_at` 2026-10-30 08:46 UTC.
+- Exécution manuelle `41028885710` (prix seuls) lancée à 08:48 UTC pour ne pas perdre le 30 octobre.
+- `docs/specs/lot-sur-01-alertes.md` et `docs/plans/lot-sur-01-alertes.md` créés (SUR-01). Décisions d'Antoaneta : contrôle healthchecks.io en mode cron (`17 3 * * *` UTC, grâce 5 h, N12 à réécrire, une période de 26 h donnerait une fausse alerte chaque lundi) ; résumé de la page d'exécution produit par un module Python testé (`cartograph.bin.collect.report`). Autres décisions : `/start` puis succès ou `/fail` (`if: always()`), ping jamais bloquant, URL en secret `HEALTHCHECKS_PING_URL`, 20 cartes en échec listées au plus.
+- Plan lot-sur-01-alertes — Étape 1 : Module de résumé. `src/cartograph/bin/collect/report.py` (`render_markdown`, `main` ; durée, tableau des étapes, détails : catalogue source, langues absentes, erreur, 20 cartes en échec au plus ; fichiers avec lignes et tailles en Mo) ; `tests/test_collect_report.py` (7 tests, dont l'absence de prix sur le vrai résumé du 28 octobre copié en `tests/fixtures/collect-summary.json`). Typage vérifié par `beartype_this_package` (convention du projet, pas de décorateur). `uv run inv ci` vert (102 tests, couverture 99,82 %). Non commité.
+- `docs/plans/*.md` et `docs/specs/*.md` retirés du dépôt (décision d'Antoaneta : ne pas les montrer) : ajoutés au `.gitignore`, `git rm --cached` sur les 17 fichiers suivis (restés sur le disque), lien vers `lot-fnd-00-poste.md` retiré de `README.md`. Historique déjà poussé non réécrit : les anciennes versions restent lisibles. Non commité.
+
+### Reste à faire
+
+- Exécuter docs/plans/lot-sur-01-alertes.md — Étape 2 : Workflow et healthchecks.io (contrôle healthchecks.io et secret `HEALTHCHECKS_PING_URL` faits le 30 octobre ; reste à Antoaneta : commiter et fusionne l'étape 1 dans `main` de `cartograph`).
+- Finir docs/plans/lot-orc-01-workflow.md — Étape 4 : vérifier le 31 octobre après 03:17 UTC (`gh api 'repos/AntoanetaStoyanova/cartograph-data/actions/runs?event=schedule'`) ; si rien, workflow temporaire avec cron `*/15 * * * *` pour savoir si un cron peut se déclencher dans ce dépôt. Puis ORC-01 coché dans la roadmap.
+- Supprimer les 3 anciens `.log` de `src/cartograph/log/` (suppression refusée par le mode auto, à faire par Antoaneta), puis retirer la ligne `src/cartograph/log/*.log` du `.gitignore`.
+
+### Références
+
+- [../docs/specs/lot-sur-01-alertes.md](../docs/specs/lot-sur-01-alertes.md), [../docs/plans/lot-sur-01-alertes.md](../docs/plans/lot-sur-01-alertes.md)
+- `docs/plans/lot-orc-01-workflow.md`, `../cartograph-data/.github/workflows/collect.yml`
+- `src/cartograph/bin/collect/report.py`, `tests/test_collect_report.py`
+
 ## [2026-10-29] — ORC-01 vérifié, prix quotidiens confirmés, COL-T4 tranché
 
 ### Fait

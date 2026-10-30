@@ -19,8 +19,6 @@ jamais dans PowerShell.
 - VS Code + extension WSL (extensions Python et Ruff installées côté WSL)
 - [cruft](https://cruft.github.io/cruft/) — pour mettre à jour le template
 
-Mise en place pas à pas : [lot-fnd-00-poste](docs/plans/lot-fnd-00-poste.md).
-
 ## Installation
 
 ```bash
