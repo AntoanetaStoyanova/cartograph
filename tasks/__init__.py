@@ -17,8 +17,8 @@ def lint(c: Context) -> None:
 
 @task
 def hooks(c: Context) -> None:
-    """Installe les hooks Git pre-commit et pre-push."""
-    c.run("uv run pre-commit install --hook-type pre-commit --hook-type pre-push")
+    """Installe le hook Git pre-commit."""
+    c.run("uv run pre-commit install")
 
 
 @task
