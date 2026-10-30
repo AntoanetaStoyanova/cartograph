@@ -93,6 +93,12 @@ def docs_clean(c: Context) -> None:
     c.run("rm -rf docs/_build")
 
 
+@task
+def okflint(c: Context) -> None:
+    """Vérifie le frontmatter et les liens des specs et plans (okf-base.yaml)."""
+    c.run("uv run okflint validate --manifest okf-base.yaml")
+
+
 # ---------------------------------------------------------------------------
 # Git
 # ---------------------------------------------------------------------------

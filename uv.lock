@@ -151,6 +151,7 @@ dev = [
     { name = "furo" },
     { name = "invoke" },
     { name = "mypy" },
+    { name = "okflint" },
     { name = "pre-commit" },
     { name = "pytest" },
     { name = "pytest-cov" },
@@ -171,6 +172,7 @@ dev = [
     { name = "furo", specifier = ">=2024.1.0" },
     { name = "invoke", specifier = ">=2.2.0" },
     { name = "mypy", specifier = ">=1.20.0" },
+    { name = "okflint", specifier = "==0.5.1" },
     { name = "pre-commit", specifier = ">=4.7.0" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-cov", specifier = ">=6.0.0" },
@@ -801,6 +803,19 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/ab/27/79acfd3d6f526a4a16f3d209dedcf7b5bc1ea15c5bf2bbb82f2c2285057e/nodeenv-1.11.1.tar.gz", hash = "sha256:d7fa027c1df437bdd974b0502a8dc76fa1b3183e369ac9539602bc6bab9100ba", size = 99853, upload-time = "2026-10-29T20:54:04.261Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/40/35/a09e0b1dac4027e35b872e4f123a9f9e7bbc39e6424bdc9776920d3a6491/nodeenv-1.11.1-py2.py3-none-any.whl", hash = "sha256:bc0fb085d8ed0d67a6471892535f3d9b795eb911b7cd129d3a24967aab7a538f", size = 34473, upload-time = "2026-10-29T20:54:02.752Z" },
+]
+
+[[package]]
+name = "okflint"
+version = "0.5.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "beartype" },
+    { name = "pyyaml" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/5c/b5/275a67ce55bd11fd6da3d120ec21311b327af36c34dd491ca5f11aa99ba7/okflint-0.5.1.tar.gz", hash = "sha256:3246931902c0fd22bb6da669a1a74179836264a9886d0785cbb9ff794e15fb97", size = 187769, upload-time = "2026-10-23T17:14:38.885Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/69/c0/5d5349e824d7ca0e9f17da0653c59f6a348f227d939f041c6c35dd67ee58/okflint-0.5.1-py3-none-any.whl", hash = "sha256:b6af62e0b888999ced09d4dfeb9492d9f02076c4484057e6a3c0724b7c1cfe4e", size = 44085, upload-time = "2026-10-23T17:14:37.684Z" },
 ]
 
 [[package]]

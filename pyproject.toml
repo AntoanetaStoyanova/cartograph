@@ -74,4 +74,5 @@ dev = [
     "sphinx>=7.0.0",
     "furo>=2024.1.0",
     "pre-commit>=4.7.0",
+    "okflint==0.5.1",
 ]
