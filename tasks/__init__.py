@@ -11,9 +11,14 @@ from invoke import Context, task
 
 @task
 def lint(c: Context) -> None:
-    """Vérifie le code avec Ruff (lint et format)."""
-    c.run("uv run ruff check --no-fix .")
-    c.run("uv run ruff format --check .")
+    """Lance les hooks pre-commit (Ruff, fichiers) sur tous les fichiers."""
+    c.run("uv run pre-commit run --all-files")
+
+
+@task
+def hooks(c: Context) -> None:
+    """Installe les hooks Git pre-commit et pre-push."""
+    c.run("uv run pre-commit install --hook-type pre-commit --hook-type pre-push")
 
 
 @task

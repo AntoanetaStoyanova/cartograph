@@ -15,7 +15,7 @@
 
 ---
 
-## [2026-10-30] — Cron d'ORC-01 jamais déclenché, plans SUR-01 et STO-01
+## [2026-10-30] — Cron d'ORC-01 jamais déclenché, plans SUR-01, STO-01 et CI-00
 
 ### Fait
 
@@ -49,13 +49,22 @@
   - `_check_language` appelée une seule fois ; docstrings : modules `report` et `manifest` listés, exemple du paquet par `collect`, constantes de config nommées dans `batch.py`, commentaires de `snapshot.py` et `client.py` corrigés ;
   - tests : helpers `make_step`, `make_summary`, `REAL_SUMMARY`, `PRICE_MARKERS` dans `tests/conftest.py` ; cibles de prix testées par le Parquet ;
   - `inv lint` lance aussi `ruff format --check` (Antoaneta a lancé `ruff format src` avant).
-  `uv run inv ci` vert (112 tests, couverture 99,83 %). Specs et plans de COL-01 et COL-02 (locaux) gardent les anciens noms. Non commité.
+  `uv run inv ci` vert (112 tests, couverture 99,83 %). Specs et plans de COL-01 et COL-02 (locaux) gardent les anciens noms.
+- Antoaneta : revue, docstrings et étape 1 de STO-01 commitées et poussées.
+- Spec et plan STO-01 : décision d'Antoaneta, la Release de chaque fichier n'est plus décidée qu'à un endroit (`manifest`) ; à l'étape 2, le manifeste est calculé après « Lire le résumé » et les étapes d'envoi de `collect.yml` lisent sa liste `files`. À faire après l'exécution planifiée du 31 octobre.
+- Essai d'okflint 0.5.1 sur une copie de `docs/` (rien écrit dans le dépôt) : 21 fichiers, 65 liens Markdown dont 0 cassé, 21 erreurs `F001 frontmatter absent`.
+- `docs/specs/ci-00-controles-locaux.md` et `docs/plans/ci-00-controles-locaux.md` créés (CI-00, nouveau lot avant CI-01). Décisions d'Antoaneta : frontmatter (`type`, `statut`, `redige_le`, `lot`) et manifeste `okf-base.yaml` pour okflint, `okflint validate` dans `inv docs` hors hooks (`docs/` non suivi) ; mypy et pytest bloquants avant chaque push. Autres décisions : pre-commit appelé par `inv lint` ; `.gitattributes` LF et normalisation dans un commit séparé ; markdownlint assoupli (MD013, MD033), `.ai-context/` et `docs/` ignorés ; prettier sur YAML et JSON seulement ; `tests/fixtures/` exclu ; `pre-commit` et `okflint==0.5.1` en dépendances de développement ; actionlint et zizmor en `pre-push` dans `cartograph-data`.
+- Plan ci-00-controles-locaux — Étape 1 : pre-commit, ruff et fins de ligne. `pre-commit` 4.7.0 en dépendance de développement ; `.gitattributes` (`* text=auto eol=lf`) : l'index était déjà en LF, seules 7 copies de travail étaient en CRLF ou mélangées (`.ai-context/CURRENT.md`, `.cruft.json`, `.cruftignore`, `.gitignore`, `CONTRIBUTING.md`, `docs/conf.py`, `docs/index.rst`), converties sans diff Git : le commit `chore: fins de ligne LF` ne contient que `.gitattributes`. `.pre-commit-config.yaml` (pre-commit-hooks v6.0.0, ruff-pre-commit v0.17.3 aligné sur `uv.lock`, mypy et pytest en `pre-push`, `default_install_hook_types`). `tasks/__init__.py` : `lint` = `pre-commit run --all-files`, nouvelle tâche `hooks` ; hooks installés. Vérifié dans un worktree jetable avec un dépôt nu local (supprimés) : commit refusé pour un `.py` mal formaté, un CRLF, un YAML invalide ; push refusé pour un test en échec et une erreur mypy. `inv ci` vert (112 tests, 99 %).
+
 ### Reste à faire
 
-- Exécuter docs/plans/lot-sto-01-manifeste.md — Étape 2 : Workflow (d'abord : Antoaneta commite et fusionne l'étape 1 dans `main` de `cartograph`).
+- Commiter l'étape 1 de CI-00 (Antoaneta) : `chore: fins de ligne LF` (`.gitattributes`), puis `chore: hooks pre-commit et pre-push` (`.pre-commit-config.yaml`, `pyproject.toml`, `uv.lock`, `tasks/__init__.py`).
+- Exécuter docs/plans/ci-00-controles-locaux.md — Étape 2 : Markdown, YAML et JSON.
+- Étape 3 de CI-00 : `inv docs` existe déjà (Sphinx) ; nommer autrement la tâche okflint (proposition : `inv docs-check`) et ajuster spec et plan.
+- Exécuter docs/plans/lot-sto-01-manifeste.md — Étape 2 : Workflow, après les vérifications du 31 octobre (manifeste calculé avant les envois, envois pilotés par le manifeste).
 - Finir docs/plans/lot-sur-01-alertes.md — Étape 3 : le 31 octobre après 03:17 UTC, exécution planifiée (résumé dans la page, `/start` puis succès avec durée, e-mail « up » de healthchecks.io attendu puisque le contrôle est *down*) ; relancer ensuite l'échec volontaire pour vérifier l'e-mail « down » ; contrôler l'absence de prix dans les logs et le résumé.
 - Finir docs/plans/lot-orc-01-workflow.md — Étape 4 : vérifier le 31 octobre après 03:17 UTC (`gh api 'repos/AntoanetaStoyanova/cartograph-data/actions/runs?event=schedule'`) ; si rien, workflow temporaire avec cron `*/15 * * * *` pour savoir si un cron peut se déclencher dans ce dépôt. Puis ORC-01 coché dans la roadmap.
-- Antoaneta : relire et commiter docstrings, corrections de la revue et étape 1 de STO-01 (`uv run inv ci` vert), puis fusionner dans `main` avant l'étape 2 de STO-01.
+- Antoaneta : fusionner `develop` dans `main` avant l'étape 2 de STO-01.
 - Après l'étape 3 de SUR-01 : cocher SUR-01 dans `docs/plans/roadmap-lots.md` et le critère « documentation » de la spec SUR-01.
 
 ### Références
@@ -65,6 +74,7 @@
 - `docs/plans/lot-orc-01-workflow.md`, `../cartograph-data/.github/workflows/collect.yml`
 - `src/cartograph/bin/collect/report.py`, `tests/test_collect_report.py`
 - [../docs/specs/lot-sto-01-manifeste.md](../docs/specs/lot-sto-01-manifeste.md), [../docs/plans/lot-sto-01-manifeste.md](../docs/plans/lot-sto-01-manifeste.md), `src/cartograph/bin/collect/manifest.py`, `tests/test_collect_manifest.py`
+- [../docs/specs/ci-00-controles-locaux.md](../docs/specs/ci-00-controles-locaux.md), [../docs/plans/ci-00-controles-locaux.md](../docs/plans/ci-00-controles-locaux.md), `../.pre-commit-config.yaml`, `../.gitattributes`, `../tasks/__init__.py`
 
 ## [2026-10-29] — ORC-01 vérifié, prix quotidiens confirmés, COL-T4 tranché
 
