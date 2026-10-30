@@ -1,0 +1,47 @@
+{
+  "date": "2026-10-28",
+  "started_at": "2026-10-28T12:25:18.244955+00:00",
+  "finished_at": "2026-10-28T14:06:24.016525+00:00",
+  "steps": {
+    "catalogue": {
+      "status": "ok",
+      "fetched": 22155,
+      "failed": [],
+      "skipped_without_id_product": 0,
+      "files": [
+        {
+          "name": "cards-2026-10-28.parquet",
+          "rows": 22155,
+          "bytes": 2744714
+        },
+        {
+          "name": "cards-2026-10-28.json.gz",
+          "rows": 22155,
+          "bytes": 4907269
+        }
+      ],
+      "source": null,
+      "error": null
+    },
+    "prices": {
+      "status": "ok",
+      "fetched": 18254,
+      "failed": [],
+      "skipped_without_id_product": 2978,
+      "files": [
+        {
+          "name": "prices-2026-10-28.parquet",
+          "rows": 18254,
+          "bytes": 550831
+        },
+        {
+          "name": "prices-2026-10-28.json.gz",
+          "rows": 18254,
+          "bytes": 742904
+        }
+      ],
+      "source": "cards-2026-10-28.parquet",
+      "error": null
+    }
+  }
+}
