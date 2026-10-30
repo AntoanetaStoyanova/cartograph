@@ -30,7 +30,7 @@ def test_fetch_catalogue_records_failed_card_and_continues() -> None:
         result = fetch_catalogue(client, "fr")
 
     assert [card["id"] for card in result.items] == ["exu-%3F", "swsh3-136"]
-    assert result.failed == ["pop9-1"]
+    assert result.failed == ["fr/pop9-1"]
 
 
 def test_fetch_prices_records_failed_card_and_continues() -> None:
@@ -107,7 +107,7 @@ def test_fetch_catalogue_404s_do_not_stop_collection() -> None:
         result = fetch_catalogue(client, "fr", card_ids=card_ids)
 
     assert result.items == []
-    assert result.failed == card_ids
+    assert result.failed == [f"fr/{card_id}" for card_id in card_ids]
 
 
 def test_consecutive_failure_counter_resets_on_success() -> None:

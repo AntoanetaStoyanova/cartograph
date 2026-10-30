@@ -10,6 +10,9 @@ import pytest
 from cartograph.bin.collect.client import TcgdexClient
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures" / "tcgdex"
+REAL_SUMMARY = Path(__file__).parent / "fixtures" / "collect-summary.json"
+PRICE_MARKERS = ("cm_", "avg", "trend", "low", "€")
+SUMMARY_DAY = "2026-10-28"
 _ROUTE = re.compile(r"^/v2/(?P<language>[^/]+)/cards(?:/(?P<card_id>.+))?$")
 
 
@@ -58,3 +61,30 @@ def price_values(node: Any) -> set[str]:
     if isinstance(node, list):
         return set().union(*(price_values(item) for item in node))
     return set()
+
+
+def make_step(**overrides: Any) -> dict[str, Any]:
+    step: dict[str, Any] = {
+        "status": "ok",
+        "fetched": 18254,
+        "failed": [],
+        "skipped_without_id_product": 2978,
+        "files": [
+            {"name": f"prices-{SUMMARY_DAY}.parquet", "rows": 18254, "bytes": 550831},
+            {"name": f"prices-{SUMMARY_DAY}.json.gz", "rows": 18254, "bytes": 742904},
+        ],
+        "source": f"cards-{SUMMARY_DAY}.parquet",
+        "missing_languages": [],
+        "error": None,
+    }
+    return step | overrides
+
+
+def make_summary(**steps: dict[str, Any]) -> dict[str, Any]:
+    skipped = make_step(status="skipped", fetched=0, files=[], source=None)
+    return {
+        "date": SUMMARY_DAY,
+        "started_at": f"{SUMMARY_DAY}T03:17:05+00:00",
+        "finished_at": f"{SUMMARY_DAY}T04:30:05+00:00",
+        "steps": {"catalogue": skipped, "prices": make_step()} | steps,
+    }

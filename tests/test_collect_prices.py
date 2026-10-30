@@ -1,14 +1,35 @@
+from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime, timedelta, timezone
+from typing import Any
+
+import pyarrow as pa
 
 from cartograph.bin.collect.catalogue import fetch_catalogue
 from cartograph.bin.collect.client import TcgdexClient
-from cartograph.bin.collect.prices import PriceTarget, fetch_prices, price_targets
+from cartograph.bin.collect.prices import (
+    PriceTarget,
+    fetch_prices,
+    price_targets_from_table,
+)
+from cartograph.bin.collect.snapshot import card_table
 from tests.conftest import load_fixture
+
+FETCHED_AT = datetime(2026, 10, 28, 9, 30, tzinfo=UTC)
 
 
 def _card(card_id: str, id_product: int | None) -> dict[str, object]:
     cardmarket = None if id_product is None else {"idProduct": id_product}
     return {"id": card_id, "pricing": {"cardmarket": cardmarket}}
+
+
+def price_targets(
+    catalogues: Mapping[str, Sequence[dict[str, Any]]],
+) -> list[PriceTarget]:
+    table = pa.concat_tables(
+        card_table(cards, language, FETCHED_AT)
+        for language, cards in catalogues.items()
+    )
+    return price_targets_from_table(table)
 
 
 def test_price_targets_deduplicates_european_products() -> None:

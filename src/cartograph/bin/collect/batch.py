@@ -1,5 +1,9 @@
 """
 Boucle de collecte commune au catalogue et aux prix.
+- Une carte en échec est notée dans failed et la boucle continue.
+- Après MAX_CONSECUTIVE_FAILURES TcgdexError d'affilée, la collecte s'arrête :
+  l'API est considérée en panne.
+- Un message de progression est écrit toutes les PROGRESS_EVERY cartes.
 """
 
 import logging
@@ -7,7 +11,7 @@ from collections.abc import Callable, Sequence
 from typing import Any
 
 from cartograph.bin.collect import FetchResult
-from cartograph.bin.collect.client import CardNotFoundError, TcgdexClient, TcgdexError
+from cartograph.bin.collect.client import NotFoundError, TcgdexClient, TcgdexError
 from cartograph.config import MAX_CONSECUTIVE_FAILURES, PROGRESS_EVERY
 
 logger = logging.getLogger(__name__)
@@ -48,7 +52,7 @@ def fetch_each[K](
     ------
     TcgdexError
         Après ``MAX_CONSECUTIVE_FAILURES`` cartes en ``TcgdexError`` d'affilée ;
-        les ``CardNotFoundError`` ne comptent pas.
+        les ``NotFoundError`` ne comptent pas.
     """
     logger.info("%s : %d cartes à récupérer", label, len(keys))
     items: list[dict[str, Any]] = []
@@ -60,7 +64,7 @@ def fetch_each[K](
         except TcgdexError as error:
             failed.append(card_id(key))
             logger.warning("%s : %s en échec (%s)", label, card_id(key), error)
-            if not isinstance(error, CardNotFoundError):
+            if not isinstance(error, NotFoundError):
                 consecutive += 1
             if consecutive >= MAX_CONSECUTIVE_FAILURES:
                 logger.error("%s : arrêt après %d échecs d'affilée", label, consecutive)

@@ -56,7 +56,6 @@ src/cartograph/.env
 .envrc
 .venv
 logs/
-src/cartograph/log/*.log
 env/
 venv/
 ENV/
