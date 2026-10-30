@@ -1,8 +1,10 @@
 """Configuration Sphinx pour cartograph."""
 
+import importlib.metadata
+
 project = "cartograph"
 author = "Antoaneta Stoyanova"
-release = "0.1.0"
+release = importlib.metadata.version("cartograph")
 
 extensions = [
     "sphinx.ext.autodoc",
