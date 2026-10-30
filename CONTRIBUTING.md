@@ -138,18 +138,29 @@ src/cartograph/
 
 ## Git
 
-- Branches : `main` (stable), `develop` (intégration), `feature/<sujet>` créée depuis `develop` pour chaque travail
-- Une branche `feature/…` se pousse librement ; elle rejoint `develop` par une pull request, puis `develop` rejoint `main` par une pull request
-- Format des commits — **Conventional Commits** :
+- Branches : `feature/<sujet>` (développement, créée depuis `develop`), `develop` (qualité), `main` (production, jamais modifiée en local)
+- Cycle :
+  1. `feature/…` se pousse librement et rejoint `develop` par une pull request ;
+  2. sur `develop` : `uv run inv release --dry-run` (version suivante et changelog, sans rien modifier), puis `uv run inv release` (pull, contrôles, `cz bump`, documentation, push avec le tag) ;
+  3. `develop` rejoint `main` par une pull request.
+- Pull requests fusionnées en **merge commit** uniquement : un squash réduirait le changelog à une ligne et, comme un rebase, laisserait le commit tagué hors de `main`
+- Mettre une branche feature à jour après une release : `git fetch origin && git merge origin/develop`
+- Les specs et plans de `docs/` ne sont pas suivis par Git : `git clean -fdx` les effacerait, il est interdit
+- Format des commits — **Conventional Commits**, vérifié par le hook `commit-msg`. Chaque message devient une ligne du `CHANGELOG.md` : l'écrire pour être relu.
 
-| Préfixe | Usage |
-| --- | --- |
-| `feat:` | nouvelle fonctionnalité |
-| `fix:` | correction de bug |
-| `refactor:` | réécriture sans changement de comportement |
-| `test:` | ajout ou correction de tests |
-| `docs:` | documentation uniquement |
-| `chore:` | maintenance, dépendances, config |
+| Préfixe | Usage | Version (0.x) | Changelog |
+| --- | --- | --- | --- |
+| `feat:` | nouvelle fonctionnalité | mineure | Nouveautés |
+| `fix:` | correction de bug | correctif | Corrections |
+| `refactor:` | réécriture sans changement de comportement | correctif | Réécritures |
+| `perf:` | performance | correctif | Performances |
+| `docs:` | documentation uniquement | aucune | Documentation |
+| `test:` | ajout ou correction de tests | aucune | Tests |
+| `chore:` | maintenance, dépendances, config | aucune | Maintenance |
+
+- `!` après le type (`feat!:`) marque un changement cassant : mineure tant que la version est en 0.x
+- Une release ne contenant que `docs`, `test` ou `chore` ne crée pas de version ; ces commits partent dans la suivante
+- `bump:` est réservé au commit créé par `inv release`
 
 ---
 

@@ -20,7 +20,7 @@
 
 ---
 
-## [2026-10-30] — REL-00 : Commitizen, inv release et tag v0.1.0
+## [2026-10-30] — REL-00 terminé : Commitizen, inv release, tag v0.1.0
 
 ### Fait
 
@@ -30,12 +30,12 @@
 - Plan rel-00-versions-changelog — Étape 2 : Commitizen et hook `commit-msg`. `commitizen` 4.19.3 en dépendance de développement ; `[tool.commitizen]` dans `pyproject.toml` en `cz_customize` (le parseur du changelog de `cz_conventional_commits` ne se règle pas par la config : `docs`, `test` et `chore` en étaient absents), `version_provider = "uv"`, tag `v$version`, `major_version_zero`, titres du changelog en français ; hook `commitizen` (`commit-msg`) et `default_install_hook_types` dans `.pre-commit-config.yaml`, `inv hooks` relancé ; `CHANGELOG.md` ignoré par markdownlint (MD041). Vérifié : changelog avec tous les types sans `bump:` ni merges, `feat!` → mineure, commits `docs` seuls → aucun bump (code 21) dans un clone jetable ; `ajout truc` refusé, `feat: ajout truc` accepté dans un worktree jetable. `uv run inv ci` vert. Non commité.
 - Plan rel-00-versions-changelog — Étape 3 : `inv release` (sauf tag `v0.1.0`). `tasks/__init__.py` : `release` (refus hors `develop` ou arbre non propre ; `git pull --ff-only`, lint, mypy, pytest, `cz bump --yes`, `inv docs`, `git push --follow-tags` ; `--dry-run` : `cz bump --dry-run` seul ; codes 3 et 21 de `cz` → « Rien à publier ») ; `push_develop` et `push_main` retirées ; `tests/test_tasks_release.py` (6 tests, `MockContext`). Clone jetable avec dépôt nu : commit `bump: version 0.1.0 → 0.1.1` (`pyproject.toml`, `uv.lock`, `CHANGELOG.md`), hooks passés, doc Sphinx en 0.1.1, arbre propre. Décision en cours de route : `annotated_tag = true` (le tag léger de `cz` n'était pas envoyé par `--follow-tags`). `uv run inv ci` vert (119 tests). Non commité.
 - Journal réparé : l'entrée du jour avait été collée dans le bloc d'en-tête (déjà dans `3474064`), sans « Reste à faire ».
-- Plan rel-00-versions-changelog — Étape 3 : `inv release` et premier tag (fin). Tag annoté `v0.1.0` posé sur `57908dd` (`origin/develop`) et poussé (accord d'Antoaneta) ; `cz version --project` 0.1.0, `cz bump --dry-run` propose 0.1.1. `uv run inv ci` vert (119 tests, 99,83 %), `inv okflint` vert. Étapes 2 et 3 non commitées.
+- Plan rel-00-versions-changelog — Étape 3 : `inv release` et premier tag (fin). Tag annoté `v0.1.0` posé sur `57908dd` (`origin/develop`) et poussé (accord d'Antoaneta) ; `cz version --project` 0.1.0, `cz bump --dry-run` propose 0.1.1. `uv run inv ci` vert (119 tests, 99,83 %), `inv okflint` vert. Étapes 2 et 3 commitées par Antoaneta (`5c5ef89`).
+- Plan rel-00-versions-changelog — Étape 4 : GitHub et documentation. Décision d'Antoaneta : squash et rebase laissés activés sur GitHub, le merge commit reste une règle de `CONTRIBUTING.md` (spec mise à jour, critère « seul le merge commit est proposé » retiré) ; suppression automatique des branches déjà désactivée. `CONTRIBUTING.md`, section Git : cycle feature → `develop` → `inv release` → `main`, merge commit, mise à jour d'une feature, `git clean -fdx` interdit, tableau des préfixes avec colonnes « Version (0.x) » et « Changelog » (`perf` ajouté), `!`, `bump:` réservé. `~/.claude/skills/workspace-dev/SKILL.md` : message de commit proposé selon l'effet sur la version, jamais `bump:`. REL-00 dans la roadmap, coché. Plan et spec REL-00 en `statut: fait`. `uv run inv ci` vert (119 tests), `inv okflint` vert. Non commité.
 
 ### Reste à faire
 
-- Exécuter docs/plans/rel-00-versions-changelog.md — Étape 4 : GitHub et documentation.
-- Antoaneta : commiter les étapes 2 et 3 de REL-00 sur `feature/controle`, puis pull request `feature/controle` → `develop` (merge commit) une fois REL-00 fini (CI-00 et REL-00 ensemble).
+- Antoaneta : commiter `CONTRIBUTING.md` (étape 4 de REL-00), puis pull request `feature/controle` → `develop` (merge commit) une fois REL-00 fini (CI-00 et REL-00 ensemble).
 - Exécuter docs/plans/lot-sto-01-manifeste.md — Étape 2 : Workflow, après les vérifications du 31 octobre (manifeste calculé avant les envois, envois pilotés par le manifeste).
 - Finir docs/plans/lot-sur-01-alertes.md — Étape 3 : le 31 octobre après 03:17 UTC, exécution planifiée (résumé dans la page, `/start` puis succès avec durée, e-mail « up » de healthchecks.io attendu puisque le contrôle est *down*) ; relancer ensuite l'échec volontaire pour vérifier l'e-mail « down » ; contrôler l'absence de prix dans les logs et le résumé.
 - Finir docs/plans/lot-orc-01-workflow.md — Étape 4 : vérifier le 31 octobre après 03:17 UTC (`gh api 'repos/AntoanetaStoyanova/cartograph-data/actions/runs?event=schedule'`) ; si rien, workflow temporaire avec cron `*/15 * * * *` pour savoir si un cron peut se déclencher dans ce dépôt. Puis ORC-01 coché dans la roadmap.
@@ -48,6 +48,7 @@
 - `src/cartograph/__init__.py`, `docs/conf.py`, `tests/test_version.py`
 - `pyproject.toml` (`[tool.commitizen]`), `.pre-commit-config.yaml`, `.markdownlint-cli2.yaml`
 - `tasks/__init__.py` (`release`), `tests/test_tasks_release.py`
+- `../CONTRIBUTING.md`, [../docs/plans/roadmap-lots.md](../docs/plans/roadmap-lots.md), `~/.claude/skills/workspace-dev/SKILL.md`
 
 ## [2026-10-30] — Cron d'ORC-01 jamais déclenché, plans SUR-01, STO-01, CI-00 et REL-00
 
