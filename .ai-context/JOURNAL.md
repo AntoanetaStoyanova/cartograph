@@ -10,12 +10,19 @@
 >
 > ## [YYYY-MM-DD] — <titre court de la session>
 > ### Fait
-> ### Reste à faire
+> - Relecture `/cr` de `feature/controle` : `CONTRIBUTING.md` corrigé (« Avant une pull request », specs et plans locaux de `docs/`), commité par Antoaneta.
+- `docs/specs/rel-00-versions-changelog.md` et `docs/plans/rel-00-versions-changelog.md` créés (REL-00). Décisions d'Antoaneta : `feature/…` pour le développement, `develop` pour la qualité, `main` pour la production, jamais modifiée en local ; bump et tag sur `develop` ; changelog avec tous les messages de commit ; `inv release` refusé hors `develop` (pull, `inv ci`, `cz bump`, `inv docs`, push avec tags). Autres décisions : Commitizen, `version_provider = "uv"`, version lue par `importlib.metadata`, `CHANGELOG.md` (`log.md` réservé par okflint), hook `commit-msg`, merge commit seulement sur GitHub, `push_develop` et `push_main` retirées, premier tag `v0.1.0`.
+
+- Plan rel-00-versions-changelog — Étape 1 : Version en un seul endroit. `src/cartograph/__init__.py` et `docs/conf.py` lisent la version par `importlib.metadata` (`import importlib.metadata` dans `conf.py` : un nom `version` y entre en conflit avec la clé Sphinx du même nom) ; `tests/test_version.py`. Ancien `cartograph.egg-info` à la racine (27 octobre, ignoré) supprimé : il masquait la vraie version. Vérifié en passant `pyproject.toml` à 0.1.1 (`__version__`, Sphinx et test suivent), puis remis. Demande d'Antoaneta ajoutée à l'étape 4 : règles de version et préfixes qui partent au changelog dans `CONTRIBUTING.md` et dans `/workspace-dev`. `uv run inv ci` vert (113 tests), `inv okflint` vert. Non commité.
+
+### Reste à faire
 > ### Références
 
 ---
+- [../docs/specs/rel-00-versions-changelog.md](../docs/specs/rel-00-versions-changelog.md), [../docs/plans/rel-00-versions-changelog.md](../docs/plans/rel-00-versions-changelog.md)
+- `src/cartograph/__init__.py`, `docs/conf.py`, `tests/test_version.py`
 
-## [2026-10-30] — Cron d'ORC-01 jamais déclenché, plans SUR-01, STO-01 et CI-00
+## [2026-10-30] — Cron d'ORC-01 jamais déclenché, plans SUR-01, STO-01, CI-00 et REL-00
 
 ### Fait
 
@@ -65,7 +72,8 @@
 
 ### Reste à faire
 
-- Commiter l'étape 5 de CI-00 (Antoaneta) : `docs: contrôles locaux et branches feature dans CONTRIBUTING` ; pull request `feature/controle` → `develop`.
+- Exécuter docs/plans/rel-00-versions-changelog.md — Étape 2 : Commitizen et hook `commit-msg`, sur `feature/controle`.
+- Antoaneta : pull request `feature/controle` → `develop` (merge commit) une fois REL-00 fini (CI-00 et REL-00 ensemble).
 - Exécuter docs/plans/lot-sto-01-manifeste.md — Étape 2 : Workflow, après les vérifications du 31 octobre (manifeste calculé avant les envois, envois pilotés par le manifeste).
 - Finir docs/plans/lot-sur-01-alertes.md — Étape 3 : le 31 octobre après 03:17 UTC, exécution planifiée (résumé dans la page, `/start` puis succès avec durée, e-mail « up » de healthchecks.io attendu puisque le contrôle est *down*) ; relancer ensuite l'échec volontaire pour vérifier l'e-mail « down » ; contrôler l'absence de prix dans les logs et le résumé.
 - Finir docs/plans/lot-orc-01-workflow.md — Étape 4 : vérifier le 31 octobre après 03:17 UTC (`gh api 'repos/AntoanetaStoyanova/cartograph-data/actions/runs?event=schedule'`) ; si rien, workflow temporaire avec cron `*/15 * * * *` pour savoir si un cron peut se déclencher dans ce dépôt. Puis ORC-01 coché dans la roadmap.
