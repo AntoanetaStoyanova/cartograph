@@ -99,17 +99,17 @@ uv run inv hooks       # installe le hook pre-commit
 
 - Si un contrôle corrige un fichier, le commit est refusé : relire la correction, `git add`, recommencer le commit.
 - « Stashing unstaged files » : les modifications hors du commit sont mises de côté pendant les contrôles, puis remises.
-- `git commit --no-verify` saute les contrôles pour un commit de travail ; ils restent dus avant le push.
+- `git commit --no-verify` saute les contrôles pour un commit de travail ; ils restent dus avant la pull request.
 - `tests/fixtures/` (réponses enregistrées de l'API) n'est jamais modifié.
 
-Avant chaque push :
+Avant une pull request :
 
 ```bash
 uv run inv ci          # pre-commit sur tous les fichiers, mypy, pytest
-uv run inv okflint     # en-tête et liens des specs et plans de docs/
+uv run inv okflint     # en-tête et liens des specs et plans locaux de docs/
 ```
 
-Les specs et plans de `docs/` commencent par un en-tête vérifié par okflint (`okf-base.yaml`) :
+Les specs et plans de `docs/` (locaux, non suivis par Git) commencent par un en-tête vérifié par okflint (`okf-base.yaml`) :
 
 ```yaml
 ---
