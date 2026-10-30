@@ -19,8 +19,6 @@ jamais dans PowerShell.
 - VS Code + extension WSL (extensions Python et Ruff installées côté WSL)
 - [cruft](https://cruft.github.io/cruft/) — pour mettre à jour le template
 
-Mise en place pas à pas : [lot-fnd-00-poste](docs/plans/lot-fnd-00-poste.md).
-
 ## Installation
 
 ```bash
@@ -52,6 +50,17 @@ Les sorties vont dans `data/` (ignoré par Git), un fichier par jour, remplacé 
 - `data/runs/` : résumé `collect-AAAA-MM-JJ.json` (statut, nombres, fichiers écrits, sans prix).
 
 Le code de sortie vaut 1 si une étape demandée échoue. Les logs vont dans `logs/`.
+
+## Collecte automatique
+
+Le workflow `Collecte` du dépôt public [`cartograph-data`](https://github.com/AntoanetaStoyanova/cartograph-data) installe ce dépôt depuis `main` et lance la collecte chaque jour à 03:17 UTC :
+
+- prix chaque jour (1 h à 1 h 30), avec le dernier catalogue publié ; le lundi, catalogue puis prix (≈ 3 h 45) ;
+- catalogue publié dans la Release `catalogue` de `cartograph-data` ;
+- prix et brut envoyés dans la Release `data-AAAA-MM` du dépôt privé `cartograph-prices` (secret `PRICES_TOKEN`) ;
+- résumé et log gardés 7 jours en artefact, sans aucun prix.
+
+Relance manuelle : onglet *Actions* de `cartograph-data`, `Collecte`, *Run workflow* (options `catalogue`, `prices`, `languages`, `code_ref`). Relancer le même jour remplace les fichiers du jour. Une exécution sans `catalogue` reprend le dernier catalogue publié.
 
 ## Mettre à jour depuis le template
 

@@ -15,7 +15,78 @@
 
 ---
 
-## [2026-10-28] — Cadrage des flux, COL-01, COL-02, COL-T3 et plan ORC-01
+## [2026-10-30] — Cron d'ORC-01 jamais déclenché, plan SUR-01
+
+### Fait
+
+- Session ouverte (`/workspace-init`). Commit `docs: note COL-T4…` déjà fait (`850f4f6`).
+- Plan lot-orc-01-workflow — Étape 4 : **bloquée**. À 08:38 UTC, aucune exécution `schedule` dans `cartograph-data` (`total_count` 0) : ni le 29 octobre, ni le 30 octobre à 03:17 UTC, alors que `collect.yml` (`17 3 * * *`) est sur `main` depuis `595ea85` (29 octobre, 12:47 UTC), workflow `active`, Actions fonctionnelles (3 exécutions manuelles réussies). Aucun incident Actions sur githubstatus.com depuis le 26 octobre. Deux occasions manquées : ce n'est plus un simple retard. Cases « exécution planifiée » et « ORC-01 coché » laissées vides. Dépôt public, non fork, non archivé, Actions sans restriction : rien dans la configuration n'empêche le cron. Hypothèses : dépôt trop récent (créé le 28 octobre), cron modifié trois fois en 24 h.
+- Workflow `Collecte` désactivé puis réactivé (accord d'Antoaneta) pour réenregistrer le cron : `active`, `updated_at` 2026-10-30 08:46 UTC.
+- Exécution manuelle `41028885710` (prix seuls) lancée à 08:48 UTC pour ne pas perdre le 30 octobre.
+- `docs/specs/lot-sur-01-alertes.md` et `docs/plans/lot-sur-01-alertes.md` créés (SUR-01). Décisions d'Antoaneta : contrôle healthchecks.io en mode cron (`17 3 * * *` UTC, grâce 5 h, N12 à réécrire, une période de 26 h donnerait une fausse alerte chaque lundi) ; résumé de la page d'exécution produit par un module Python testé (`cartograph.bin.collect.report`). Autres décisions : `/start` puis succès ou `/fail` (`if: always()`), ping jamais bloquant, URL en secret `HEALTHCHECKS_PING_URL`, 20 cartes en échec listées au plus.
+- Plan lot-sur-01-alertes — Étape 1 : Module de résumé. `src/cartograph/bin/collect/report.py` (`render_markdown`, `main` ; durée, tableau des étapes, détails : catalogue source, langues absentes, erreur, 20 cartes en échec au plus ; fichiers avec lignes et tailles en Mo) ; `tests/test_collect_report.py` (7 tests, dont l'absence de prix sur le vrai résumé du 28 octobre copié en `tests/fixtures/collect-summary.json`). Typage vérifié par `beartype_this_package` (convention du projet, pas de décorateur). `uv run inv ci` vert (102 tests, couverture 99,82 %). Non commité.
+- `docs/plans/*.md` et `docs/specs/*.md` retirés du dépôt (décision d'Antoaneta : ne pas les montrer) : ajoutés au `.gitignore`, `git rm --cached` sur les 17 fichiers suivis (restés sur le disque), lien vers `lot-fnd-00-poste.md` retiré de `README.md`. Historique déjà poussé non réécrit : les anciennes versions restent lisibles. Non commité.
+
+### Reste à faire
+
+- Exécuter docs/plans/lot-sur-01-alertes.md — Étape 2 : Workflow et healthchecks.io (contrôle healthchecks.io et secret `HEALTHCHECKS_PING_URL` faits le 30 octobre ; reste à Antoaneta : commiter et fusionne l'étape 1 dans `main` de `cartograph`).
+- Finir docs/plans/lot-orc-01-workflow.md — Étape 4 : vérifier le 31 octobre après 03:17 UTC (`gh api 'repos/AntoanetaStoyanova/cartograph-data/actions/runs?event=schedule'`) ; si rien, workflow temporaire avec cron `*/15 * * * *` pour savoir si un cron peut se déclencher dans ce dépôt. Puis ORC-01 coché dans la roadmap.
+- Supprimer les 3 anciens `.log` de `src/cartograph/log/` (suppression refusée par le mode auto, à faire par Antoaneta), puis retirer la ligne `src/cartograph/log/*.log` du `.gitignore`.
+
+### Références
+
+- [../docs/specs/lot-sur-01-alertes.md](../docs/specs/lot-sur-01-alertes.md), [../docs/plans/lot-sur-01-alertes.md](../docs/plans/lot-sur-01-alertes.md)
+- `docs/plans/lot-orc-01-workflow.md`, `../cartograph-data/.github/workflows/collect.yml`
+- `src/cartograph/bin/collect/report.py`, `tests/test_collect_report.py`
+
+## [2026-10-29] — ORC-01 vérifié, prix quotidiens confirmés, COL-T4 tranché
+
+### Fait
+
+- Session ouverte (`/workspace-init`).
+- Plan lot-orc-01-workflow — Étape 4 (partielle). Vérifié par l'API publique de GitHub (`gh` absent de WSL) : exécution manuelle `40717195500` du 28 octobre réussie (job 15:33 → 19:18 UTC, « Collecter » 3 h 44 min 33 s pour 3 h 46 prévues ; toutes les étapes vertes, envoi vers `cartograph-prices` compris). `cards-2026-10-28.parquet` (8,0 Mo) dans la Release `catalogue` : 58 687 lignes (fr 22 170, en 23 736, ja 12 781 ; listes COL-T3 : en 23 770, ja 13 006, écart à expliquer par le résumé), 29 314 produits distincts, aucun `pricing` dans `raw_json`. Environ 88 000 requêtes, soit ≈ 6,5 req/s, comme en local.
+- Cron du 29 octobre à 03:17 UTC **non déclenché** (aucune exécution à 08:00 UTC, workflow `active`). GitHub retarde ou saute parfois les crons, surtout le premier jour après un push.
+- `README.md` : section « Collecte automatique » (dépôts, horaire, lundi catalogue, Releases, relance manuelle) ; case cochée dans le plan.
+- `gh` installé dans WSL et connecté (`AntoanetaStoyanova`, HTTPS).
+- Vérification complète de l'exécution `40717195500` : résumé `ok` / `ok`, 0 échec ; catalogue 2 h 28 min 49 s (6,6 req/s), prix 1 h 15 min 28 s pour 29 314 produits (6,5 req/s), 9 489 cartes sans `idProduct` ; 120 HTTP 503 absorbés. Les écarts en/ja venaient des listes de l'API, pas d'échecs. `data-2026-10` de `cartograph-prices` contient `prices-2026-10-28.parquet` (1,35 Mo), `cards-2026-10-28.json.gz` (15,3 Mo), `prices-2026-10-28.json.gz` (1,6 Mo). Aucun prix dans le log du job, le log de collecte ni le résumé. Cases cochées dans le plan.
+- `docs/specs/col-t3-taille-duree.md` : section « Machine GitHub » (débit confirmé, 503, prix toutes langues ≈ 46 o/ligne, soit ≈ 490 Mo/an en quotidien).
+- Découvert : le cache `setup-uv` n'a pas pris `uv.lock` (clé `…-no-dependency-glob`) : `cache-dependency-glob: code/uv.lock` est résolu depuis `working-directory: code`, il faut `uv.lock`. Sans effet sur la collecte (installation ≈ 2 s).
+- **Collecte hebdomadaire décidée** (Antoaneta : les prix bougent peu ; `avg7` couvre la semaine) : lundi 03:17 UTC, rattrapage le mardi seulement si les fichiers du lundi manquent. `../cartograph-data/.github/workflows/collect.yml` : crons `17 3 * * 1` et `17 3 * * 2`, job `check` (mardi : saut si `cards-<lundi>.parquet` dans `catalogue` et `prices-<lundi>.parquet` dans `data-AAAA-MM`, lus avec `PRICES_TOKEN`), job `collect` sous `needs: check`, catalogue à chaque exécution planifiée, `catalogue` coché par défaut en manuel, téléchargement du dernier catalogue gardé en repli, `cache-dependency-glob: uv.lock`. `actionlint` et `zizmor` sans alerte ; logique du `check` testée sur les vraies Releases. `../cartograph-data/README.md` mis à jour. Non poussé.
+- Documents mis à jour : spec maîtresse (résumé, P1, décision du workflow avec raison et alternative, emplacement, rotation ≈ 15 fichiers par Release, F1, N13, collecte : déclenchement, fréquence, brut, Releases, risques), `cadrage-flux.md` (diagramme, FX2, séquence hebdomadaire avec contrôle du mardi, décision 4), `col-t3-taille-duree.md` (≈ 490 Mo par an en hebdomadaire, sous le confort de 500 Mo), spec ORC-01 (objectif, périmètre, décision « Fréquence », critères cochés : lint, exécution avec catalogue, aucun prix, débit ; critère ajouté : rattrapage du mardi), plan ORC-01, `roadmap-lots.md` (plan et spec), `README.md`. CI verte (95 tests).
+
+- `cartograph-data` poussé par Antoaneta (`d0e8206`). Exécution manuelle sans catalogue `40841546156` réussie : catalogue `cards-2026-10-28.parquet` repris de la Release, 29 314 produits en 1 h 0 min 45 s (8,0 req/s, plus rapide que le 28), 0 échec, `prices-2026-10-29.parquet` (1,34 Mo) et `prices-2026-10-29.json.gz` dans `data-2026-10`, aucun prix dans les logs. Cases cochées dans le plan et la spec.
+
+- Relance du même jour `40857127038` réussie : `prices-2026-10-29.*` remplacés (11:56 UTC), aucun doublon (5 fichiers dans `data-2026-10`, 1 dans `catalogue`) ; 1 h 32 cette fois (≈ 5,3 req/s contre 8,0 le matin, débit TCGdex variable) ; 28 et 22 HTTP 503 absorbés. Roadmap : STO-01 réduit au manifeste, STO-03 à l'archive mensuelle du brut. Cases cochées dans le plan et la spec.
+- À trancher : SUR-T5 (« sept jours de collecte sans trou ») n'a plus de sens en hebdomadaire.
+
+- Critères de fin du plan ORC-01 cochés : `uv run inv ci` (95 tests) et `actionlint` / `zizmor` sur `cartograph-data` ; reste « critères d'acceptation de la spec » (rattrapage du mardi). Documents de `cartograph` non commités (message proposé : `docs: ORC-01 vérifié et collecte hebdomadaire`).
+
+- Question d'Antoaneta sur l'historique pour les modèles : modèle A sans historique (une collecte suffit) ; modèle B ≈ 22 collectes en avril 2027 (≈ 520 000 lignes, mais ≈ 20 semaines indépendantes : exploratoire), l'hebdomadaire ne lui coûte presque rien ; COL-T4 est le levier.
+- `docs/specs/col-t4-price-history.md` et `docs/plans/col-t4-price-history.md` créés. Premier aperçu par `gh api` : sources eBay (fr) et TCGplayer (en), **pas Cardmarket** ; derniers relevés le 9 juin 2025 (eBay) et le 24 septembre 2024 (TCGplayer) ; README « MIT » mais aucun fichier `LICENSE`. Décisions : aucun code de production, clone superficiel hors du dépôt, historique « exploitable » = Cardmarket (ou suivi de Cardmarket démontré) sur 6 mois au moins hebdomadaires, source quotidienne seulement si dépôt vivant et Cardmarket, aucune réutilisation publiée tant que la licence est incertaine ; livrable au format de la note COL-T3.
+
+- Prix du 28 et du 29 octobre comparés (29 314 produits) : en un jour, `trend` change pour 35 %, `avg1` 45 %, `avg7` 36 %, `avg30` 26 %, `avg` / `low` 3-4 % ; Cardmarket recalcule vers 22:55 UTC. TCGplayer présent dans `tcgplayer_json` pour 17 587 produits.
+- **Retour aux prix quotidiens, catalogue le lundi** (décision d'Antoaneta, sur cette mesure) : un relevé quotidien se ramène à l'hebdomadaire, pas l'inverse ; minutes Actions gratuites. `../cartograph-data/.github/workflows/collect.yml` restauré depuis `5c1ddef` avec `cache-dependency-glob: uv.lock` ; `README.md` de `cartograph-data` corrigé ; `actionlint` et `zizmor` sans alerte. Non poussé.
+- Documents remis en quotidien (changements hebdomadaires de `ddac860` annulés avec `git apply -R` sur la spec maîtresse, `cadrage-flux.md`, `docs/specs/roadmap-lots.md`) ; décision du workflow complétée (mesure des changements quotidiens, hebdomadaire en alternative écartée) ; `col-t3-taille-duree.md` (≈ 905 Mo de Parquet par an en quotidien, prix seuls 1 h 01 et 1 h 32) ; spec et plan ORC-01 (décision « Fréquence », critère « une exécution planifiée réussie » à la place du rattrapage du mardi) ; `roadmap-lots.md`, `README.md`, spec COL-T4.
+
+- `cartograph-data` poussé par Antoaneta (`595ea85`) : cron quotidien `17 3 * * *` en ligne (vérifié par `gh api`). `tcgdex/price-history` écarté (arrêté, pas Cardmarket, licence incertaine) : le modèle B s'entraînera sur la collecte propre ; reste à l'écrire dans la note COL-T4.
+
+- Plan col-t4-price-history — Étapes 1 à 3 (version courte, en une séance) : clone superficiel (304 Mo, commit `a1edbb9` du 9 juin 2025) et script jetable. TCGplayer (`en/`, 14 958 cartes, nov. 2022 → sept. 2024, 140 ventes médianes par carte, 6,9 % des cartes avec 26 semaines consécutives) ; eBay (`fr/`, 12 795 cartes, nov. 2022 → juin 2025, 6 ventes médianes, 2,4 %) ; aucune donnée Cardmarket ni japonaise ; identifiants alignés sur TCGdex (99,9 %) ; aucun fichier `LICENSE`. **T4 défavorable** : dépôt non utilisé, modèle B en P3 sur la collecte propre (prototype possible en janvier, évaluation en avril). `docs/specs/col-t4-price-history.md` réécrite en note (méthode, mesures, limites, décision) ; spec maîtresse (décision « Historique initial », F1, sources, collecte, risque du jour manqué, table des tests, question ouverte fermée) ; `roadmap-lots.md` (COL-T4 coché, MLB-01 en P3 seulement). Plan entièrement coché.
+
+### Reste à faire
+
+- Antoaneta : commiter `docs: note COL-T4, tcgdex/price-history écarté`.
+- Finir docs/plans/lot-orc-01-workflow.md — Étape 4 : vérifier la première exécution planifiée (cron de 03:17 UTC, le 30 octobre si GitHub le déclenche) ; puis ORC-01 coché dans la roadmap.
+- Supprimer les 3 anciens `.log` de `src/cartograph/log/` (suppression refusée par le mode auto, à faire par Antoaneta), puis retirer la ligne `src/cartograph/log/*.log` du `.gitignore`.
+
+### Références
+
+- [../docs/specs/col-t4-price-history.md](../docs/specs/col-t4-price-history.md), [../docs/plans/col-t4-price-history.md](../docs/plans/col-t4-price-history.md)
+- `docs/plans/lot-orc-01-workflow.md`, `docs/specs/lot-orc-01-workflow.md`, `docs/specs/col-t3-taille-duree.md`
+- `README.md`, `../cartograph-data/.github/workflows/collect.yml`, `../cartograph-data/README.md`
+- `docs/specs/roadmap-lots.md`
+- `docs/specs/Spécification du projet final M2 plateforme de données Pokémon TCG (1).md`, `docs/specs/cadrage-flux.md`, `docs/plans/roadmap-lots.md`
+
+## [2026-10-28] — Cadrage, COL-01, COL-02, COL-T3 et ORC-01 (étapes 1 à 3)
 
 ### Fait
 
@@ -59,11 +130,15 @@
 - Plan lot-orc-01-workflow — Étape 2 : Workflow de collecte. `../cartograph-data/.github/workflows/collect.yml` : cron `17 3 * * *`, `workflow_dispatch` (`catalogue`, `prices`, `languages`, `code_ref`), `permissions: {}` puis `contents: write` sur le job, `concurrency` sans annulation, `timeout-minutes: 300` ; clone de `cartograph` dans `code/` + `setup-uv` (cache sur `uv.lock`) + `uv sync --frozen --no-dev` ; étape `plan` (catalogue le lundi au cron ou sur paramètre) ; dernier `cards-*.parquet` téléchargé depuis la Release `catalogue` dès que les prix sont demandés (repli si le catalogue du jour échoue) ; collecte avec paramètres passés par `env:`. Actions épinglées par SHA. `actionlint` (avec shellcheck) et `zizmor --persona=pedantic` sans alerte ; logique bash simulée en local ; installation depuis `main` testée. Non poussé.
 - Plan lot-orc-01-workflow — Étape 3 : Publication des sorties. `collect.yml` : collecte en `continue-on-error` avec délai propre de 270 min ; étape `summary` (date et statut du catalogue depuis `collect-*.json`) ; catalogue du jour publié dans la Release `catalogue` (créée si absente, `--clobber`) seulement si son statut est `ok` ; `prices-<jour>.parquet` et `raw/*-<jour>.json.gz` envoyés dans `data-AAAA-MM` de `cartograph-prices` avec `PRICES_TOKEN` (le catalogue précédent téléchargé n'est jamais renvoyé) ; résumé et log en artefact 7 jours ; échec du job en dernière étape si la collecte a échoué. `upload-artifact` v7.0.2 épinglé par SHA. `actionlint` et `zizmor` sans alerte ; publication simulée en local avec un faux `gh` (téléchargement de `jq` refusé par le mode auto : `jq` remplacé par un script Python, syntaxe des filtres `jq` non testée en local). Découvert : `cartograph-prices` est vide, `gh release create` y échouera sans un premier commit.
 - README poussé dans `cartograph-prices` (`03ffe70`), `collect.yml` poussé dans `cartograph-data` (`5c1ddef`) : le cron est actif.
+- Première exécution manuelle du workflow `Collecte` lancée le 28 octobre 2026 vers 15:31 UTC (`catalogue` et `prices` cochés, langues vides, `code_ref` = `main`). Installation (≈ 2 min 30) et démarrage de la collecte OK : `catalogue fr : 22170 cartes` (15 de plus que la veille). TCGdex renvoie des HTTP 503 depuis la machine GitHub (jamais vus en local), surtout sur la première carte d'une série (`ex11-1`, `swsh2-1`) ; les nouvelles tentatives aboutissent. Fin attendue vers 19:15-19:30 UTC si le débit tient.
+- Session arrêtée pendant que l'exécution tourne ; plan ORC-01 annoté (étape 4 : exécution en cours, cron du 29 octobre comme test sans catalogue).
 
 ### Reste à faire
 
-- Lancer à la main le workflow `Collecte` avec `catalogue` coché (≈ 3 h 45), avant le cron de 03:17 UTC qui n'aurait aucun catalogue dans la Release.
-- Exécuter docs/plans/lot-orc-01-workflow.md — Étape 4 : Exécutions manuelles et documentation.
+- **Reprise : vérifier la première exécution manuelle** (onglet Actions de `cartograph-data`, exécution du 28 octobre). Relever : statut, durée de « Collecter », sortie de « Lire le résumé » (fetched / failed par étape), nombre de 503 et de lignes `échec`, débit (cartes ÷ durée) à comparer aux 6,4 / 7,0 req/s locaux. Vérifier `cards-2026-10-28.parquet` dans la Release `catalogue` de `cartograph-data`, et `prices-2026-10-28.parquet` + `raw/cards-…` + `raw/prices-….json.gz` dans `data-2026-10` de `cartograph-prices`.
+  - Si elle a échoué : lire le message de l'étape rouge et l'artefact `collecte-<run_id>` (résumé + log). Si l'arrêt vient des 503 (20 échecs d'affilée), piste : allonger la pause ou les tentatives dans `config` de `cartograph` (`REQUEST_PAUSE_S`, `MAX_RETRIES`), à discuter avant de changer.
+- Le cron de 03:17 UTC du 29 octobre (jeudi, prix seuls) servira de test « sans catalogue » : il doit télécharger le catalogue depuis la Release. Vérifier son exécution aussi.
+- Puis finir docs/plans/lot-orc-01-workflow.md — Étape 4 : relance manuelle le même jour (sans catalogue) pour vérifier le remplacement sans doublon ; recherche de prix dans les logs et l'artefact téléchargés ; section « Machine GitHub » dans `docs/specs/col-t3-taille-duree.md` (débit, durées, 503) ; section « Collecte automatique » du `README.md` ; roadmap (ORC-01 coché, STO-01 réduit au manifeste, STO-03 à l'archive mensuelle du brut).
 - Supprimer les 3 anciens `.log` de `src/cartograph/log/` (suppression refusée par le mode auto, à faire par Antoaneta), puis retirer la ligne `src/cartograph/log/*.log` du `.gitignore`.
 - COL-T4 (exploration de `tcgdex/price-history`) possible en parallèle.
 
