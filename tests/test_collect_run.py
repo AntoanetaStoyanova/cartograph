@@ -1,25 +1,22 @@
 import json
 import logging
-from collections.abc import Callable, Iterator
-from datetime import UTC, date, datetime
+from collections.abc import Callable, Iterator, Sequence
+from datetime import UTC, date, datetime, time, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
 import httpx
-import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
 from cartograph.bin.collect import batch, run
 from cartograph.bin.collect.client import TcgdexClient
-from cartograph.bin.collect.prices import price_targets, price_targets_from_table
 from cartograph.bin.collect.run import collect, latest_catalogue, main
-from cartograph.bin.collect.snapshot import card_table, snapshot_paths
+from cartograph.bin.collect.snapshot import snapshot_paths
 from cartograph.config import LANGUAGES
 from tests.conftest import fixture_route, load_fixture, mock_client, price_values
 
 DAY = date(2026, 10, 28)
-FETCHED_AT = datetime(2026, 10, 28, 9, 30, tzinfo=UTC)
 CARDS = {
     "fr": ["fr_exu-%3F", "fr_pop9-1", "fr_swsh3-136"],
     "en": ["en_exu-%3F", "en_pop9-1", "en_swsh3-136"],
@@ -27,8 +24,8 @@ CARDS = {
 }
 
 
-def _now() -> datetime:
-    return FETCHED_AT
+def _clock(day: date = DAY) -> Callable[[], datetime]:
+    return lambda: datetime.combine(day, time(9, 30), UTC)
 
 
 def _collect(
@@ -37,27 +34,15 @@ def _collect(
     day: date = DAY,
     catalogue: bool = True,
     prices: bool = True,
-) -> dict[str, object]:
-    return collect(client, data_dir, day, catalogue, prices, LANGUAGES, now=_now)
+    languages: Sequence[str] = LANGUAGES,
+) -> Any:
+    return collect(client, data_dir, catalogue, prices, languages, now=_clock(day))
 
 
 def _steps(summary: dict[str, object]) -> dict[str, dict[str, object]]:
     steps = summary["steps"]
     assert isinstance(steps, dict)
     return steps
-
-
-def test_price_targets_from_table_matches_price_targets() -> None:
-    catalogues = {
-        language: [load_fixture(name) for name in names]
-        for language, names in CARDS.items()
-    }
-    table = pa.concat_tables(
-        card_table(cards, language, FETCHED_AT)
-        for language, cards in catalogues.items()
-    ).sort_by([("card_id", "ascending"), ("language", "ascending")])
-
-    assert price_targets_from_table(table) == price_targets(catalogues)
 
 
 def test_latest_catalogue_ignores_other_files(tmp_path: Path) -> None:
@@ -202,6 +187,18 @@ def test_collect_uses_utc_timestamps(
     )
 
 
+def test_collect_day_is_utc_date_of_start(
+    tcgdex_client: TcgdexClient, tmp_path: Path
+) -> None:
+    paris = timezone(timedelta(hours=2))
+    start = datetime(2026, 10, 29, 0, 30, tzinfo=paris)
+
+    summary = collect(tcgdex_client, tmp_path, True, False, LANGUAGES, lambda: start)
+
+    assert summary["date"] == "2026-10-28"
+    assert snapshot_paths(tmp_path, DAY).cards.exists()
+
+
 def test_collect_prices_stopped_by_outage_writes_no_prices(
     tcgdex_client: TcgdexClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -278,7 +275,9 @@ def test_collect_bad_card_keeps_raw_catalogue(tmp_path: Path) -> None:
 def test_collect_prices_reports_missing_languages(
     tcgdex_client: TcgdexClient, tmp_path: Path, caplog: pytest.LogCaptureFixture
 ) -> None:
-    collect(tcgdex_client, tmp_path, date(2026, 10, 25), True, False, ["fr"], now=_now)
+    _collect(
+        tcgdex_client, tmp_path, date(2026, 10, 25), prices=False, languages=["fr"]
+    )
 
     with caplog.at_level(logging.WARNING):
         summary = _collect(tcgdex_client, tmp_path, catalogue=False)
@@ -293,9 +292,11 @@ def test_collect_prices_reports_missing_languages(
 def test_collect_prices_fails_when_no_requested_language(
     tcgdex_client: TcgdexClient, tmp_path: Path
 ) -> None:
-    collect(tcgdex_client, tmp_path, date(2026, 10, 25), True, False, ["fr"], now=_now)
+    _collect(
+        tcgdex_client, tmp_path, date(2026, 10, 25), prices=False, languages=["fr"]
+    )
 
-    summary = collect(tcgdex_client, tmp_path, DAY, False, True, ["ja"], now=_now)
+    summary = _collect(tcgdex_client, tmp_path, catalogue=False, languages=["ja"])
 
     prices = _steps(summary)["prices"]
     assert prices["status"] == "failed"
@@ -309,10 +310,8 @@ def fake_collect(
 ) -> Iterator[dict[str, Any]]:
     calls: dict[str, Any] = {"status": "ok"}
 
-    def fake(
-        client: TcgdexClient, data_dir: Path, day: date, **kwargs: Any
-    ) -> dict[str, Any]:
-        calls.update(data_dir=data_dir, day=day, **kwargs)
+    def fake(client: TcgdexClient, data_dir: Path, **kwargs: Any) -> dict[str, Any]:
+        calls.update(data_dir=data_dir, **kwargs)
         return {"steps": {"catalogue": {"status": "skipped"}, "prices": calls}}
 
     monkeypatch.setattr(run, "collect", fake)
@@ -332,7 +331,6 @@ def test_main_parses_options(fake_collect: dict[str, Any], tmp_path: Path) -> No
     assert fake_collect["prices"] is True
     assert fake_collect["languages"] == ("fr", "ja")
     assert fake_collect["data_dir"] == tmp_path
-    assert fake_collect["day"] == datetime.now(UTC).date()
     assert list((tmp_path / "logs").glob("cartograph_*.log"))
 
 

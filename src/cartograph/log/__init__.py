@@ -65,7 +65,18 @@ def setup_logging(
 
 
 def _prune_logs(log_dir: Path, name: str, keep: int) -> None:
-    """Supprime les plus anciens ``<name>_*.log`` pour n'en garder que ``keep``."""
+    """
+    Supprime les plus anciens ``<name>_*.log`` pour n'en garder que ``keep``.
+
+    Parameters
+    ----------
+    log_dir : Path
+        Le chemin complète de /logs
+    name : str
+        nom du projet
+    keep : int
+        nb de log a garder
+    """
     # L'horodatage AAAAMMJJ_HHMMSS rend l'ordre alphabétique chronologique.
     log_files = sorted(log_dir.glob(f"{name}_*.log"))
     for old_file in log_files[: max(len(log_files) - keep, 0)]:

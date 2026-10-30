@@ -18,24 +18,25 @@ snapshot
     Chemins datés, tables typées sans prix dans le catalogue, écriture atomique.
 run
     Enchaînement catalogue puis prix, résumé d'exécution.
+report
+    Résumé Markdown pour la page d'exécution GitHub.
+manifest
+    Manifeste quotidien sans prix, avec empreintes des fichiers.
 
 Examples
 --------
->>> from cartograph.bin.collect.catalogue import fetch_catalogue
+>>> from datetime import UTC, datetime
+>>> from pathlib import Path
 >>> from cartograph.bin.collect.client import TcgdexClient
->>> from cartograph.bin.collect.prices import fetch_prices, price_targets
+>>> from cartograph.bin.collect.run import collect
 >>> with TcgdexClient() as client:  # doctest: +SKIP
-...     catalogues = {
-...         language: fetch_catalogue(client, language).items
-...         for language in ("fr", "en", "ja")
-...     }
-...     prices = fetch_prices(client, price_targets(catalogues))
->>> prices.failed  # doctest: +SKIP
-[]
+...     summary = collect(client, Path("data"), True, True, ("fr", "en", "ja"))
+>>> summary["steps"]["prices"]["status"]  # doctest: +SKIP
+'ok'
 """
 
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Literal, NotRequired, TypedDict
 
 
 @dataclass(frozen=True)
@@ -48,8 +49,74 @@ class FetchResult:
     items : list[dict[str, Any]]
         Enregistrements récupérés, JSON brut de l'API.
     failed : list[str]
-        Identifiants des cartes en échec.
+        Cartes en échec, au format ``langue/identifiant`` (une carte peut
+        exister dans plusieurs langues).
     """
 
     items: list[dict[str, Any]]
     failed: list[str]
+
+
+class FileSummary(TypedDict):
+    """Fichier écrit par une étape : nom, lignes ou enregistrements, octets."""
+
+    name: str
+    rows: int
+    bytes: int
+
+
+class StepSummary(TypedDict):
+    """
+    Bilan d'une étape de la collecte, sans aucun prix.
+
+    Attributes
+    ----------
+    status : {"ok", "failed", "skipped"}
+        ``skipped`` si l'étape n'a pas été demandée.
+    fetched : int
+        Fiches ou prix récupérés.
+    failed : list[str]
+        Cartes en échec, au format ``langue/identifiant``.
+    skipped_without_id_product : int
+        Cartes ignorées faute de produit Cardmarket (étape prix).
+    files : list[FileSummary]
+        Fichiers écrits, le Parquet avant le brut.
+    source : str | None
+        Catalogue utilisé pour les prix.
+    missing_languages : list[str]
+        Langues demandées absentes du catalogue utilisé pour les prix ; absent
+        des premiers résumés (28 octobre 2026).
+    error : str | None
+        Cause de l'échec de l'étape.
+    """
+
+    status: Literal["ok", "failed", "skipped"]
+    fetched: int
+    failed: list[str]
+    skipped_without_id_product: int
+    files: list[FileSummary]
+    source: str | None
+    missing_languages: NotRequired[list[str]]
+    error: str | None
+
+
+class CollectSummary(TypedDict):
+    """
+    Résumé ``runs/collect-AAAA-MM-JJ.json`` d'une collecte, sans aucun prix.
+
+    Écrit par ``run``, lu par ``report`` et ``manifest``.
+
+    Attributes
+    ----------
+    date : str
+        Jour UTC de la collecte, ``AAAA-MM-JJ``.
+    started_at, finished_at : str
+        Début et fin, ISO 8601 en UTC.
+    steps : dict[str, StepSummary]
+        Bilan par étape : ``catalogue``, ``prices``.
+    """
+
+    date: str
+    started_at: str
+    finished_at: str
+    steps: dict[str, StepSummary]

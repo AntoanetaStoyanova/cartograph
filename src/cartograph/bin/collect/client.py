@@ -34,16 +34,17 @@ logger = logging.getLogger(__name__)
 # ========  Les Exceptions ========
 # deux niveaux d'erreur, en héritage:
 # - TcgdexError: erreur générique
-# - CardNotFoundError: cas particulier du 404
-# L'appelant peut faire except CardNotFoundError pour traiter specifiquement
-# "la carte n'existe pas", ou except TcgdexError attraper d'un coup grâce à l'héritage
+# - NotFoundError: cas particulier du 404 (carte ou liste)
+# L'appelant peut faire except NotFoundError pour traiter specifiquement
+# "la ressource n'existe pas", ou except TcgdexError attraper d'un coup grâce à
+# l'héritage
 
 
 class TcgdexError(Exception):
     """Erreur définitive d'un appel à l'API TCGdex."""
 
 
-class CardNotFoundError(TcgdexError):
+class NotFoundError(TcgdexError):
     """Ressource absente de l'API (réponse 404)."""
 
 
@@ -61,8 +62,8 @@ class TcgdexClient:
     []
     """
 
-    # mémorise les paramètre dans l'objet et construit le client HTTP et crée
-    # un navigateur sans écran préconfiguré
+    # mémorise les paramètres dans l'objet et construit le client HTTP, réutilisé
+    # pour toutes les requêtes (en-têtes, délai et connexion partagés)
     def __init__(
         self,
         base_url: str = TCGDEX_BASE_URL,
@@ -186,7 +187,7 @@ class TcgdexClient:
 
         Raises
         ------
-        CardNotFoundError
+        NotFoundError
             Si l'API répond 404, y compris pour une liste (``/fr/cards``) si
             ``base_url`` est fausse.
         TcgdexError
@@ -212,7 +213,7 @@ class TcgdexClient:
             else:
                 # la ressource n'existe pas
                 if response.status_code == 404:
-                    raise CardNotFoundError(f"{path} introuvable (404)")
+                    raise NotFoundError(f"{path} introuvable (404)")
                 # erreur définitive (400, 403…) ; sinon on renvoie le JSON
                 if response.status_code not in RETRY_STATUSES:
                     if response.is_error:

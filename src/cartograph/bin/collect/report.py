@@ -12,20 +12,21 @@ import sys
 from collections.abc import Sequence
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+
+from cartograph.bin.collect import CollectSummary, StepSummary
 
 MAX_FAILED = 20
 _STEP_NAMES = {"catalogue": "Catalogue", "prices": "Prix"}
 _STATUSES = {"ok": "✅ ok", "failed": "❌ échec"}
 
 
-def render_markdown(summary: dict[str, Any]) -> str:
+def render_markdown(summary: CollectSummary) -> str:
     """
     Met en forme le résumé d'une collecte.
 
     Parameters
     ----------
-    summary : dict[str, Any]
+    summary : CollectSummary
         Contenu de ``collect-AAAA-MM-JJ.json``.
 
     Returns
@@ -52,7 +53,7 @@ def render_markdown(summary: dict[str, Any]) -> str:
         "| Étape | Statut | Récupérées | En échec | Sans idProduct |",
         "| --- | --- | ---: | ---: | ---: |",
     ]
-    steps: dict[str, dict[str, Any]] = summary["steps"]
+    steps = summary["steps"]
     for name, step in steps.items():
         label = _STEP_NAMES.get(name, name)
         if step["status"] == "skipped":
@@ -100,7 +101,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     return 0
 
 
-def _details(label: str, step: dict[str, Any]) -> list[str]:
+def _details(label: str, step: StepSummary) -> list[str]:
     """Lignes de détail d'une étape : catalogue source, langues, erreur, échecs."""
     details = []
     if step.get("source"):
@@ -110,7 +111,7 @@ def _details(label: str, step: dict[str, Any]) -> list[str]:
         details.append(f"- Langues absentes du catalogue : {languages}")
     if step.get("error"):
         details.append(f"- Erreur : `{step['error']}`")
-    failed: list[str] = step["failed"]
+    failed = step["failed"]
     if failed:
         shown = ", ".join(f"`{card}`" for card in failed[:MAX_FAILED])
         rest = len(failed) - MAX_FAILED

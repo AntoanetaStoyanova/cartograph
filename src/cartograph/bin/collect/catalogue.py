@@ -1,5 +1,6 @@
 """
-Catalogue d'une langue : liste des identifiants et fiches complètes.
+Catalogue d'une langue : liste des identifiants (par exemple ``/fr/cards``)
+et fiches complètes.
 """
 
 from collections.abc import Sequence
@@ -59,7 +60,7 @@ def fetch_catalogue(
     Returns
     -------
     FetchResult
-        Fiches récupérées et identifiants en échec.
+        Fiches récupérées et cartes en échec (``langue/identifiant``).
 
     Raises
     ------
@@ -73,15 +74,16 @@ def fetch_catalogue(
     -----
     Une carte en échec est notée dans ``failed`` et la collecte continue.
     """
-    _check_language(language)
     if card_ids is None:
         card_ids = list_card_ids(client, language)
+    else:
+        _check_language(language)
     return fetch_each(
         client,
         card_ids,
         path=lambda card_id: card_path(language, card_id),
         build=lambda _, card: card,
-        card_id=lambda card_id: card_id,
+        card_id=lambda card_id: f"{language}/{card_id}",
         label=f"catalogue {language}",
     )
 

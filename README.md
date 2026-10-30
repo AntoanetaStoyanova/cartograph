@@ -60,6 +60,12 @@ Le workflow `Collecte` du dépôt public [`cartograph-data`](https://github.com/
 - prix et brut envoyés dans la Release `data-AAAA-MM` du dépôt privé `cartograph-prices` (secret `PRICES_TOKEN`) ;
 - résumé et log gardés 7 jours en artefact, sans aucun prix.
 
+Surveillance :
+
+- bilan de chaque exécution dans sa page (*Summary*) : statut par étape, nombres, cartes en échec, fichiers écrits, durée, sans aucun prix ;
+- [healthchecks.io](https://healthchecks.io) reçoit un signal au début et à la fin de chaque exécution, et envoie un e-mail si la collecte échoue ou si aucune collecte réussie n'arrive avant 08:17 UTC (cron non déclenché, exécution bloquée) ;
+- GitHub envoie un e-mail quand une exécution échoue.
+
 Relance manuelle : onglet *Actions* de `cartograph-data`, `Collecte`, *Run workflow* (options `catalogue`, `prices`, `languages`, `code_ref`). Relancer le même jour remplace les fichiers du jour. Une exécution sans `catalogue` reprend le dernier catalogue publié.
 
 ## Mettre à jour depuis le template

@@ -3,7 +3,7 @@ from collections.abc import Callable
 import httpx
 import pytest
 
-from cartograph.bin.collect.client import CardNotFoundError, TcgdexClient, TcgdexError
+from cartograph.bin.collect.client import NotFoundError, TcgdexClient, TcgdexError
 from cartograph.config import MAX_RETRY_AFTER_S, TCGDEX_USER_AGENT
 
 Handler = Callable[[httpx.Request], httpx.Response]
@@ -113,7 +113,7 @@ def test_get_json_raises_after_max_retries() -> None:
 def test_get_json_404_raises_card_not_found_without_retry() -> None:
     handler, paths = _responses(httpx.Response(404))
 
-    with _client(handler, []) as client, pytest.raises(CardNotFoundError):
+    with _client(handler, []) as client, pytest.raises(NotFoundError):
         client.get_json("/fr/cards/inconnue")
     assert len(paths) == 1
 
@@ -123,7 +123,7 @@ def test_get_json_other_4xx_raises_without_retry() -> None:
 
     with _client(handler, []) as client, pytest.raises(TcgdexError) as excinfo:
         client.get_json("/a")
-    assert not isinstance(excinfo.value, CardNotFoundError)
+    assert not isinstance(excinfo.value, NotFoundError)
     assert len(paths) == 1
 
 

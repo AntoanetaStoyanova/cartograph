@@ -20,7 +20,6 @@ from typing import Any, BinaryIO
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from cartograph.bin.collect.prices import card_id_product
 from cartograph.config import SNAPSHOT_COMPRESSION
 
 logger = logging.getLogger(__name__)
@@ -32,7 +31,6 @@ _CM_PRICE_FIELDS = {
 }
 _CM_KNOWN_FIELDS = {"updated", "unit", "idProduct", *_CM_PRICE_FIELDS}
 _UTC_TIMESTAMP = pa.timestamp("us", tz="UTC")
-
 PRICE_SCHEMA = pa.schema(
     [
         ("language", pa.string()),
@@ -45,7 +43,12 @@ PRICE_SCHEMA = pa.schema(
         ("tcgplayer_json", pa.string()),
     ]
 )
-"""Schéma des snapshots de prix : une ligne par produit Cardmarket."""
+"""
+Schéma des snapshots de prix : une ligne par produit Cardmarket.
+
+``fetched_at`` est l'heure de la requête de chaque produit : la collecte des
+prix dure plus d'une heure.
+"""
 
 CARD_SCHEMA = pa.schema(
     [
@@ -65,7 +68,12 @@ CARD_SCHEMA = pa.schema(
         ("raw_json", pa.string()),
     ]
 )
-"""Schéma des snapshots du catalogue : une ligne par carte et par langue, sans prix."""
+"""
+Schéma des snapshots du catalogue : une ligne par carte et par langue, sans prix.
+
+``fetched_at`` est l'heure du début de l'étape, la même pour toutes les cartes :
+le catalogue est un instantané, publié en entier ou pas du tout.
+"""
 
 
 @dataclass(frozen=True)
@@ -112,8 +120,6 @@ def snapshot_paths(data_dir: Path, day: date) -> SnapshotPaths:
 
     Examples
     --------
-    >>> from datetime import UTC, date, datetime
-    >>> from pathlib import Path
     >>> snapshot_paths(Path("data"), date(2026, 10, 28)).prices.as_posix()
     'data/snapshots/prices-2026-10-28.parquet'
     """
@@ -176,6 +182,7 @@ def price_table(records: Sequence[dict[str, Any]]) -> pa.Table:
     return pa.Table.from_pylist(rows, schema=PRICE_SCHEMA)
 
 
+# garantie que le catalogue public ne contient aucun prix.
 def strip_prices(card: dict[str, Any]) -> dict[str, Any]:
     """
     Copie une fiche sans aucune clé ``pricing``, à toute profondeur.
@@ -212,7 +219,7 @@ def card_table(
     language : str
         Langue des fiches.
     fetched_at : datetime
-        Date de la collecte, convertie en UTC.
+        Début de l'étape du catalogue, converti en UTC (voir ``CARD_SCHEMA``).
 
     Returns
     -------
@@ -233,7 +240,7 @@ def card_table(
             "category": card.get("category"),
             "illustrator": card.get("illustrator"),
             "image": card.get("image"),
-            "id_product": card_id_product(card),
+            "id_product": _card_id_product(card),
             "updated": _utc(card.get("updated")),
             "fetched_at": fetched_at_utc,
             "raw_json": json.dumps(
@@ -320,6 +327,8 @@ def write_json_gz(obj: Any, path: Path) -> int:
     return _write_atomic(path, write)
 
 
+# l'écriture est atomique : un fichier temporaire est écrit puis renommé avec
+# os.replace ; une relance le même jour remplace les fichiers du jour.
 def _write_atomic(path: Path, write: Callable[[BinaryIO], None]) -> int:
     """
     Écrit dans un fichier temporaire du même dossier puis le renomme.
@@ -346,6 +355,25 @@ def _write_atomic(path: Path, write: Callable[[BinaryIO], None]) -> int:
         Path(temporary).unlink(missing_ok=True)
         raise
     return path.stat().st_size
+
+
+def _card_id_product(card: dict[str, Any]) -> int | None:
+    """
+    Renvoie le produit Cardmarket d'une fiche.
+
+    Parameters
+    ----------
+    card : dict[str, Any]
+        Fiche complète de l'API.
+
+    Returns
+    -------
+    int | None
+        ``pricing.cardmarket.idProduct``, ``None`` si absent.
+    """
+    cardmarket = (card.get("pricing") or {}).get("cardmarket") or {}
+    id_product: int | None = cardmarket.get("idProduct")
+    return id_product
 
 
 def _utc(value: str | None) -> datetime | None:
