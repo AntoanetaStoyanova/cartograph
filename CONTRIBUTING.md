@@ -79,6 +79,49 @@ uv run pytest          # lance tous les tests + coverage
 
 ---
 
+## Contrôles
+
+Une fois après le clonage :
+
+```bash
+uv sync
+uv run inv hooks       # installe le hook pre-commit
+```
+
+À chaque `git commit`, pre-commit contrôle les fichiers du commit (`.pre-commit-config.yaml`) :
+
+| Fichiers | Contrôles |
+| --- | --- |
+| Tous | fins de ligne LF, fin de fichier, espaces en fin de ligne, BOM, gros fichiers, casse des noms |
+| Python | `ruff check`, `ruff format` |
+| Markdown | markdownlint (`.markdownlint-cli2.yaml`) |
+| YAML, JSON, TOML | validité ; prettier formate le YAML et le JSON |
+
+- Si un contrôle corrige un fichier, le commit est refusé : relire la correction, `git add`, recommencer le commit.
+- « Stashing unstaged files » : les modifications hors du commit sont mises de côté pendant les contrôles, puis remises.
+- `git commit --no-verify` saute les contrôles pour un commit de travail ; ils restent dus avant le push.
+- `tests/fixtures/` (réponses enregistrées de l'API) n'est jamais modifié.
+
+Avant chaque push :
+
+```bash
+uv run inv ci          # pre-commit sur tous les fichiers, mypy, pytest
+uv run inv okflint     # en-tête et liens des specs et plans de docs/
+```
+
+Les specs et plans de `docs/` commencent par un en-tête vérifié par okflint (`okf-base.yaml`) :
+
+```yaml
+---
+type: plan             # spec, plan, note ou reference
+statut: en cours       # brouillon, en cours, fait ou abandonné
+redige_le: 2026-10-30
+lot: CI-00             # facultatif
+---
+```
+
+---
+
 ## Organisation du code
 
 ```text
@@ -95,7 +138,8 @@ src/cartograph/
 
 ## Git
 
-- Branche de développement : `develop`
+- Branches : `main` (stable), `develop` (intégration), `feature/<sujet>` créée depuis `develop` pour chaque travail
+- Une branche `feature/…` se pousse librement ; elle rejoint `develop` par une pull request, puis `develop` rejoint `main` par une pull request
 - Format des commits — **Conventional Commits** :
 
 | Préfixe | Usage |
