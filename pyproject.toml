@@ -1,6 +1,6 @@
 [project]
 name = "cartograph"
-version = "0.1.0"
+version = "0.2.0"
 description = "Une plateforme de données qui suit les prix des cartes Pokémon, identifie une carte à partir d’une photo et estime sa valeur."
 readme = "README.md"
 requires-python = ">=3.13"
