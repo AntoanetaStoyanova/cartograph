@@ -81,7 +81,7 @@ uv run pytest          # lance tous les tests + coverage
 
 ## Organisation du code
 
-```
+```text
 src/cartograph/
 ├── __main__.py     # uniquement : from . import main; main()
 ├── bin/            # modules métier (fonctions), importés en cartograph.bin.<module>
@@ -99,7 +99,7 @@ src/cartograph/
 - Format des commits — **Conventional Commits** :
 
 | Préfixe | Usage |
-|---------|-------|
+| --- | --- |
 | `feat:` | nouvelle fonctionnalité |
 | `fix:` | correction de bug |
 | `refactor:` | réécriture sans changement de comportement |
