@@ -5,6 +5,7 @@ config:
     siblings_only: true
 
 ignores:
+  - CHANGELOG.md
   - .ai-context/**
   - docs/**
   - tests/fixtures/**

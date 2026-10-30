@@ -10,17 +10,44 @@
 >
 > ## [YYYY-MM-DD] — <titre court de la session>
 > ### Fait
-> - Relecture `/cr` de `feature/controle` : `CONTRIBUTING.md` corrigé (« Avant une pull request », specs et plans locaux de `docs/`), commité par Antoaneta.
-- `docs/specs/rel-00-versions-changelog.md` et `docs/plans/rel-00-versions-changelog.md` créés (REL-00). Décisions d'Antoaneta : `feature/…` pour le développement, `develop` pour la qualité, `main` pour la production, jamais modifiée en local ; bump et tag sur `develop` ; changelog avec tous les messages de commit ; `inv release` refusé hors `develop` (pull, `inv ci`, `cz bump`, `inv docs`, push avec tags). Autres décisions : Commitizen, `version_provider = "uv"`, version lue par `importlib.metadata`, `CHANGELOG.md` (`log.md` réservé par okflint), hook `commit-msg`, merge commit seulement sur GitHub, `push_develop` et `push_main` retirées, premier tag `v0.1.0`.
-
-- Plan rel-00-versions-changelog — Étape 1 : Version en un seul endroit. `src/cartograph/__init__.py` et `docs/conf.py` lisent la version par `importlib.metadata` (`import importlib.metadata` dans `conf.py` : un nom `version` y entre en conflit avec la clé Sphinx du même nom) ; `tests/test_version.py`. Ancien `cartograph.egg-info` à la racine (27 octobre, ignoré) supprimé : il masquait la vraie version. Vérifié en passant `pyproject.toml` à 0.1.1 (`__version__`, Sphinx et test suivent), puis remis. Demande d'Antoaneta ajoutée à l'étape 4 : règles de version et préfixes qui partent au changelog dans `CONTRIBUTING.md` et dans `/workspace-dev`. `uv run inv ci` vert (113 tests), `inv okflint` vert. Non commité.
-
-### Reste à faire
+> - ce qui a été fait
+>
+> ### Reste à faire
+> - ce qu'il reste à faire
+>
 > ### Références
+> - fichiers, specs, plans
 
 ---
+
+## [2026-10-30] — REL-00 : Commitizen, inv release et tag v0.1.0
+
+### Fait
+
+- Relecture `/cr` de `feature/controle` : `CONTRIBUTING.md` corrigé (« Avant une pull request », specs et plans locaux de `docs/`), commité par Antoaneta.
+- `docs/specs/rel-00-versions-changelog.md` et `docs/plans/rel-00-versions-changelog.md` créés (REL-00). Décisions d'Antoaneta : `feature/…` pour le développement, `develop` pour la qualité, `main` pour la production, jamais modifiée en local ; bump et tag sur `develop` ; changelog avec tous les messages de commit ; `inv release` refusé hors `develop` (pull, `inv ci`, `cz bump`, `inv docs`, push avec tags). Autres décisions : Commitizen, `version_provider = "uv"`, version lue par `importlib.metadata`, `CHANGELOG.md` (`log.md` réservé par okflint), hook `commit-msg`, merge commit seulement sur GitHub, `push_develop` et `push_main` retirées, premier tag `v0.1.0`.
+- Plan rel-00-versions-changelog — Étape 1 : Version en un seul endroit. `src/cartograph/__init__.py` et `docs/conf.py` lisent la version par `importlib.metadata` (`import importlib.metadata` dans `conf.py` : un nom `version` y entre en conflit avec la clé Sphinx du même nom) ; `tests/test_version.py`. Ancien `cartograph.egg-info` à la racine (27 octobre, ignoré) supprimé : il masquait la vraie version. Vérifié en passant `pyproject.toml` à 0.1.1 (`__version__`, Sphinx et test suivent), puis remis. Demande d'Antoaneta ajoutée à l'étape 4 : règles de version et préfixes qui partent au changelog dans `CONTRIBUTING.md` et dans `/workspace-dev`. `uv run inv ci` vert (113 tests), `inv okflint` vert. Non commité.
+- Plan rel-00-versions-changelog — Étape 2 : Commitizen et hook `commit-msg`. `commitizen` 4.19.3 en dépendance de développement ; `[tool.commitizen]` dans `pyproject.toml` en `cz_customize` (le parseur du changelog de `cz_conventional_commits` ne se règle pas par la config : `docs`, `test` et `chore` en étaient absents), `version_provider = "uv"`, tag `v$version`, `major_version_zero`, titres du changelog en français ; hook `commitizen` (`commit-msg`) et `default_install_hook_types` dans `.pre-commit-config.yaml`, `inv hooks` relancé ; `CHANGELOG.md` ignoré par markdownlint (MD041). Vérifié : changelog avec tous les types sans `bump:` ni merges, `feat!` → mineure, commits `docs` seuls → aucun bump (code 21) dans un clone jetable ; `ajout truc` refusé, `feat: ajout truc` accepté dans un worktree jetable. `uv run inv ci` vert. Non commité.
+- Plan rel-00-versions-changelog — Étape 3 : `inv release` (sauf tag `v0.1.0`). `tasks/__init__.py` : `release` (refus hors `develop` ou arbre non propre ; `git pull --ff-only`, lint, mypy, pytest, `cz bump --yes`, `inv docs`, `git push --follow-tags` ; `--dry-run` : `cz bump --dry-run` seul ; codes 3 et 21 de `cz` → « Rien à publier ») ; `push_develop` et `push_main` retirées ; `tests/test_tasks_release.py` (6 tests, `MockContext`). Clone jetable avec dépôt nu : commit `bump: version 0.1.0 → 0.1.1` (`pyproject.toml`, `uv.lock`, `CHANGELOG.md`), hooks passés, doc Sphinx en 0.1.1, arbre propre. Décision en cours de route : `annotated_tag = true` (le tag léger de `cz` n'était pas envoyé par `--follow-tags`). `uv run inv ci` vert (119 tests). Non commité.
+- Journal réparé : l'entrée du jour avait été collée dans le bloc d'en-tête (déjà dans `3474064`), sans « Reste à faire ».
+- Plan rel-00-versions-changelog — Étape 3 : `inv release` et premier tag (fin). Tag annoté `v0.1.0` posé sur `57908dd` (`origin/develop`) et poussé (accord d'Antoaneta) ; `cz version --project` 0.1.0, `cz bump --dry-run` propose 0.1.1. `uv run inv ci` vert (119 tests, 99,83 %), `inv okflint` vert. Étapes 2 et 3 non commitées.
+
+### Reste à faire
+
+- Exécuter docs/plans/rel-00-versions-changelog.md — Étape 4 : GitHub et documentation.
+- Antoaneta : commiter les étapes 2 et 3 de REL-00 sur `feature/controle`, puis pull request `feature/controle` → `develop` (merge commit) une fois REL-00 fini (CI-00 et REL-00 ensemble).
+- Exécuter docs/plans/lot-sto-01-manifeste.md — Étape 2 : Workflow, après les vérifications du 31 octobre (manifeste calculé avant les envois, envois pilotés par le manifeste).
+- Finir docs/plans/lot-sur-01-alertes.md — Étape 3 : le 31 octobre après 03:17 UTC, exécution planifiée (résumé dans la page, `/start` puis succès avec durée, e-mail « up » de healthchecks.io attendu puisque le contrôle est *down*) ; relancer ensuite l'échec volontaire pour vérifier l'e-mail « down » ; contrôler l'absence de prix dans les logs et le résumé.
+- Finir docs/plans/lot-orc-01-workflow.md — Étape 4 : vérifier le 31 octobre après 03:17 UTC (`gh api 'repos/AntoanetaStoyanova/cartograph-data/actions/runs?event=schedule'`) ; si rien, workflow temporaire avec cron `*/15 * * * *` pour savoir si un cron peut se déclencher dans ce dépôt. Puis ORC-01 coché dans la roadmap.
+- Antoaneta : fusionner `develop` dans `main` avant l'étape 2 de STO-01.
+- Après l'étape 3 de SUR-01 : cocher SUR-01 dans `docs/plans/roadmap-lots.md` et le critère « documentation » de la spec SUR-01.
+
+### Références
+
 - [../docs/specs/rel-00-versions-changelog.md](../docs/specs/rel-00-versions-changelog.md), [../docs/plans/rel-00-versions-changelog.md](../docs/plans/rel-00-versions-changelog.md)
 - `src/cartograph/__init__.py`, `docs/conf.py`, `tests/test_version.py`
+- `pyproject.toml` (`[tool.commitizen]`), `.pre-commit-config.yaml`, `.markdownlint-cli2.yaml`
+- `tasks/__init__.py` (`release`), `tests/test_tasks_release.py`
 
 ## [2026-10-30] — Cron d'ORC-01 jamais déclenché, plans SUR-01, STO-01, CI-00 et REL-00
 
@@ -72,7 +99,7 @@
 
 ### Reste à faire
 
-- Exécuter docs/plans/rel-00-versions-changelog.md — Étape 2 : Commitizen et hook `commit-msg`, sur `feature/controle`.
+- Tag annoté `v0.1.0` sur `57908dd` (`develop` actuel) et push, avec l'accord d'Antoaneta ; puis Exécuter docs/plans/rel-00-versions-changelog.md — Étape 4 : GitHub et documentation.
 - Antoaneta : pull request `feature/controle` → `develop` (merge commit) une fois REL-00 fini (CI-00 et REL-00 ensemble).
 - Exécuter docs/plans/lot-sto-01-manifeste.md — Étape 2 : Workflow, après les vérifications du 31 octobre (manifeste calculé avant les envois, envois pilotés par le manifeste).
 - Finir docs/plans/lot-sur-01-alertes.md — Étape 3 : le 31 octobre après 03:17 UTC, exécution planifiée (résumé dans la page, `/start` puis succès avec durée, e-mail « up » de healthchecks.io attendu puisque le contrôle est *down*) ; relancer ensuite l'échec volontaire pour vérifier l'e-mail « down » ; contrôler l'absence de prix dans les logs et le résumé.
