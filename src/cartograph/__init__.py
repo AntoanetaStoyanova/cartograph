@@ -5,8 +5,10 @@ Suit les prix des cartes, identifie une carte à partir d'une photo et estime sa
 valeur.
 """
 
+from importlib.metadata import version
+
 from beartype.claw import beartype_this_package
 
 beartype_this_package()
 
-__version__ = "0.1.0"
+__version__ = version("cartograph")

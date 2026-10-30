@@ -2,7 +2,7 @@
 
 import shlex
 
-from invoke import Context, task
+from invoke import Context, Exit, task
 
 # ---------------------------------------------------------------------------
 # Qualité du code
@@ -11,9 +11,14 @@ from invoke import Context, task
 
 @task
 def lint(c: Context) -> None:
-    """Vérifie le code avec Ruff (lint et format)."""
-    c.run("uv run ruff check --no-fix .")
-    c.run("uv run ruff format --check .")
+    """Lance les hooks pre-commit (Ruff, fichiers) sur tous les fichiers."""
+    c.run("uv run pre-commit run --all-files")
+
+
+@task
+def hooks(c: Context) -> None:
+    """Installe le hook Git pre-commit."""
+    c.run("uv run pre-commit install")
 
 
 @task
@@ -88,22 +93,41 @@ def docs_clean(c: Context) -> None:
     c.run("rm -rf docs/_build")
 
 
+@task
+def okflint(c: Context) -> None:
+    """Vérifie le frontmatter et les liens des specs et plans (okf-base.yaml)."""
+    c.run("uv run okflint validate --manifest okf-base.yaml")
+
+
 # ---------------------------------------------------------------------------
 # Git
 # ---------------------------------------------------------------------------
 
 
 @task
-def push_develop(c: Context) -> None:
-    """Pousse la branche courante vers origin/develop."""
-    c.run("git push origin develop")
+def release(c: Context, dry_run: bool = False) -> None:
+    """Version suivante, changelog, tag et push ; sur develop seulement."""
+    branch = c.run("git branch --show-current", hide=True).stdout.strip()
+    if branch != "develop":
+        raise Exit(f"inv release se lance sur develop, pas sur {branch}.")
+    if c.run("git status --porcelain", hide=True).stdout.strip():
+        raise Exit("Arbre de travail non propre : commiter ou ranger d'abord.")
+    if dry_run:
+        _bump(c, "uv run cz bump --dry-run --yes")
+        return
+    c.run("git pull --ff-only")
+    lint(c)
+    typecheck(c)
+    test(c)
+    _bump(c, "uv run cz bump --yes")
+    docs(c)
+    c.run("git push --follow-tags")
 
 
-@task
-def push_main(c: Context) -> None:
-    """Pousse la branche courante vers origin/main (confirmation requise)."""
-    answer = input("Push vers main — confirmer ? [o/n] ").strip().lower()
-    if answer == "o":
-        c.run("git push origin main")
-    else:
-        print("Push annulé.")
+def _bump(c: Context, command: str) -> None:
+    """Lance cz bump ; codes 3 et 21 : aucun commit qui change la version."""
+    result = c.run(command, warn=True)
+    if result.exited in (3, 21):
+        raise Exit("Rien à publier : aucun feat, fix, refactor ou perf depuis le tag.")
+    if result.exited:
+        raise Exit(code=result.exited)

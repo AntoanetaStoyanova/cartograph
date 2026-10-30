@@ -1,0 +1,24 @@
+okf_version: "0.2"
+
+base:
+  name: cartograph
+  roots:
+    - path: docs
+  reserved_files:
+    index: index.md
+    log: log.md
+
+profile:
+  date_fields: [redige_le]
+  types:
+    spec: &doc
+      required: [type, statut, redige_le]
+      optional: [lot]
+      statut_values: [brouillon, en cours, fait, abandonné]
+    plan: *doc
+    note: *doc
+    reference: *doc
+
+hygiene:
+  broken_links: error
+  unknown_fields: error
