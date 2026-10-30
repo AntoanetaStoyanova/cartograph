@@ -15,7 +15,7 @@
 
 ---
 
-## [2026-10-30] — Cron d'ORC-01 jamais déclenché, plan SUR-01
+## [2026-10-30] — Cron d'ORC-01 jamais déclenché, plans SUR-01 et STO-01
 
 ### Fait
 
@@ -25,19 +25,46 @@
 - Exécution manuelle `41028885710` (prix seuls) lancée à 08:48 UTC pour ne pas perdre le 30 octobre.
 - `docs/specs/lot-sur-01-alertes.md` et `docs/plans/lot-sur-01-alertes.md` créés (SUR-01). Décisions d'Antoaneta : contrôle healthchecks.io en mode cron (`17 3 * * *` UTC, grâce 5 h, N12 à réécrire, une période de 26 h donnerait une fausse alerte chaque lundi) ; résumé de la page d'exécution produit par un module Python testé (`cartograph.bin.collect.report`). Autres décisions : `/start` puis succès ou `/fail` (`if: always()`), ping jamais bloquant, URL en secret `HEALTHCHECKS_PING_URL`, 20 cartes en échec listées au plus.
 - Plan lot-sur-01-alertes — Étape 1 : Module de résumé. `src/cartograph/bin/collect/report.py` (`render_markdown`, `main` ; durée, tableau des étapes, détails : catalogue source, langues absentes, erreur, 20 cartes en échec au plus ; fichiers avec lignes et tailles en Mo) ; `tests/test_collect_report.py` (7 tests, dont l'absence de prix sur le vrai résumé du 28 octobre copié en `tests/fixtures/collect-summary.json`). Typage vérifié par `beartype_this_package` (convention du projet, pas de décorateur). `uv run inv ci` vert (102 tests, couverture 99,82 %). Non commité.
-- `docs/plans/*.md` et `docs/specs/*.md` retirés du dépôt (décision d'Antoaneta : ne pas les montrer) : ajoutés au `.gitignore`, `git rm --cached` sur les 17 fichiers suivis (restés sur le disque), lien vers `lot-fnd-00-poste.md` retiré de `README.md`. Historique déjà poussé non réécrit : les anciennes versions restent lisibles. Non commité.
+- `docs/plans/*.md` et `docs/specs/*.md` retirés du dépôt (décision d'Antoaneta : ne pas les montrer) : ajoutés au `.gitignore`, `git rm --cached` sur les 17 fichiers suivis (restés sur le disque), lien vers `lot-fnd-00-poste.md` retiré de `README.md`. Historique déjà poussé non réécrit : les anciennes versions restent lisibles.
+- Antoaneta : commits `fb721f6` (`chore: specs et plans gardés en local`) et `b1fda23` (`feat: résumé Markdown de la collecte`), poussés et fusionnés dans `main` (`8c87bb7`, PR #3) ; contrôle healthchecks.io créé, secret `HEALTHCHECKS_PING_URL` dans `cartograph-data`.
+- Plan lot-sur-01-alertes — Étape 2 : Workflow et healthchecks.io (sauf push). `../cartograph-data/.github/workflows/collect.yml` : `Signaler le début` (`/start`), `Lire le résumé` en `working-directory: code` écrit le Markdown de `report` dans `$GITHUB_STEP_SUMMARY` (ligne « Aucun résumé » sinon), `Signaler la fin` (`if: always()`, `/fail` si `job.status` ou `steps.collect.outcome` n'est pas `success`) ; `curl -fsS -m 10 --retry 5 … || true`, URL et statuts par `env:`. `actionlint` (`uvx --from actionlint-py`) et `zizmor --persona=pedantic` sans alerte. `../cartograph-data/README.md` : section « Surveillance ». Non poussé.
+- Couverture RNCP40167 (soutenance) : spec globale confrontée au dossier étudiant et à la grille Sup de Vinci (41 compétences, 5 blocs). Estimation si P1 et P2 sont livrés : 10 démontrées, 22 partielles, 9 non couvertes (C4.1, C4.2, C7.1 à C7.3, C10.2, C12.1, C13.1, C14.3). Analyse donnée en chat, rien d'écrit dans le dépôt.
+- Spec de couverture créée hors dépôt : `../competences/couverture-rncp40167.md` (27 compétences par Cartograph, 5 par les modules de l'école dont le projet Azure data lake, 9 par l'entreprise ; réalisations proposées). Décision d'Antoaneta : NLP ajouté au projet (C14.3). Spec maîtresse : section « Compétences RNCP visées », livrables et validation par bloc confirmés, F23 (NLP, P1), F24 (réduction de dimension, P2), F25 (optimisation et compression, P2), N17 (gouvernance et pilotage), texte dans les variables du modèle A. Roadmap : lots NLP-01, GOV-01 à GOV-05 (P1), EMB-05, MLA-04 (P2), ordre d'exécution mis à jour, F1 à F25 et N1 à N17 dans `docs/specs/roadmap-lots.md`.
+- Tableau de suivi créé hors dépôt : `../competences/suivi-competences.md` (41 compétences : source, réalisation, preuves, statut, prochaine action ; réalisations R1 à R5, preuves P01 à P08). Statuts au 30 octobre 2026 : 2 démontrées (C5.1, C5.2), 13 partielles, 26 non couvertes. Prompt de mise à jour du suivi donné à Antoaneta en chat.
+- Antoaneta : docstrings en cours dans `src/cartograph/bin/collect/batch.py`, `catalogue.py`, `prices.py` (déduplication par `idProduct` dans l'ordre fr, en, ja, 29 314 requêtes au lieu de 58 000, cartes sans `idProduct` ignorées) et `src/cartograph/log/__init__.py` (`_prune_logs` au format NumPy). Non commité.
+- Revue du code et des décisions faite en chat. `docs/specs/lot-fnd-01-socle.md` mis à jour (logs dans `LOG_DIR = <racine>/logs`, `get_chemin` abandonnée, config complétée par COL-01 et COL-02). Anciens `.log` déjà absents de `src/cartograph/log/` : ligne `src/cartograph/log/*.log` retirée du `.gitignore`. Spec maîtresse : point healthchecks.io coché ; point ajouté « Commentaires du code » (décision d'Antoaneta : commentaires pédagogiques gardés pour l'instant, ceux qui expliquent le quoi retirés avant le rendu final). Question `Settings` : constantes de module gardées (réponse en chat).
+- Antoaneta : `collect.yml` et README de `cartograph-data` commités et poussés (`19f74bc`, `feat: alertes healthchecks.io et résumé dans la page d'exécution`).
+- Antoaneta : docstrings de `prices.py` (faute « comprées » et `idProduit` corrigés) et `catalogue.py` (exemple `/fr/cards`) retouchées. Non commité.
+- Plan lot-sur-01-alertes — Étape 4 (sauf roadmap) : spec maîtresse (N12 réécrit : succès attendu dans les 5 h après 03:17 UTC, `/fail` alerte aussitôt ; décision « Surveillance » ; paragraphe fiabilité), `cadrage-flux.md` (FX5, séquence `/start` puis succès ou `/fail`), `README.md` (« Surveillance » dans « Collecte automatique », écrit comme en service, sans mention de lot en cours : décision d'Antoaneta). SUR-01 non coché dans la roadmap.
+- `41028885710` réussie (prix seuls, 1 h) : `prices-2026-10-30.parquet` et `.json.gz` dans `data-2026-10`.
+- Plan lot-sur-01-alertes — Étape 3 (partielle). Échec volontaire `41044860655` (11:00 UTC) : « rien à collecter » (code 2), « Aucun résumé » dans la page, publications sautées, `/fail` reçu (contrôle rouge), e-mail de GitHub reçu (onglet « Mises à jour » de Gmail ; filtres Gmail vers « Principale » pour GitHub et healthchecks.io). Aucun e-mail de healthchecks.io pour ce `/fail` : le contrôle passait de *new* à *down* ; le bouton *Test!* de l'intégration e-mail fonctionne (e-mail reçu).
 
+- `docs/specs/lot-sto-01-manifeste.md` et `docs/plans/lot-sto-01-manifeste.md` créés (STO-01). Décisions d'Antoaneta : un JSON par jour `manifest/AAAA/AAAA-MM-JJ.json`, commité même en échec avec les statuts. Autres décisions : module testé `cartograph.bin.collect.manifest`, SHA-256 par `hashlib.file_digest`, Release déduite du nom, taille du dépôt par `gh api` (`repo_kib`), commit par `gh api -X PUT …/contents/` sans checkout, étape jamais bloquante.
+- Plan lot-sto-01-manifeste — Étape 1 : Module du manifeste. `src/cartograph/bin/collect/manifest.py` (`build_manifest`, `main` ; `summary`, `steps` avec statut, récupérées et nombre en échec sans identifiants, `files` avec Release, lignes, octets, `sha256` cherché dans `snapshots/` puis `raw/`, `repo_kib` ; JSON trié, indentation 2) ; `tests/test_collect_manifest.py` (9 tests, dont aucun prix sur le résumé réel du 28 octobre). Manifeste du 28 octobre relu sur `data/`. `uv run inv ci` vert (112 tests, couverture 99,83 %). Non commité.
+- Revue du dossier `collect` faite en chat (19 points), puis corrections hors plan. Décisions d'Antoaneta : `price_targets` supprimé (cibles toujours choisies depuis le Parquet), `FetchResult.failed` au format `langue/id` pour le catalogue aussi, `fetched_at` gardé (une heure par étape pour le catalogue, par requête pour les prix, écrit dans les docstrings de `CARD_SCHEMA` et `PRICE_SCHEMA`), `CardNotFoundError` renommée `NotFoundError`. Autres corrections :
+  - résumé typé une seule fois (`FileSummary`, `StepSummary`, `CollectSummary` dans `collect/__init__.py`) : `run` le construit (dataclass `StepReport` supprimée), `report` et `manifest` le lisent ;
+  - `collect()` sans paramètre `day` : jour = date UTC du début, donnée par l'horloge `now` (test ajouté) ; `logger` de `run.main` plus masqué ;
+  - cartes sans `idProduct` comptées une seule fois (dans `run`, qui journalise) ; `card_id_product` déplacée dans `snapshot.py` (privée), `snapshot` ne dépend plus de `prices` ;
+  - `manifest` trouve les fichiers par `snapshot_paths` au lieu de chercher dans `snapshots/` puis `raw/` ;
+  - `_check_language` appelée une seule fois ; docstrings : modules `report` et `manifest` listés, exemple du paquet par `collect`, constantes de config nommées dans `batch.py`, commentaires de `snapshot.py` et `client.py` corrigés ;
+  - tests : helpers `make_step`, `make_summary`, `REAL_SUMMARY`, `PRICE_MARKERS` dans `tests/conftest.py` ; cibles de prix testées par le Parquet ;
+  - `inv lint` lance aussi `ruff format --check` (Antoaneta a lancé `ruff format src` avant).
+  `uv run inv ci` vert (112 tests, couverture 99,83 %). Specs et plans de COL-01 et COL-02 (locaux) gardent les anciens noms. Non commité.
 ### Reste à faire
 
-- Exécuter docs/plans/lot-sur-01-alertes.md — Étape 2 : Workflow et healthchecks.io (contrôle healthchecks.io et secret `HEALTHCHECKS_PING_URL` faits le 30 octobre ; reste à Antoaneta : commiter et fusionne l'étape 1 dans `main` de `cartograph`).
+- Exécuter docs/plans/lot-sto-01-manifeste.md — Étape 2 : Workflow (d'abord : Antoaneta commite et fusionne l'étape 1 dans `main` de `cartograph`).
+- Finir docs/plans/lot-sur-01-alertes.md — Étape 3 : le 31 octobre après 03:17 UTC, exécution planifiée (résumé dans la page, `/start` puis succès avec durée, e-mail « up » de healthchecks.io attendu puisque le contrôle est *down*) ; relancer ensuite l'échec volontaire pour vérifier l'e-mail « down » ; contrôler l'absence de prix dans les logs et le résumé.
 - Finir docs/plans/lot-orc-01-workflow.md — Étape 4 : vérifier le 31 octobre après 03:17 UTC (`gh api 'repos/AntoanetaStoyanova/cartograph-data/actions/runs?event=schedule'`) ; si rien, workflow temporaire avec cron `*/15 * * * *` pour savoir si un cron peut se déclencher dans ce dépôt. Puis ORC-01 coché dans la roadmap.
-- Supprimer les 3 anciens `.log` de `src/cartograph/log/` (suppression refusée par le mode auto, à faire par Antoaneta), puis retirer la ligne `src/cartograph/log/*.log` du `.gitignore`.
+- Antoaneta : relire et commiter docstrings, corrections de la revue et étape 1 de STO-01 (`uv run inv ci` vert), puis fusionner dans `main` avant l'étape 2 de STO-01.
+- Après l'étape 3 de SUR-01 : cocher SUR-01 dans `docs/plans/roadmap-lots.md` et le critère « documentation » de la spec SUR-01.
 
 ### Références
 
+- `../competences/couverture-rncp40167.md`, [../docs/plans/roadmap-lots.md](../docs/plans/roadmap-lots.md)
 - [../docs/specs/lot-sur-01-alertes.md](../docs/specs/lot-sur-01-alertes.md), [../docs/plans/lot-sur-01-alertes.md](../docs/plans/lot-sur-01-alertes.md)
 - `docs/plans/lot-orc-01-workflow.md`, `../cartograph-data/.github/workflows/collect.yml`
 - `src/cartograph/bin/collect/report.py`, `tests/test_collect_report.py`
+- [../docs/specs/lot-sto-01-manifeste.md](../docs/specs/lot-sto-01-manifeste.md), [../docs/plans/lot-sto-01-manifeste.md](../docs/plans/lot-sto-01-manifeste.md), `src/cartograph/bin/collect/manifest.py`, `tests/test_collect_manifest.py`
 
 ## [2026-10-29] — ORC-01 vérifié, prix quotidiens confirmés, COL-T4 tranché
 
