@@ -91,3 +91,4 @@ __marimo__/
 # Specs et plans de travail, gardés en local
 /docs/plans/*.md
 /docs/specs/*.md
+/docs/schemas/

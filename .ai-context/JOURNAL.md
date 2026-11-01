@@ -20,7 +20,66 @@
 
 ---
 
-## [2026-10-30] — REL-00 terminé : Commitizen, inv release, tag v0.1.0
+## [2026-11-01] — ORC-02 : première nuit lancée par cron-job.org, retrait du cron GitHub
+
+### Fait
+
+- Session ouverte (`/workspace-init`).
+- Plan lot-orc-02-declencheur — Étape 3 : Relais vérifié et retrait du cron GitHub (en cours). Première nuit : `41268549547` (`workflow_dispatch`, `f51bdfb`) créée et démarrée à 03:17:05 UTC, succès à 04:46 UTC, « Catalogue : false, prix : true », 29 314 prix, 0 échec, `prices-2026-11-01.parquet` et `.json.gz` dans `data-2026-11`, « Signaler le début » et « Signaler la fin » réussis ; aucune exécution `schedule` cette nuit (le cron GitHub en a encore manqué une). Aucun prix dans le log du job ni dans l'artefact (résumé JSON, log de collecte). healthchecks.io (Antoaneta) : ping de succès à 04:46:23 UTC, durée 1 h 29 min 11 s.
+- Accord d'Antoaneta pour retirer le cron GitHub, qui ne lance plus rien. `cartograph-data/.github/workflows/collect.yml` modifié en local : `on: schedule` retiré ; « Choisir les étapes » sans `EVENT`, `prices=$INPUT_PRICES`, `case "$INPUT_CATALOGUE"` (cron-job.org envoie `{"ref": "main"}`, donc les valeurs par défaut `auto` et `true`). 12 combinaisons testées en local avec `date` simulé, toutes conformes ; `actionlint` et `zizmor` verts (pre-commit `pre-push` lancé sur le fichier). Pas encore commité.
+- `docs/schemas/collecte-quotidienne.md` (demande d'Antoaneta) : schémas Mermaid de la collecte (vue d'ensemble, déroulé d'une nuit, lots livrés), en-tête okflint `type: note` ; `/docs/schemas/` ajouté au `.gitignore`.
+- cron-job.org (capture d'Antoaneta) : « Successful (204 No Content) » à 4:17:04 AM heure de Paris, soit 03:17:04 UTC, une seconde avant la création de `41268549547`. Case 1 de l'étape 3 cochée. Commit `e027675` `chore: retrait du cron GitHub, collecte lancée par cron-job.org` poussé par Antoaneta (`collect.yml` et `README.md`) ; `gh workflow view` ne montre plus que `workflow_dispatch`. Case 2 cochée.
+
+### Reste à faire
+
+- Exécuter docs/plans/lot-orc-02-declencheur.md — Étape 3 : Relais vérifié et retrait du cron GitHub, cases 3 et 4, lundi 2 novembre : première nuit sans cron GitHub, catalogue `cards-2026-11-02.parquet` dans la Release `catalogue` et prix collectés avec ce catalogue (« Catalogue : true, prix : true ») ; contrôle sans prix dans le log et l'artefact.
+- ORC-01 (case « exécution planifiée », roadmap) se clôt à l'étape 4 d'ORC-02.
+- 1er novembre, après l'étape 3 d'ORC-02 : exécuter docs/plans/lot-sto-01-manifeste.md — Étape 2 : Workflow (manifeste calculé avant les envois, envois pilotés par le manifeste).
+- Reste de l'étape 4 d'ORC-02 après le retrait du cron : déclenchement dans les deux README, spec maîtresse, `cadrage-flux.md`, clôture d'ORC-01, roadmap ; corriger alors dans « Surveillance » du README de `cartograph-data` « seule alerte quand GitHub ne lance pas le cron ».
+
+### Références
+
+- [../docs/plans/lot-orc-02-declencheur.md](../docs/plans/lot-orc-02-declencheur.md), [../docs/specs/lot-orc-02-declencheur.md](../docs/specs/lot-orc-02-declencheur.md)
+- `cartograph-data/.github/workflows/collect.yml` (`on:`, étape « Choisir les étapes »)
+- [../docs/schemas/collecte-quotidienne.md](../docs/schemas/collecte-quotidienne.md)
+
+## [2026-10-31] — SUR-01 terminé, ORC-02 : cron-job.org en place
+
+### Fait
+
+- Session ouverte (`/workspace-init`).
+- Plan lot-orc-01-workflow — Étape 4 : à 08:33 UTC, toujours aucune exécution `schedule` dans `cartograph-data` (`total_count` 0), 3e jour manqué malgré la désactivation et réactivation du 30 octobre ; workflow `active`, cron `17 3 * * *` sur `main`. Accord d'Antoaneta : `.github/workflows/cron-test.yml` (`*/15 * * * *`, `date -u`, `permissions: {}`) poussé à 08:35 UTC (`3f14ae0`, puis `2f8e09d` qui ajoute `concurrency` réclamé par zizmor au pre-push). Exécution manuelle `41185255385` (prix seuls) lancée à 08:35 UTC pour le 31 octobre, succès à 09:40 UTC.
+- Première exécution `schedule` du dépôt : `41189800240`, **`Collecte`** (`collect.yml`, `2f8e09d`), créée à 09:42:45 UTC, pas à 03:17 UTC ; cause de l'heure inconnue (déclenchement retardé ou réenregistrement après le push des workflows, non vérifiable). À 09:46 UTC, `cron-test.yml` ne s'était jamais déclenché (5 créneaux `*/15` passés). Piste « e-mail non relié » écartée : tous les commits de `main` sont rattachés au compte `AntoanetaStoyanova`.
+- `41189800240` : succès à 10:59 UTC (1 h 17), 29 314 prix, 0 échec, `/start` puis « Signaler la fin » réussis, « Signaler l'échec » sauté ; aucun prix dans le log du job ni dans l'artefact (résumé JSON et log de collecte). `cron-test.yml` toujours jamais déclenché à 11:00 UTC. Case « exécution planifiée » d'ORC-01 laissée ouverte (pas à l'heure).
+- Discussion avec Antoaneta sur la fiabilité de `schedule` (post upptime : GitHub ne garantit pas les crons, déclenchement externe par `workflow_dispatch` recommandé). Recommandation : quatre couches (cron-job.org déclenche, GitHub Actions exécute, étapes du workflow enchaînent collecte puis dbt, healthchecks.io surveille) ; Dagster ne règle pas le déclenchement (daemon permanent) et resterait en P3, exécuté dans GitHub Actions. Décision d'Antoaneta : déclencheur externe par `workflow_dispatch`.
+- E-mail « up » de healthchecks.io reçu (« downtime 22 h 39 », up à 09:39:56 UTC, déclenché par la fin de la manuelle `41185255385`) ; SUR-01 étape 3 : cases « aucun prix » et « exécution planifiée » cochées (résumé dans la page et durée 1 h 16 min 58 s dans healthchecks.io confirmés par Antoaneta, captures). `cron-test.yml` supprimé de `cartograph-data` (`c49e069`, accord d'Antoaneta).
+- Plan lot-sur-01-alertes — Étape 3 et 4 : échec volontaire `41195887664` (11:12 UTC, `catalogue: false`, `prices: false`) : `/fail` envoyé, e-mails « DOWN | Collecte cartograph » de healthchecks.io et « All jobs have failed » de GitHub reçus (captures d'Antoaneta). `actionlint` et `zizmor` verts sur tout `cartograph-data`. Critères de la spec cochés, SUR-01 coché dans la roadmap, plan et spec SUR-01 en `statut: fait`. Le contrôle healthchecks.io reste *down* jusqu'à la prochaine collecte réussie.
+- `docs/specs/lot-orc-02-declencheur.md` et `docs/plans/lot-orc-02-declencheur.md` créés (ORC-02). Décisions : cron-job.org appelle `workflow_dispatch` à 03:17 UTC, GitHub Actions reste le moteur ; catalogue le lundi et prix chaque jour (Antoaneta), le jour du catalogue décidé par le workflow (`catalogue` `auto` / `oui` / `non`, `auto` par défaut) ; cron GitHub gardé jusqu'à la première exécution réussie lancée par cron-job.org, puis retiré ; jeton à grain fin limité à `cartograph-data` (« Actions : lecture et écriture », un an), stocké seulement chez cron-job.org ; healthchecks.io inchangé.
+- Plan lot-orc-02-declencheur — Étape 1 : Catalogue `auto` dans `collect.yml` Spec ORC-02 en `statut: en cours`. `cartograph-data/.github/workflows/collect.yml` : paramètre `catalogue` en choix `auto` / `oui` / `non` (défaut `auto`), étape « Choisir les étapes » réécrite (`auto` → lundi UTC pour tout événement, `schedule` sans paramètre vaut `auto` et prix). Testé en local sur l'étape extraite avec `date` simulé : 8 combinaisons conformes ; `actionlint` et `zizmor` verts. Commit `f51bdfb` et push par Antoaneta (hooks `pre-push` verts) ; `gh workflow view` montre le choix, défaut `auto`. Étape 1 terminée.
+- Plan lot-orc-02-declencheur — Étape 2 : Jeton et tâche cron-job.org (en cours). Jeton à grain fin créé par Antoaneta (expiration 2027-10-30 22:00 UTC) ; tâche cron-job.org « Collecte cartograph » (`17 3 * * *`, fuseau du job passé de `Europe/Paris` à UTC, réponses gardées dans l'historique). Test : 204 No Content en 1,68 s à 11:47:59 UTC, `x-accepted-github-permissions: actions=write` ; exécution `41198344949` (`workflow_dispatch`, `f51bdfb`) créée à 11:47:58 UTC, suivie jusqu'à la fin. GitHub signale l'API `2022-11-28` dépréciée (10 mars 2026), fin de support le 10 mars 2028 : en-tête `X-GitHub-Api-Version` à changer avant, à noter dans la documentation (étape 4).
+- Demande d'Antoaneta ajoutée à l'étape 4 d'ORC-02 : section « Secrets, variables et services » du README de `cartograph-data` (noms, emplacements, permissions, expirations, façon de recréer, jamais de valeur) et procédure « Remettre la collecte en marche » (jetons, version d'API, cron-job.org, healthchecks.io). Inventaire GitHub : secrets `PRICES_TOKEN` (28 octobre), `HEALTHCHECKS_PING_URL` (30 octobre), variable `TCGDEX_USER_AGENT` ; seul `HEALTHCHECKS_PING_URL` est cité dans le README aujourd'hui ; expiration de `PRICES_TOKEN` : 28 octobre 2027 (Antoaneta), reportée avec celle du jeton cron-job.org (30 octobre 2027, 22:00 UTC) dans la tâche « Secrets, variables et services » de l'étape 4 du plan ORC-02.
+- Plan lot-orc-02-declencheur — Étape 2 : Jeton et tâche cron-job.org (terminée). `41198344949` : succès à 12:49 UTC (1 h 01), `workflow_dispatch` par `AntoanetaStoyanova`, « Catalogue : false, prix : true », 29 314 prix, 0 échec, `prices-2026-10-31.parquet` et `.json.gz` (12:49:04 UTC) dans la Release `data-2026-10` de `cartograph-prices`, « Publier le catalogue » sauté, « Signaler la fin » réussi (healthchecks.io repassé *up* par ce ping). Case cochée dans le plan.
+- Plan lot-orc-02-declencheur — Étape 4 (en partie, accord d'Antoaneta : seulement ce qui ne dépend pas du retrait du cron) : `cartograph-data/README.md`, sections « Secrets, variables et services » (tableau `PRICES_TOKEN`, `HEALTHCHECKS_PING_URL`, `TCGDEX_USER_AGENT`, jeton cron-job.org : type et emplacement, rôle, permissions, expiration, façon de recréer ; réglages de la tâche cron-job.org et du contrôle healthchecks.io) et « Remettre la collecte en marche » (6 étapes). markdownlint vert (config de `cartograph`). Non commité. Deux cases cochées.
+- STO-01 étape 2 reportée au 1er novembre (accord d'Antoaneta) : ne pas toucher `collect.yml` avant la première nuit lancée par cron-job.org, pour ne pas mêler deux causes en cas d'échec. Case « merge de l'étape 1 dans `main` » cochée dans le plan STO-01 (`manifest.py` vérifié sur `origin/main`).
+
+### Reste à faire
+
+- Exécuter docs/plans/lot-orc-02-declencheur.md — Étape 3 : Relais vérifié et retrait du cron GitHub, le 1er novembre : exécution lancée par cron-job.org à 03:17 UTC (historique cron-job.org, `gh api 'repos/AntoanetaStoyanova/cartograph-data/actions/runs?event=workflow_dispatch'`, démarrage avant 03:27 UTC) ; catalogue le 2 novembre.
+- ORC-01 (case « exécution planifiée », roadmap) se clôt à l'étape 4 d'ORC-02.
+- 1er novembre, après l'étape 3 d'ORC-02 : exécuter docs/plans/lot-sto-01-manifeste.md — Étape 2 : Workflow (manifeste calculé avant les envois, envois pilotés par le manifeste).
+- Reste de l'étape 4 d'ORC-02 après le retrait du cron : déclenchement dans les deux README, spec maîtresse, `cadrage-flux.md`, clôture d'ORC-01, roadmap ; corriger alors dans « Surveillance » du README de `cartograph-data` « seule alerte quand GitHub ne lance pas le cron ».
+- Antoaneta : commit et push de `cartograph-data/README.md`.
+
+### Références
+
+- [../docs/specs/lot-orc-02-declencheur.md](../docs/specs/lot-orc-02-declencheur.md), [../docs/plans/lot-orc-02-declencheur.md](../docs/plans/lot-orc-02-declencheur.md)
+- [../docs/plans/lot-orc-01-workflow.md](../docs/plans/lot-orc-01-workflow.md), [../docs/plans/lot-sur-01-alertes.md](../docs/plans/lot-sur-01-alertes.md)
+- `cartograph-data` : `.github/workflows/collect.yml` (paramètre `catalogue`, étape « Choisir les étapes »), `.github/workflows/cron-test.yml` (temporaire, supprimé)
+- [../docs/plans/lot-sto-01-manifeste.md](../docs/plans/lot-sto-01-manifeste.md)
+- `cartograph-data/README.md` (sections « Secrets, variables et services », « Remettre la collecte en marche »)
+- <https://upptime.js.org/blog/2021/01/22/github-actions-schedule-not-working/>
+
+## [2026-10-30] — REL-00 terminé, première release v0.2.0
 
 ### Fait
 
@@ -32,14 +91,13 @@
 - Journal réparé : l'entrée du jour avait été collée dans le bloc d'en-tête (déjà dans `3474064`), sans « Reste à faire ».
 - Plan rel-00-versions-changelog — Étape 3 : `inv release` et premier tag (fin). Tag annoté `v0.1.0` posé sur `57908dd` (`origin/develop`) et poussé (accord d'Antoaneta) ; `cz version --project` 0.1.0, `cz bump --dry-run` propose 0.1.1. `uv run inv ci` vert (119 tests, 99,83 %), `inv okflint` vert. Étapes 2 et 3 commitées par Antoaneta (`5c5ef89`).
 - Plan rel-00-versions-changelog — Étape 4 : GitHub et documentation. Décision d'Antoaneta : squash et rebase laissés activés sur GitHub, le merge commit reste une règle de `CONTRIBUTING.md` (spec mise à jour, critère « seul le merge commit est proposé » retiré) ; suppression automatique des branches déjà désactivée. `CONTRIBUTING.md`, section Git : cycle feature → `develop` → `inv release` → `main`, merge commit, mise à jour d'une feature, `git clean -fdx` interdit, tableau des préfixes avec colonnes « Version (0.x) » et « Changelog » (`perf` ajouté), `!`, `bump:` réservé. `~/.claude/skills/workspace-dev/SKILL.md` : message de commit proposé selon l'effet sur la version, jamais `bump:`. REL-00 dans la roadmap, coché. Plan et spec REL-00 en `statut: fait`. `uv run inv ci` vert (119 tests), `inv okflint` vert. Non commité.
+- Antoaneta : pull request #5 `feature/controle` → `develop` fusionnée (`eafb962`), `uv run inv release` sur `develop` : commit `f8f55cc` (`bump: version 0.1.0 → 0.2.0`, mineure à cause du `feat:`), tag `v0.2.0` poussé, `CHANGELOG.md` créé (sections v0.2.0 et v0.1.0) ; pull request #6 `develop` → `main` fusionnée ; `develop` fusionnée dans `feature/controle`. Premier cycle complet de REL-00 validé.
 
 ### Reste à faire
 
-- Antoaneta : commiter `CONTRIBUTING.md` (étape 4 de REL-00), puis pull request `feature/controle` → `develop` (merge commit) une fois REL-00 fini (CI-00 et REL-00 ensemble).
 - Exécuter docs/plans/lot-sto-01-manifeste.md — Étape 2 : Workflow, après les vérifications du 31 octobre (manifeste calculé avant les envois, envois pilotés par le manifeste).
 - Finir docs/plans/lot-sur-01-alertes.md — Étape 3 : le 31 octobre après 03:17 UTC, exécution planifiée (résumé dans la page, `/start` puis succès avec durée, e-mail « up » de healthchecks.io attendu puisque le contrôle est *down*) ; relancer ensuite l'échec volontaire pour vérifier l'e-mail « down » ; contrôler l'absence de prix dans les logs et le résumé.
 - Finir docs/plans/lot-orc-01-workflow.md — Étape 4 : vérifier le 31 octobre après 03:17 UTC (`gh api 'repos/AntoanetaStoyanova/cartograph-data/actions/runs?event=schedule'`) ; si rien, workflow temporaire avec cron `*/15 * * * *` pour savoir si un cron peut se déclencher dans ce dépôt. Puis ORC-01 coché dans la roadmap.
-- Antoaneta : fusionner `develop` dans `main` avant l'étape 2 de STO-01.
 - Après l'étape 3 de SUR-01 : cocher SUR-01 dans `docs/plans/roadmap-lots.md` et le critère « documentation » de la spec SUR-01.
 
 ### Références
@@ -48,7 +106,7 @@
 - `src/cartograph/__init__.py`, `docs/conf.py`, `tests/test_version.py`
 - `pyproject.toml` (`[tool.commitizen]`), `.pre-commit-config.yaml`, `.markdownlint-cli2.yaml`
 - `tasks/__init__.py` (`release`), `tests/test_tasks_release.py`
-- `../CONTRIBUTING.md`, [../docs/plans/roadmap-lots.md](../docs/plans/roadmap-lots.md), `~/.claude/skills/workspace-dev/SKILL.md`
+- `../CHANGELOG.md`, `../CONTRIBUTING.md`, [../docs/plans/roadmap-lots.md](../docs/plans/roadmap-lots.md), `~/.claude/skills/workspace-dev/SKILL.md`
 
 ## [2026-10-30] — Cron d'ORC-01 jamais déclenché, plans SUR-01, STO-01, CI-00 et REL-00
 
