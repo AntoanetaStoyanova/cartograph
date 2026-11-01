@@ -20,7 +20,7 @@
 
 ---
 
-## [2026-11-01] — ORC-02 : première nuit lancée par cron-job.org, retrait du cron GitHub
+## [2026-11-01] — ORC-02 : cron GitHub retiré, documentation, ORC-01 clos
 
 ### Fait
 
@@ -29,19 +29,21 @@
 - Accord d'Antoaneta pour retirer le cron GitHub, qui ne lance plus rien. `cartograph-data/.github/workflows/collect.yml` modifié en local : `on: schedule` retiré ; « Choisir les étapes » sans `EVENT`, `prices=$INPUT_PRICES`, `case "$INPUT_CATALOGUE"` (cron-job.org envoie `{"ref": "main"}`, donc les valeurs par défaut `auto` et `true`). 12 combinaisons testées en local avec `date` simulé, toutes conformes ; `actionlint` et `zizmor` verts (pre-commit `pre-push` lancé sur le fichier). Pas encore commité.
 - `docs/schemas/collecte-quotidienne.md` (demande d'Antoaneta) : schémas Mermaid de la collecte (vue d'ensemble, déroulé d'une nuit, lots livrés), en-tête okflint `type: note` ; `/docs/schemas/` ajouté au `.gitignore`.
 - cron-job.org (capture d'Antoaneta) : « Successful (204 No Content) » à 4:17:04 AM heure de Paris, soit 03:17:04 UTC, une seconde avant la création de `41268549547`. Case 1 de l'étape 3 cochée. Commit `e027675` `chore: retrait du cron GitHub, collecte lancée par cron-job.org` poussé par Antoaneta (`collect.yml` et `README.md`) ; `gh workflow view` ne montre plus que `workflow_dispatch`. Case 2 cochée.
+- Plan lot-orc-02-declencheur — Étape 4 : Documentation (accord d'Antoaneta sur la liste des modifications avant de les appliquer). `cartograph-data/README.md` : section « Déclenchement » (cron-job.org à 03:17 UTC, pas de cron GitHub et pourquoi, paramètres par défaut, relance manuelle et `-f catalogue=non` un lundi), « Surveillance » corrigée (« aucune collecte lancée » au lieu de « GitHub ne lance pas le cron »), e-mail de cron-job.org ajouté ; liens d'ancre remplacés par du texte (MD051). `README.md` de `cartograph`, « Collecte automatique » : déclenchement par cron-job.org, lundi par `auto`, options de `catalogue`, e-mail de cron-job.org. Spec maîtresse : N13 « Déclenchement de la collecte » ; décisions « Emplacement du workflow de collecte » (raison sans les 60 jours) et nouvelle ligne « Déclenchement de la collecte » (alternatives écartées : cron GitHub, Dagster) ; point 1 « Déclenchement » et « Fiabilité et surveillance » réécrits ; raison de « Surveillance », T5 (seuil des 60 jours retiré) et point ouvert des 60 jours (sans objet) mis à jour ; lien upptime. `cadrage-flux.md` : participant `cron-job.org` et appel 204 avant `/start`, FX1 et FX2. ORC-01 : critère reformulé (« une exécution déclenchée sans intervention réussit ») et coché avec `41268549547`, périmètre et décision « Fréquence » mis à jour, dernières cases du plan cochées, spec et plan en `statut: fait`. Roadmap : ORC-01 coché, ligne ORC-02 ajoutée (non cochée), ORC-02 dans l'ordre recommandé. Spec ORC-02 : 4 critères sur 6 cochés. `uv run inv ci` vert (119 tests, couverture 99,83 %), `inv okflint` vert, markdownlint sans nouvelle erreur (MD060 et MD036 déjà présents dans la roadmap, la spec maîtresse et les specs ORC). `cartograph-data/README.md` non commité.
 
 ### Reste à faire
 
-- Exécuter docs/plans/lot-orc-02-declencheur.md — Étape 3 : Relais vérifié et retrait du cron GitHub, cases 3 et 4, lundi 2 novembre : première nuit sans cron GitHub, catalogue `cards-2026-11-02.parquet` dans la Release `catalogue` et prix collectés avec ce catalogue (« Catalogue : true, prix : true ») ; contrôle sans prix dans le log et l'artefact.
-- ORC-01 (case « exécution planifiée », roadmap) se clôt à l'étape 4 d'ORC-02.
-- 1er novembre, après l'étape 3 d'ORC-02 : exécuter docs/plans/lot-sto-01-manifeste.md — Étape 2 : Workflow (manifeste calculé avant les envois, envois pilotés par le manifeste).
-- Reste de l'étape 4 d'ORC-02 après le retrait du cron : déclenchement dans les deux README, spec maîtresse, `cadrage-flux.md`, clôture d'ORC-01, roadmap ; corriger alors dans « Surveillance » du README de `cartograph-data` « seule alerte quand GitHub ne lance pas le cron ».
+- Antoaneta : commit et push de `cartograph-data/README.md` (`docs: déclenchement par cron-job.org et relance manuelle`) ; commit de `README.md` de `cartograph` (`docs: collecte déclenchée par cron-job.org`).
+- Lundi 2 novembre : exécuter docs/plans/lot-orc-02-declencheur.md — Étape 3 : Relais vérifié et retrait du cron GitHub, cases 3 et 4 : première nuit sans cron GitHub, « Catalogue : true, prix : true », `cards-2026-11-02.parquet` dans la Release `catalogue` et prix collectés avec ce catalogue ; contrôle sans prix dans le log et l'artefact. Puis cocher les critères « lundi » et « ORC-01 et ORC-02 cochés » de la spec ORC-02, ORC-02 dans la roadmap, critères de fin du plan, plan et spec ORC-02 en `statut: fait`.
+- Après la nuit du lundi 2 novembre : exécuter docs/plans/lot-sto-01-manifeste.md — Étape 2 : Workflow (manifeste calculé avant les envois, envois pilotés par le manifeste) ; ne pas pousser de changement de `collect.yml` avant, pour ne pas mêler deux causes.
 
 ### Références
 
 - [../docs/plans/lot-orc-02-declencheur.md](../docs/plans/lot-orc-02-declencheur.md), [../docs/specs/lot-orc-02-declencheur.md](../docs/specs/lot-orc-02-declencheur.md)
 - `cartograph-data/.github/workflows/collect.yml` (`on:`, étape « Choisir les étapes »)
 - [../docs/schemas/collecte-quotidienne.md](../docs/schemas/collecte-quotidienne.md)
+- [../docs/plans/lot-orc-01-workflow.md](../docs/plans/lot-orc-01-workflow.md), [../docs/specs/lot-orc-01-workflow.md](../docs/specs/lot-orc-01-workflow.md), [../docs/plans/roadmap-lots.md](../docs/plans/roadmap-lots.md), [../docs/specs/cadrage-flux.md](../docs/specs/cadrage-flux.md)
+- `README.md`, `cartograph-data/README.md` (« Déclenchement », « Surveillance »), spec maîtresse (N13, décisions, « Collecte et stockage »)
 
 ## [2026-10-31] — SUR-01 terminé, ORC-02 : cron-job.org en place
 
