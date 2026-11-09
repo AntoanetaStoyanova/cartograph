@@ -1,5 +1,10 @@
 """
-Enchaînement d'une collecte : catalogue, puis prix, puis résumé.
+Orchestration d'une collecte : catalogue, puis prix, puis résumé.
+
+Ce module enchaîne les étapes, choisit le catalogue source des prix, décide
+de l'échec d'une étape et sert le CLI ; la récupération, la sélection des prix
+et la mise en forme des tables sont dans ``catalogue``, ``prices`` et
+``snapshot``.
 
 Le catalogue est tout ou rien : si une langue échoue, aucun
 ``cards-*.parquet`` n'est écrit. Les prix utilisent le catalogue du jour s'il
@@ -18,16 +23,21 @@ from pathlib import Path
 from typing import Any
 
 import pyarrow as pa
-import pyarrow.compute as pc
-import pyarrow.parquet as pq
 
-from cartograph.bin.collect import CollectSummary, FileSummary, StepSummary
+from cartograph.bin.collect import (
+    CollectSummary,
+    FileSummary,
+    StepSummary,
+    skipped_step,
+)
 from cartograph.bin.collect.catalogue import fetch_catalogue
 from cartograph.bin.collect.client import TcgdexClient, TcgdexError
-from cartograph.bin.collect.prices import fetch_prices, price_targets_from_table
+from cartograph.bin.collect.prices import fetch_prices, price_targets_from_catalogue
 from cartograph.bin.collect.snapshot import (
+    SORT_BY,
     SnapshotPaths,
-    card_table,
+    catalogue_table,
+    latest_catalogue,
     price_table,
     snapshot_paths,
     write_json,
@@ -38,26 +48,6 @@ from cartograph.config import DATA_DIR, LANGUAGES, LOG_DIR
 from cartograph.log import setup_logging
 
 logger = logging.getLogger(__name__)
-
-SORT_BY = ("card_id", "language")
-_TARGET_COLUMNS = ["language", "card_id", "id_product"]
-
-
-def latest_catalogue(snapshots_dir: Path) -> Path | None:
-    """
-    Renvoie le snapshot du catalogue le plus récent.
-
-    Parameters
-    ----------
-    snapshots_dir : Path
-        Dossier des snapshots.
-
-    Returns
-    -------
-    Path | None
-        Dernier ``cards-AAAA-MM-JJ.parquet``, ``None`` s'il n'y en a aucun.
-    """
-    return max(snapshots_dir.glob("cards-*.parquet"), default=None)
 
 
 def collect(
@@ -96,9 +86,11 @@ def collect(
     day = started_at.date()
     paths = snapshot_paths(data_dir, day)
     catalogue_report = (
-        _collect_catalogue(client, paths, languages, now) if catalogue else _step()
+        _collect_catalogue(client, paths, languages, now)
+        if catalogue
+        else skipped_step()
     )
-    prices_report = _step()
+    prices_report = skipped_step()
     if prices:
         source = (
             paths.cards
@@ -195,27 +187,6 @@ def _languages(value: str) -> tuple[str, ...]:
     return languages
 
 
-def _step() -> StepSummary:
-    """
-    Bilan vide d'une étape, ``skipped`` tant qu'elle n'a pas tourné.
-
-    Returns
-    -------
-    StepSummary
-        Statut ``skipped``, aucun fichier ni échec.
-    """
-    return {
-        "status": "skipped",
-        "fetched": 0,
-        "failed": [],
-        "skipped_without_id_product": 0,
-        "files": [],
-        "source": None,
-        "missing_languages": [],
-        "error": None,
-    }
-
-
 def _collect_catalogue(
     client: TcgdexClient,
     paths: SnapshotPaths,
@@ -242,7 +213,7 @@ def _collect_catalogue(
         ``failed`` si une langue échoue (rien n'est alors écrit) ou si la
         conversion en table échoue (le brut est alors conservé).
     """
-    report = _step()
+    report = skipped_step()
     fetched_at = now()
     cards: dict[str, list[dict[str, Any]]] = {}
     try:
@@ -258,16 +229,7 @@ def _collect_catalogue(
     report["files"].append(
         _file(paths.raw_cards, report["fetched"], write_json_gz(cards, paths.raw_cards))
     )
-    _write_table(
-        report,
-        paths.cards,
-        lambda: pa.concat_tables(
-            [
-                card_table(items, language, fetched_at)
-                for language, items in cards.items()
-            ]
-        ),
-    )
+    _write_table(report, paths.cards, lambda: catalogue_table(cards, fetched_at))
     return report
 
 
@@ -301,15 +263,14 @@ def _collect_prices(
         collecte s'arrête ou si la conversion en table échoue (le brut est
         alors conservé).
     """
-    report = _step()
+    report = skipped_step()
     if source is None:
         report["status"] = "failed"
         report["error"] = "aucun catalogue disponible"
         return report
     report["source"] = source.name
-    table = pq.read_table(source, columns=_TARGET_COLUMNS)
-    available = set(table.column("language").unique().to_pylist())
-    missing = [language for language in languages if language not in available]
+    selection = price_targets_from_catalogue(source, languages)
+    missing = selection.missing_languages
     report["missing_languages"] = missing
     if missing:
         logger.warning(
@@ -321,9 +282,8 @@ def _collect_prices(
         report["status"] = "failed"
         report["error"] = "aucune langue demandée dans le catalogue"
         return report
-    table = table.filter(pc.is_in(table.column("language"), pa.array(languages)))
-    targets = price_targets_from_table(table)
-    report["skipped_without_id_product"] = table.column("id_product").null_count
+    targets = selection.targets
+    report["skipped_without_id_product"] = selection.skipped_without_id_product
     logger.info(
         "prix : %d produits à interroger, %d cartes ignorées sans idProduct",
         len(targets),

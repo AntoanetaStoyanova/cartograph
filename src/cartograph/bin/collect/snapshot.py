@@ -11,7 +11,7 @@ import json
 import logging
 import os
 import tempfile
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from pathlib import Path
@@ -23,6 +23,8 @@ import pyarrow.parquet as pq
 from cartograph.config import SNAPSHOT_COMPRESSION
 
 logger = logging.getLogger(__name__)
+
+SORT_BY = ("card_id", "language")
 
 _CM_STATS = ("avg", "low", "trend", "avg1", "avg7", "avg30")
 _CM_PRICE_FIELDS = {
@@ -131,6 +133,23 @@ def snapshot_paths(data_dir: Path, day: date) -> SnapshotPaths:
         raw_prices=data_dir / "raw" / f"prices-{stamp}.json.gz",
         summary=data_dir / "runs" / f"collect-{stamp}.json",
     )
+
+
+def latest_catalogue(snapshots_dir: Path) -> Path | None:
+    """
+    Renvoie le snapshot du catalogue le plus récent.
+
+    Parameters
+    ----------
+    snapshots_dir : Path
+        Dossier des snapshots.
+
+    Returns
+    -------
+    Path | None
+        Dernier ``cards-AAAA-MM-JJ.parquet``, ``None`` s'il n'y en a aucun.
+    """
+    return max(snapshots_dir.glob("cards-*.parquet"), default=None)
 
 
 def price_table(records: Sequence[dict[str, Any]]) -> pa.Table:
@@ -250,6 +269,36 @@ def card_table(
         for card in cards
     ]
     return pa.Table.from_pylist(rows, schema=CARD_SCHEMA)
+
+
+def catalogue_table(
+    cards: Mapping[str, Sequence[dict[str, Any]]], fetched_at: datetime
+) -> pa.Table:
+    """
+    Assemble les fiches de toutes les langues en une table du catalogue.
+
+    Parameters
+    ----------
+    cards : Mapping[str, Sequence[dict[str, Any]]]
+        Fiches complètes par langue.
+    fetched_at : datetime
+        Début de l'étape du catalogue, commun à toutes les lignes.
+
+    Returns
+    -------
+    pa.Table
+        Table au schéma ``CARD_SCHEMA``, langues dans l'ordre de ``cards`` ;
+        vide si ``cards`` l'est.
+
+    Examples
+    --------
+    >>> catalogue_table({}, datetime(2026, 10, 28, tzinfo=UTC)).num_rows
+    0
+    """
+    return pa.concat_tables(
+        [CARD_SCHEMA.empty_table()]
+        + [card_table(items, language, fetched_at) for language, items in cards.items()]
+    )
 
 
 def write_parquet(table: pa.Table, path: Path, sort_by: Sequence[str]) -> int:

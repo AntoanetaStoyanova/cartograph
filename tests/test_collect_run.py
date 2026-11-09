@@ -11,7 +11,7 @@ import pytest
 
 from cartograph.bin.collect import batch, run
 from cartograph.bin.collect.client import TcgdexClient
-from cartograph.bin.collect.run import collect, latest_catalogue, main
+from cartograph.bin.collect.run import collect, main
 from cartograph.bin.collect.snapshot import snapshot_paths
 from cartograph.config import LANGUAGES
 from tests.conftest import fixture_route, load_fixture, mock_client, price_values
@@ -43,16 +43,6 @@ def _steps(summary: dict[str, object]) -> dict[str, dict[str, object]]:
     steps = summary["steps"]
     assert isinstance(steps, dict)
     return steps
-
-
-def test_latest_catalogue_ignores_other_files(tmp_path: Path) -> None:
-    for name in ["cards-2026-10-20.parquet", "cards-2026-10-25.parquet"]:
-        (tmp_path / name).touch()
-    (tmp_path / "prices-2026-10-27.parquet").touch()
-    (tmp_path / "tmpabc.tmp").touch()
-
-    assert latest_catalogue(tmp_path) == tmp_path / "cards-2026-10-25.parquet"
-    assert latest_catalogue(tmp_path / "absent") is None
 
 
 def test_collect_with_catalogue_writes_all_files(
