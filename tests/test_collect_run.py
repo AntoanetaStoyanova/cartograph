@@ -74,7 +74,7 @@ def test_collect_interrupted_prices_keep_catalogue_summary(
     def interrupted(*args: Any, **kwargs: Any) -> Any:
         raise RuntimeError("délai dépassé")
 
-    monkeypatch.setattr(run, "fetch_prices", interrupted)
+    monkeypatch.setattr(run, "_collect_prices", interrupted)
 
     with pytest.raises(RuntimeError):
         _collect(tcgdex_client, tmp_path)
@@ -168,27 +168,62 @@ def test_collect_failed_language_writes_no_catalogue_but_prices(
     assert paths.prices.exists()
 
 
-def test_collect_records_failed_cards_with_language(tmp_path: Path) -> None:
-    calls: list[str] = []
-
-    def second_pop9_call_down(request: httpx.Request) -> httpx.Response:
-        if request.url.path == "/v2/fr/cards/pop9-1":
-            calls.append(request.url.path)
-            if len(calls) == 2:
-                return httpx.Response(500)
-        if request.url.path == "/v2/ja/cards/S7D-019":
+def _down(*paths: str) -> Callable[[httpx.Request], httpx.Response]:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path in paths:
             return httpx.Response(500)
         return fixture_route(request)
 
-    with mock_client(second_pop9_call_down) as client:
+    return handler
+
+
+def test_collect_records_failed_cards_with_language(tmp_path: Path) -> None:
+    with mock_client(_down("/v2/ja/cards/S7D-019")) as client:
         summary = _collect(client, tmp_path)
 
     steps = _steps(summary)
     assert steps["catalogue"]["status"] == "ok"
     assert steps["catalogue"]["failed"] == ["ja/S7D-019"]
     assert steps["prices"]["status"] == "ok"
-    assert steps["prices"]["failed"] == ["fr/pop9-1"]
-    assert steps["prices"]["fetched"] == 3
+    assert steps["prices"]["failed"] == []
+    assert steps["prices"]["fetched"] == 4
+
+
+def test_collect_prices_only_records_failed_cards_with_language(
+    tcgdex_client: TcgdexClient, tmp_path: Path
+) -> None:
+    _collect(tcgdex_client, tmp_path, day=date(2026, 10, 25), prices=False)
+
+    with mock_client(_down("/v2/fr/cards/pop9-1")) as client:
+        summary = _collect(client, tmp_path, catalogue=False)
+
+    prices = _steps(summary)["prices"]
+    assert prices["status"] == "ok"
+    assert prices["failed"] == ["fr/pop9-1"]
+    assert prices["fetched"] == 4
+
+
+def test_collect_with_catalogue_requests_each_card_once(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    requested: list[str] = []
+
+    def recording(request: httpx.Request) -> httpx.Response:
+        requested.append(request.url.path)
+        return fixture_route(request)
+
+    with mock_client(recording) as client, caplog.at_level(logging.INFO):
+        summary = _collect(client, tmp_path)
+
+    paths = snapshot_paths(tmp_path, DAY)
+    prices = _steps(summary)["prices"]
+    assert len(requested) == len(set(requested)) == 3 + 9
+    assert prices["status"] == "ok"
+    assert prices["source"] == paths.cards.name
+    assert prices["fetched"] == 5
+    assert prices["skipped_without_id_product"] == 1
+    assert "prix : 5 produits tirés du catalogue du jour" in caplog.text
+    assert pq.read_table(paths.prices).num_rows == 5
 
 
 def test_collect_same_day_replaces_files(
@@ -276,8 +311,12 @@ def _patched(card: Any, change: dict[str, Any]) -> Any:
     return card
 
 
+@pytest.mark.parametrize("catalogue", [False, True])
 def test_collect_bad_price_keeps_raw_prices_and_leaks_nothing(
-    tcgdex_client: TcgdexClient, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    tcgdex_client: TcgdexClient,
+    tmp_path: Path,
+    caplog: pytest.LogCaptureFixture,
+    catalogue: bool,
 ) -> None:
     _collect(tcgdex_client, tmp_path, day=date(2026, 10, 25), prices=False)
     handler = _with_card(
@@ -285,7 +324,7 @@ def test_collect_bad_price_keeps_raw_prices_and_leaks_nothing(
     )
 
     with mock_client(handler) as client, caplog.at_level(logging.INFO):
-        summary = _collect(client, tmp_path, catalogue=False)
+        summary = _collect(client, tmp_path, catalogue=catalogue)
 
     paths = snapshot_paths(tmp_path, DAY)
     prices = _steps(summary)["prices"]

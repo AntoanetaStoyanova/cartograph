@@ -8,7 +8,8 @@ et la mise en forme des tables sont dans ``catalogue``, ``prices`` et
 
 Le catalogue est tout ou rien : si une langue échoue, aucun
 ``cards-*.parquet`` n'est écrit. Les prix utilisent le catalogue du jour s'il
-vient d'être écrit, sinon le plus récent du dossier.
+vient d'être écrit, en lisant ses fiches sans nouvel appel à l'API ; sinon,
+ceux du plus récent du dossier, interrogés carte par carte.
 
 Lancé par ``inv collect`` ou ``python -m cartograph.bin.collect.run`` ; code de
 sortie 0 si chaque étape demandée est ``ok``, 1 sinon.
@@ -26,13 +27,19 @@ import pyarrow as pa
 
 from cartograph.bin.collect import (
     CollectSummary,
+    FetchResult,
     FileSummary,
     StepSummary,
     skipped_step,
 )
 from cartograph.bin.collect.catalogue import fetch_catalogue
 from cartograph.bin.collect.client import TcgdexClient, TcgdexError
-from cartograph.bin.collect.prices import fetch_prices, price_targets_from_catalogue
+from cartograph.bin.collect.prices import (
+    PriceTarget,
+    fetch_prices,
+    price_targets_from_catalogue,
+    prices_from_cards,
+)
 from cartograph.bin.collect.snapshot import (
     SORT_BY,
     SnapshotPaths,
@@ -87,28 +94,42 @@ def collect(
     Quand le catalogue et les prix sont demandés, le résumé est écrit une
     première fois après le catalogue, avec les prix à ``failed``, puis
     remplacé à la fin : une collecte coupée pendant les prix laisse un
-    catalogue publiable.
+    catalogue publiable. Si le catalogue du jour est ``ok``, les prix sont
+    tirés de ses fiches sans nouvel appel à l'API ; sinon ils sont demandés
+    pour les produits du dernier catalogue du dossier.
     """
     started_at = now().astimezone(UTC)
     day = started_at.date()
     paths = snapshot_paths(data_dir, day)
-    catalogue_report = (
-        _collect_catalogue(client, paths, languages, now)
-        if catalogue
-        else skipped_step()
-    )
+    catalogue_report = skipped_step()
+    cards: dict[str, list[dict[str, Any]]] = {}
+    catalogue_at = now()
+    if catalogue:
+        catalogue_report = _collect_catalogue(
+            client, paths, languages, catalogue_at, cards
+        )
     prices_report = skipped_step()
     if prices:
         if catalogue:
             _write_summary(
                 paths, started_at, now, catalogue_report, _interrupted_step()
             )
-        source = (
-            paths.cards
-            if catalogue_report["status"] == "ok"
-            else latest_catalogue(paths.cards.parent)
-        )
-        prices_report = _collect_prices(client, paths, source, languages, now)
+        if catalogue_report["status"] == "ok":
+            prices_report = _collect_prices(
+                paths,
+                paths.cards,
+                languages,
+                lambda targets: prices_from_cards(cards, targets, catalogue_at),
+                "tirés du catalogue du jour",
+            )
+        else:
+            prices_report = _collect_prices(
+                paths,
+                latest_catalogue(paths.cards.parent),
+                languages,
+                lambda targets: fetch_prices(client, targets, now=now),
+                "à interroger",
+            )
     return _write_summary(paths, started_at, now, catalogue_report, prices_report)
 
 
@@ -246,7 +267,8 @@ def _collect_catalogue(
     client: TcgdexClient,
     paths: SnapshotPaths,
     languages: Sequence[str],
-    now: Callable[[], datetime],
+    fetched_at: datetime,
+    cards: dict[str, list[dict[str, Any]]],
 ) -> StepSummary:
     """
     Collecte toutes les langues puis écrit le catalogue et son brut.
@@ -259,8 +281,10 @@ def _collect_catalogue(
         Fichiers du jour.
     languages : Sequence[str]
         Langues collectées.
-    now : Callable[[], datetime]
-        Horloge.
+    fetched_at : datetime
+        Début de l'étape, écrit dans la table.
+    cards : dict[str, list[dict[str, Any]]]
+        Rempli avec les fiches par langue, pour en tirer les prix.
 
     Returns
     -------
@@ -269,8 +293,6 @@ def _collect_catalogue(
         conversion en table échoue (le brut est alors conservé).
     """
     report = skipped_step()
-    fetched_at = now()
-    cards: dict[str, list[dict[str, Any]]] = {}
     try:
         for language in languages:
             result = fetch_catalogue(client, language)
@@ -289,27 +311,28 @@ def _collect_catalogue(
 
 
 def _collect_prices(
-    client: TcgdexClient,
     paths: SnapshotPaths,
     source: Path | None,
     languages: Sequence[str],
-    now: Callable[[], datetime],
+    fetch: Callable[[Sequence[PriceTarget]], FetchResult],
+    origin: str,
 ) -> StepSummary:
     """
-    Collecte les prix des produits du catalogue ``source`` et les écrit.
+    Récupère les prix des produits du catalogue ``source`` et les écrit.
 
     Parameters
     ----------
-    client : TcgdexClient
-        Client de l'API.
     paths : SnapshotPaths
         Fichiers du jour.
     source : Path | None
         Snapshot du catalogue ; ``None`` fait échouer l'étape.
     languages : Sequence[str]
-        Langues dont les cartes sont interrogées.
-    now : Callable[[], datetime]
-        Horloge.
+        Langues dont les cartes sont retenues.
+    fetch : Callable[[Sequence[PriceTarget]], FetchResult]
+        Récupère les prix des cibles : ``fetch_prices`` ou
+        ``prices_from_cards``.
+    origin : str
+        Provenance des prix, pour le log.
 
     Returns
     -------
@@ -340,12 +363,13 @@ def _collect_prices(
     targets = selection.targets
     report["skipped_without_id_product"] = selection.skipped_without_id_product
     logger.info(
-        "prix : %d produits à interroger, %d cartes ignorées sans idProduct",
+        "prix : %d produits %s, %d cartes ignorées sans idProduct",
         len(targets),
+        origin,
         report["skipped_without_id_product"],
     )
     try:
-        result = fetch_prices(client, targets, now=now)
+        result = fetch(targets)
     except TcgdexError as error:
         report["status"] = "failed"
         report["error"] = str(error)
