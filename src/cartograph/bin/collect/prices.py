@@ -11,14 +11,19 @@ la première carte rencontrée pour chaque produit.
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from pathlib import Path
 
 import pyarrow as pa
+import pyarrow.compute as pc
+import pyarrow.parquet as pq
 
 from cartograph.bin.collect import FetchResult
 from cartograph.bin.collect.batch import fetch_each
 from cartograph.bin.collect.catalogue import card_path
 from cartograph.bin.collect.client import TcgdexClient
 from cartograph.config import LANGUAGES
+
+_TARGET_COLUMNS = ["language", "card_id", "id_product"]
 
 
 @dataclass(frozen=True)
@@ -91,6 +96,55 @@ def price_targets_from_table(table: pa.Table) -> list[PriceTarget]:
         if id_product is not None and id_product not in targets:
             targets[id_product] = PriceTarget(language, card_id, id_product)
     return list(targets.values())
+
+
+@dataclass(frozen=True)
+class PriceSelection:
+    """
+    Produits à interroger, choisis dans un snapshot du catalogue.
+
+    Attributes
+    ----------
+    targets : list[PriceTarget]
+        Une cible par produit Cardmarket (voir ``price_targets_from_table``).
+    missing_languages : list[str]
+        Langues demandées absentes du catalogue.
+    skipped_without_id_product : int
+        Cartes des langues demandées ignorées faute de produit Cardmarket.
+    """
+
+    targets: list[PriceTarget]
+    missing_languages: list[str]
+    skipped_without_id_product: int
+
+
+def price_targets_from_catalogue(
+    source: Path, languages: Sequence[str]
+) -> PriceSelection:
+    """
+    Lit un snapshot du catalogue et choisit les produits à interroger.
+
+    Parameters
+    ----------
+    source : Path
+        Fichier ``cards-AAAA-MM-JJ.parquet``.
+    languages : Sequence[str]
+        Langues dont les cartes sont gardées.
+
+    Returns
+    -------
+    PriceSelection
+        Cibles des langues demandées, langues absentes du catalogue et cartes
+        sans ``id_product`` ; cibles vides si aucune langue demandée n'y figure.
+    """
+    table = pq.read_table(source, columns=_TARGET_COLUMNS)
+    available = set(table.column("language").unique().to_pylist())
+    table = table.filter(pc.is_in(table.column("language"), pa.array(languages)))
+    return PriceSelection(
+        targets=price_targets_from_table(table),
+        missing_languages=[lang for lang in languages if lang not in available],
+        skipped_without_id_product=table.column("id_product").null_count,
+    )
 
 
 def fetch_prices(

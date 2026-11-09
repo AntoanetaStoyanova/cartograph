@@ -18,8 +18,6 @@ from pathlib import Path
 from typing import Any
 
 import pyarrow as pa
-import pyarrow.compute as pc
-import pyarrow.parquet as pq
 
 from cartograph.bin.collect import (
     CollectSummary,
@@ -29,7 +27,7 @@ from cartograph.bin.collect import (
 )
 from cartograph.bin.collect.catalogue import fetch_catalogue
 from cartograph.bin.collect.client import TcgdexClient, TcgdexError
-from cartograph.bin.collect.prices import fetch_prices, price_targets_from_table
+from cartograph.bin.collect.prices import fetch_prices, price_targets_from_catalogue
 from cartograph.bin.collect.snapshot import (
     SORT_BY,
     SnapshotPaths,
@@ -45,8 +43,6 @@ from cartograph.config import DATA_DIR, LANGUAGES, LOG_DIR
 from cartograph.log import setup_logging
 
 logger = logging.getLogger(__name__)
-
-_TARGET_COLUMNS = ["language", "card_id", "id_product"]
 
 
 def collect(
@@ -277,9 +273,8 @@ def _collect_prices(
         report["error"] = "aucun catalogue disponible"
         return report
     report["source"] = source.name
-    table = pq.read_table(source, columns=_TARGET_COLUMNS)
-    available = set(table.column("language").unique().to_pylist())
-    missing = [language for language in languages if language not in available]
+    selection = price_targets_from_catalogue(source, languages)
+    missing = selection.missing_languages
     report["missing_languages"] = missing
     if missing:
         logger.warning(
@@ -291,9 +286,8 @@ def _collect_prices(
         report["status"] = "failed"
         report["error"] = "aucune langue demandée dans le catalogue"
         return report
-    table = table.filter(pc.is_in(table.column("language"), pa.array(languages)))
-    targets = price_targets_from_table(table)
-    report["skipped_without_id_product"] = table.column("id_product").null_count
+    targets = selection.targets
+    report["skipped_without_id_product"] = selection.skipped_without_id_product
     logger.info(
         "prix : %d produits à interroger, %d cartes ignorées sans idProduct",
         len(targets),

@@ -1,5 +1,6 @@
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime, timedelta, timezone
+from pathlib import Path
 from typing import Any
 
 import pyarrow as pa
@@ -7,11 +8,13 @@ import pyarrow as pa
 from cartograph.bin.collect.catalogue import fetch_catalogue
 from cartograph.bin.collect.client import TcgdexClient
 from cartograph.bin.collect.prices import (
+    PriceSelection,
     PriceTarget,
     fetch_prices,
+    price_targets_from_catalogue,
     price_targets_from_table,
 )
-from cartograph.bin.collect.snapshot import card_table
+from cartograph.bin.collect.snapshot import SORT_BY, card_table, write_parquet
 from tests.conftest import load_fixture
 
 FETCHED_AT = datetime(2026, 10, 28, 9, 30, tzinfo=UTC)
@@ -30,6 +33,18 @@ def price_targets(
         for language, cards in catalogues.items()
     )
     return price_targets_from_table(table)
+
+
+def _catalogue_file(
+    tmp_path: Path, catalogues: Mapping[str, Sequence[dict[str, Any]]]
+) -> Path:
+    table = pa.concat_tables(
+        card_table(cards, language, FETCHED_AT)
+        for language, cards in catalogues.items()
+    )
+    path = tmp_path / "cards-2026-10-28.parquet"
+    write_parquet(table, path, SORT_BY)
+    return path
 
 
 def test_price_targets_deduplicates_european_products() -> None:
@@ -96,3 +111,67 @@ def test_fetch_prices_sets_fetched_at_in_utc(tcgdex_client: TcgdexClient) -> Non
 
     assert result.items[0]["fetched_at"] == "2026-10-28T08:30:00+00:00"
     assert datetime.fromisoformat(result.items[0]["fetched_at"]).tzinfo == UTC
+
+
+def test_price_targets_from_catalogue_filters_requested_languages(
+    tmp_path: Path,
+) -> None:
+    source = _catalogue_file(
+        tmp_path,
+        {
+            "fr": [load_fixture("fr_swsh3-136")],
+            "en": [load_fixture("en_swsh3-136")],
+            "ja": [load_fixture("ja_S7D-019")],
+        },
+    )
+
+    selection = price_targets_from_catalogue(source, ["en", "ja"])
+
+    assert selection == PriceSelection(
+        targets=[
+            PriceTarget("en", "swsh3-136", 483559),
+            PriceTarget("ja", "S7D-019", 571601),
+        ],
+        missing_languages=[],
+        skipped_without_id_product=0,
+    )
+
+
+def test_price_targets_from_catalogue_reports_missing_languages(
+    tmp_path: Path,
+) -> None:
+    source = _catalogue_file(tmp_path, {"fr": [load_fixture("fr_swsh3-136")]})
+
+    selection = price_targets_from_catalogue(source, ["fr", "en", "ja"])
+
+    assert selection.targets == [PriceTarget("fr", "swsh3-136", 483559)]
+    assert selection.missing_languages == ["en", "ja"]
+
+
+def test_price_targets_from_catalogue_counts_cards_without_id_product(
+    tmp_path: Path,
+) -> None:
+    source = _catalogue_file(
+        tmp_path,
+        {
+            "fr": [load_fixture("fr_swsh3-136"), _card("sans-cardmarket", None)],
+            "ja": [load_fixture("ja_PMCG6-055")],
+        },
+    )
+
+    selection = price_targets_from_catalogue(source, ["fr"])
+
+    assert selection.skipped_without_id_product == 1
+    assert selection.targets == [PriceTarget("fr", "swsh3-136", 483559)]
+
+
+def test_price_targets_from_catalogue_without_requested_language(
+    tmp_path: Path,
+) -> None:
+    source = _catalogue_file(tmp_path, {"fr": [load_fixture("fr_swsh3-136")]})
+
+    selection = price_targets_from_catalogue(source, ["en", "ja"])
+
+    assert selection == PriceSelection(
+        targets=[], missing_languages=["en", "ja"], skipped_without_id_product=0
+    )

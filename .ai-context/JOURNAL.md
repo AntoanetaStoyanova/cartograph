@@ -32,10 +32,11 @@
 - Délais de `collect.yml` commités et poussés par Antoaneta (`7409d43`).
 - `docs/specs/optimisation-collecte.md` et `docs/plans/optimisation-collecte.md` créés. Décisions : format du résumé et du manifeste inchangé ; résumé intermédiaire après le catalogue avec les prix à `failed` (« étape interrompue avant la fin ») ; le lundi, prix tirés des fiches du catalogue (mêmes cibles, `fetched_at` du catalogue) ; catalogue en échec → passe des prix actuelle ; refactor `run.py` en prérequis ; catalogue incrémental et parallélisme hors périmètre.
 - Plan refactor-run-orchestration — Étape 1 : Fondations : snapshot et bilan par défaut. Branche `feature/refactor-run` créée depuis `feature/controle` et non depuis `develop` : `6a91969` et `20001f2` (docs cron-job.org, Mermaid hors Git) n'étaient pas dans `develop` et le journal y divergeait ; ils passeront par la PR du refactor. `latest_catalogue` et `SORT_BY` déplacés dans `snapshot.py`, `skipped_step()` (ex-`_step`) dans `collect/__init__.py` ; test de `latest_catalogue` déplacé dans `tests/test_collect_snapshot.py`, nouveau `tests/test_collect_summary.py`. Spec passée `en cours`. `uv run inv ci` vert (122 tests).
+- Plan refactor-run-orchestration — Étape 2 : Sélection des prix dans `prices.py`. `PriceSelection` et `price_targets_from_catalogue` (lecture du Parquet, filtre des langues, langues absentes, cartes sans `id_product`) avec `_TARGET_COLUMNS` dans `prices.py` ; `_collect_prices` les appelle, règles d'échec et logs inchangés. Imports `pyarrow.compute` et `pyarrow.parquet` retirés de `run.py` dès cette étape (inutilisés). 4 tests dans `tests/test_collect_prices.py`, `tests/test_collect_run.py` inchangé. `uv run inv ci` vert (126 tests).
 
 ### Reste à faire
 
-- Exécuter docs/plans/refactor-run-orchestration.md — Étape 2 : Sélection des prix dans `prices.py` (branche `feature/refactor-run`, prérequis de l'optimisation).
+- Exécuter docs/plans/refactor-run-orchestration.md — Étape 3 : Table du catalogue et nettoyage de `run.py` (branche `feature/refactor-run`, prérequis de l'optimisation).
 - Puis exécuter docs/plans/optimisation-collecte.md — Étape 1 : Résumé écrit après chaque étape (branche `feature/collecte-rapide` depuis `develop`, après fusion du refactor).
 - Antoaneta : rattrapage du 9 novembre, relance prix seuls (`-f catalogue=non`, environ 1 h 20), à confirmer.
 - Exécuter docs/plans/lot-sto-01-manifeste.md — Étape 4 : Documentation. SHA-256 du catalogue à comparer sur le prochain manifeste avec catalogue.
@@ -45,7 +46,7 @@
 ### Références
 
 - [../docs/plans/lot-sto-01-manifeste.md](../docs/plans/lot-sto-01-manifeste.md), [../docs/specs/lot-sto-01-manifeste.md](../docs/specs/lot-sto-01-manifeste.md)
-- [../docs/plans/refactor-run-orchestration.md](../docs/plans/refactor-run-orchestration.md), `src/cartograph/bin/collect/snapshot.py`, `src/cartograph/bin/collect/__init__.py`
+- [../docs/plans/refactor-run-orchestration.md](../docs/plans/refactor-run-orchestration.md), `src/cartograph/bin/collect/snapshot.py`, `src/cartograph/bin/collect/__init__.py`, `src/cartograph/bin/collect/prices.py`
 - [../docs/specs/optimisation-collecte.md](../docs/specs/optimisation-collecte.md), [../docs/plans/optimisation-collecte.md](../docs/plans/optimisation-collecte.md)
 - `../cartograph-data/.github/workflows/collect.yml`, `src/cartograph/bin/collect/run.py`
 
