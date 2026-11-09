@@ -120,3 +120,31 @@ class CollectSummary(TypedDict):
     started_at: str
     finished_at: str
     steps: dict[str, StepSummary]
+
+
+def skipped_step() -> StepSummary:
+    """
+    Bilan vide d'une étape, ``skipped`` tant qu'elle n'a pas tourné.
+
+    Returns
+    -------
+    StepSummary
+        Statut ``skipped``, aucun fichier ni échec ; listes neuves à chaque
+        appel.
+
+    Examples
+    --------
+    >>> step = skipped_step()
+    >>> step["status"], step["fetched"], step["files"]
+    ('skipped', 0, [])
+    """
+    return {
+        "status": "skipped",
+        "fetched": 0,
+        "failed": [],
+        "skipped_without_id_product": 0,
+        "files": [],
+        "source": None,
+        "missing_languages": [],
+        "error": None,
+    }

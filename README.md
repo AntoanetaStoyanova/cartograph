@@ -53,9 +53,10 @@ Le code de sortie vaut 1 si une étape demandée échoue. Les logs vont dans `lo
 
 ## Collecte automatique
 
-Le workflow `Collecte` du dépôt public [`cartograph-data`](https://github.com/AntoanetaStoyanova/cartograph-data) installe ce dépôt depuis `main` et lance la collecte chaque jour à 03:17 UTC :
+Le workflow `Collecte` du dépôt public [`cartograph-data`](https://github.com/AntoanetaStoyanova/cartograph-data) installe ce dépôt depuis `main` et lance la collecte. Il est déclenché chaque jour à 03:17 UTC par [cron-job.org](https://cron-job.org), qui appelle l'API GitHub `workflow_dispatch` : le cron de GitHub Actions ne garantit pas ses déclenchements. À chaque exécution :
 
-- prix chaque jour (1 h à 1 h 30), avec le dernier catalogue publié ; le lundi, catalogue puis prix (≈ 3 h 45) ;
+- prix chaque jour (1 h à 1 h 30), avec le dernier catalogue publié ; le lundi (paramètre `catalogue` à `auto`), catalogue seul (2 h 30 à 3 h 15 selon les erreurs 503 de TCGdex), les prix étant lus dans ses fiches sans nouvel appel à l'API ;
+- résumé écrit après le catalogue puis à la fin : une exécution coupée pendant les prix publie quand même le catalogue ;
 - catalogue publié dans la Release `catalogue` de `cartograph-data` ;
 - prix et brut envoyés dans la Release `data-AAAA-MM` du dépôt privé `cartograph-prices` (secret `PRICES_TOKEN`) ;
 - résumé et log gardés 7 jours en artefact, sans aucun prix.
@@ -63,10 +64,11 @@ Le workflow `Collecte` du dépôt public [`cartograph-data`](https://github.com/
 Surveillance :
 
 - bilan de chaque exécution dans sa page (*Summary*) : statut par étape, nombres, cartes en échec, fichiers écrits, durée, sans aucun prix ;
-- [healthchecks.io](https://healthchecks.io) reçoit un signal au début et à la fin de chaque exécution, et envoie un e-mail si la collecte échoue ou si aucune collecte réussie n'arrive avant 08:17 UTC (cron non déclenché, exécution bloquée) ;
+- [healthchecks.io](https://healthchecks.io) reçoit un signal au début et à la fin de chaque exécution, et envoie un e-mail si la collecte échoue ou si aucune collecte réussie n'arrive avant 08:17 UTC (collecte non lancée, exécution bloquée) ;
 - GitHub envoie un e-mail quand une exécution échoue.
+- cron-job.org envoie un e-mail quand son appel échoue ou que la tâche est désactivée.
 
-Relance manuelle : onglet *Actions* de `cartograph-data`, `Collecte`, *Run workflow* (options `catalogue`, `prices`, `languages`, `code_ref`). Relancer le même jour remplace les fichiers du jour. Une exécution sans `catalogue` reprend le dernier catalogue publié.
+Relance manuelle : onglet *Actions* de `cartograph-data`, `Collecte`, *Run workflow* (options `catalogue` : `auto` le lundi, `oui` ou `non` pour forcer ; `prices`, `languages`, `code_ref`). Un lundi, `auto` relance aussi le catalogue : choisir `non` pour les prix seuls. Relancer le même jour remplace les fichiers du jour. Une exécution sans `catalogue` reprend le dernier catalogue publié.
 
 ## Mettre à jour depuis le template
 

@@ -1,3 +1,30 @@
+## v0.2.1 (2026-11-09)
+
+### Corrections
+
+- résumé écrit après le catalogue, une collecte coupée ne perd plus le catalogue
+- sélection des prix sans langue demandée ne lève plus d'erreur
+
+### Réécritures
+
+- table du catalogue déplacée dans snapshot.py, run.py réduit à l'orchestration
+- sélection des produits à interroger déplacée dans prices.py
+- latest_catalogue et bilan d'étape par défaut sortis de run.py
+
+### Performances
+
+- le jour du catalogue, prix tirés de ses fiches sans seconde passe sur l'API
+- prix lisibles depuis les fiches du catalogue sans nouvel appel à l'API
+
+### Documentation
+
+- collecte du lundi en une seule passe, résumé après chaque étape
+- collecte déclenchée par cron-job.org
+
+### Maintenance
+
+- schémas Mermaid gardés en local, hors git
+
 ## v0.2.0 (2026-10-30)
 
 ### Nouveautés

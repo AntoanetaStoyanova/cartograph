@@ -11,7 +11,7 @@ import pytest
 
 from cartograph.bin.collect import batch, run
 from cartograph.bin.collect.client import TcgdexClient
-from cartograph.bin.collect.run import collect, latest_catalogue, main
+from cartograph.bin.collect.run import collect, main
 from cartograph.bin.collect.snapshot import snapshot_paths
 from cartograph.config import LANGUAGES
 from tests.conftest import fixture_route, load_fixture, mock_client, price_values
@@ -45,16 +45,6 @@ def _steps(summary: dict[str, object]) -> dict[str, dict[str, object]]:
     return steps
 
 
-def test_latest_catalogue_ignores_other_files(tmp_path: Path) -> None:
-    for name in ["cards-2026-10-20.parquet", "cards-2026-10-25.parquet"]:
-        (tmp_path / name).touch()
-    (tmp_path / "prices-2026-10-27.parquet").touch()
-    (tmp_path / "tmpabc.tmp").touch()
-
-    assert latest_catalogue(tmp_path) == tmp_path / "cards-2026-10-25.parquet"
-    assert latest_catalogue(tmp_path / "absent") is None
-
-
 def test_collect_with_catalogue_writes_all_files(
     tcgdex_client: TcgdexClient, tmp_path: Path
 ) -> None:
@@ -76,6 +66,56 @@ def test_collect_with_catalogue_writes_all_files(
     assert prices.column("card_id").to_pylist() == sorted(
         prices.column("card_id").to_pylist()
     )
+
+
+def test_collect_interrupted_prices_keep_catalogue_summary(
+    tcgdex_client: TcgdexClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def interrupted(*args: Any, **kwargs: Any) -> Any:
+        raise RuntimeError("délai dépassé")
+
+    monkeypatch.setattr(run, "_collect_prices", interrupted)
+
+    with pytest.raises(RuntimeError):
+        _collect(tcgdex_client, tmp_path)
+
+    paths = snapshot_paths(tmp_path, DAY)
+    summary = json.loads(paths.summary.read_text(encoding="utf-8"))
+    steps = _steps(summary)
+    assert steps["catalogue"]["status"] == "ok"
+    assert [f["name"] for f in steps["catalogue"]["files"]] == [
+        paths.cards.name,
+        paths.raw_cards.name,
+    ]
+    assert steps["prices"]["status"] == "failed"
+    assert steps["prices"]["error"] == "étape interrompue avant la fin"
+
+
+@pytest.mark.parametrize(
+    ("catalogue", "prices", "writes"),
+    [(True, True, 2), (True, False, 1), (False, True, 1)],
+)
+def test_collect_writes_summary_after_each_step(
+    tcgdex_client: TcgdexClient,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    catalogue: bool,
+    prices: bool,
+    writes: int,
+) -> None:
+    _collect(tcgdex_client, tmp_path, day=date(2026, 10, 25), prices=False)
+    summaries: list[Path] = []
+    write_json = run.write_json
+
+    def spy(obj: Any, path: Path) -> int:
+        summaries.append(path)
+        return write_json(obj, path)
+
+    monkeypatch.setattr(run, "write_json", spy)
+
+    _collect(tcgdex_client, tmp_path, catalogue=catalogue, prices=prices)
+
+    assert summaries == [snapshot_paths(tmp_path, DAY).summary] * writes
 
 
 def test_collect_prices_uses_latest_catalogue(
@@ -128,27 +168,62 @@ def test_collect_failed_language_writes_no_catalogue_but_prices(
     assert paths.prices.exists()
 
 
-def test_collect_records_failed_cards_with_language(tmp_path: Path) -> None:
-    calls: list[str] = []
-
-    def second_pop9_call_down(request: httpx.Request) -> httpx.Response:
-        if request.url.path == "/v2/fr/cards/pop9-1":
-            calls.append(request.url.path)
-            if len(calls) == 2:
-                return httpx.Response(500)
-        if request.url.path == "/v2/ja/cards/S7D-019":
+def _down(*paths: str) -> Callable[[httpx.Request], httpx.Response]:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path in paths:
             return httpx.Response(500)
         return fixture_route(request)
 
-    with mock_client(second_pop9_call_down) as client:
+    return handler
+
+
+def test_collect_records_failed_cards_with_language(tmp_path: Path) -> None:
+    with mock_client(_down("/v2/ja/cards/S7D-019")) as client:
         summary = _collect(client, tmp_path)
 
     steps = _steps(summary)
     assert steps["catalogue"]["status"] == "ok"
     assert steps["catalogue"]["failed"] == ["ja/S7D-019"]
     assert steps["prices"]["status"] == "ok"
-    assert steps["prices"]["failed"] == ["fr/pop9-1"]
-    assert steps["prices"]["fetched"] == 3
+    assert steps["prices"]["failed"] == []
+    assert steps["prices"]["fetched"] == 4
+
+
+def test_collect_prices_only_records_failed_cards_with_language(
+    tcgdex_client: TcgdexClient, tmp_path: Path
+) -> None:
+    _collect(tcgdex_client, tmp_path, day=date(2026, 10, 25), prices=False)
+
+    with mock_client(_down("/v2/fr/cards/pop9-1")) as client:
+        summary = _collect(client, tmp_path, catalogue=False)
+
+    prices = _steps(summary)["prices"]
+    assert prices["status"] == "ok"
+    assert prices["failed"] == ["fr/pop9-1"]
+    assert prices["fetched"] == 4
+
+
+def test_collect_with_catalogue_requests_each_card_once(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    requested: list[str] = []
+
+    def recording(request: httpx.Request) -> httpx.Response:
+        requested.append(request.url.path)
+        return fixture_route(request)
+
+    with mock_client(recording) as client, caplog.at_level(logging.INFO):
+        summary = _collect(client, tmp_path)
+
+    paths = snapshot_paths(tmp_path, DAY)
+    prices = _steps(summary)["prices"]
+    assert len(requested) == len(set(requested)) == 3 + 9
+    assert prices["status"] == "ok"
+    assert prices["source"] == paths.cards.name
+    assert prices["fetched"] == 5
+    assert prices["skipped_without_id_product"] == 1
+    assert "prix : 5 produits tirés du catalogue du jour" in caplog.text
+    assert pq.read_table(paths.prices).num_rows == 5
 
 
 def test_collect_same_day_replaces_files(
@@ -236,8 +311,12 @@ def _patched(card: Any, change: dict[str, Any]) -> Any:
     return card
 
 
+@pytest.mark.parametrize("catalogue", [False, True])
 def test_collect_bad_price_keeps_raw_prices_and_leaks_nothing(
-    tcgdex_client: TcgdexClient, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    tcgdex_client: TcgdexClient,
+    tmp_path: Path,
+    caplog: pytest.LogCaptureFixture,
+    catalogue: bool,
 ) -> None:
     _collect(tcgdex_client, tmp_path, day=date(2026, 10, 25), prices=False)
     handler = _with_card(
@@ -245,7 +324,7 @@ def test_collect_bad_price_keeps_raw_prices_and_leaks_nothing(
     )
 
     with mock_client(handler) as client, caplog.at_level(logging.INFO):
-        summary = _collect(client, tmp_path, catalogue=False)
+        summary = _collect(client, tmp_path, catalogue=catalogue)
 
     paths = snapshot_paths(tmp_path, DAY)
     prices = _steps(summary)["prices"]
