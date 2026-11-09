@@ -15,6 +15,7 @@ from cartograph.bin.collect.snapshot import (
     PRICE_SCHEMA,
     _write_atomic,
     card_table,
+    catalogue_table,
     latest_catalogue,
     price_table,
     snapshot_paths,
@@ -288,3 +289,23 @@ def test_latest_catalogue_ignores_other_files(tmp_path: Path) -> None:
 
     assert latest_catalogue(tmp_path) == tmp_path / "cards-2026-10-25.parquet"
     assert latest_catalogue(tmp_path / "absent") is None
+
+
+def test_catalogue_table_concatenates_languages() -> None:
+    cards = {
+        "fr": [load_fixture("fr_swsh3-136")],
+        "ja": [load_fixture("ja_S7D-019"), load_fixture("ja_SV7-065")],
+    }
+
+    table = catalogue_table(cards, FETCHED_AT)
+
+    assert table.schema == CARD_SCHEMA
+    assert table.column("language").to_pylist() == ["fr", "ja", "ja"]
+    assert set(table.column("fetched_at").to_pylist()) == {FETCHED_AT}
+
+
+def test_catalogue_table_empty() -> None:
+    table = catalogue_table({}, FETCHED_AT)
+
+    assert table.schema == CARD_SCHEMA
+    assert table.num_rows == 0

@@ -1,5 +1,10 @@
 """
-Enchaînement d'une collecte : catalogue, puis prix, puis résumé.
+Orchestration d'une collecte : catalogue, puis prix, puis résumé.
+
+Ce module enchaîne les étapes, choisit le catalogue source des prix, décide
+de l'échec d'une étape et sert le CLI ; la récupération, la sélection des prix
+et la mise en forme des tables sont dans ``catalogue``, ``prices`` et
+``snapshot``.
 
 Le catalogue est tout ou rien : si une langue échoue, aucun
 ``cards-*.parquet`` n'est écrit. Les prix utilisent le catalogue du jour s'il
@@ -31,7 +36,7 @@ from cartograph.bin.collect.prices import fetch_prices, price_targets_from_catal
 from cartograph.bin.collect.snapshot import (
     SORT_BY,
     SnapshotPaths,
-    card_table,
+    catalogue_table,
     latest_catalogue,
     price_table,
     snapshot_paths,
@@ -224,16 +229,7 @@ def _collect_catalogue(
     report["files"].append(
         _file(paths.raw_cards, report["fetched"], write_json_gz(cards, paths.raw_cards))
     )
-    _write_table(
-        report,
-        paths.cards,
-        lambda: pa.concat_tables(
-            [
-                card_table(items, language, fetched_at)
-                for language, items in cards.items()
-            ]
-        ),
-    )
+    _write_table(report, paths.cards, lambda: catalogue_table(cards, fetched_at))
     return report
 
 
