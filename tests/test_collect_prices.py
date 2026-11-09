@@ -13,8 +13,15 @@ from cartograph.bin.collect.prices import (
     fetch_prices,
     price_targets_from_catalogue,
     price_targets_from_table,
+    prices_from_cards,
 )
-from cartograph.bin.collect.snapshot import SORT_BY, card_table, write_parquet
+from cartograph.bin.collect.snapshot import (
+    SORT_BY,
+    card_table,
+    catalogue_table,
+    price_table,
+    write_parquet,
+)
 from tests.conftest import load_fixture
 
 FETCHED_AT = datetime(2026, 10, 28, 9, 30, tzinfo=UTC)
@@ -185,3 +192,74 @@ def test_price_targets_from_catalogue_without_languages(tmp_path: Path) -> None:
     assert selection == PriceSelection(
         targets=[], missing_languages=[], skipped_without_id_product=0
     )
+
+
+def test_prices_from_cards_one_record_per_product() -> None:
+    cards = {
+        "fr": [load_fixture("fr_swsh3-136"), _card("sans-cardmarket", None)],
+        "en": [load_fixture("en_swsh3-136")],
+    }
+    targets = price_targets_from_table(catalogue_table(cards, FETCHED_AT))
+
+    result = prices_from_cards(cards, targets, FETCHED_AT)
+
+    assert result.failed == []
+    assert result.items == [
+        {
+            "language": "fr",
+            "card_id": "swsh3-136",
+            "id_product": 483559,
+            "fetched_at": "2026-10-28T09:30:00+00:00",
+            "pricing": load_fixture("fr_swsh3-136")["pricing"],
+        }
+    ]
+
+
+def test_prices_from_cards_converts_fetched_at_to_utc() -> None:
+    paris = timezone(timedelta(hours=1))
+    cards = {"fr": [load_fixture("fr_swsh3-136")]}
+
+    result = prices_from_cards(
+        cards,
+        [PriceTarget("fr", "swsh3-136", 483559)],
+        datetime(2026, 10, 28, 9, 30, tzinfo=paris),
+    )
+
+    assert result.items[0]["fetched_at"] == "2026-10-28T08:30:00+00:00"
+
+
+def test_prices_from_cards_keeps_missing_pricing() -> None:
+    cards = {"fr": [{"id": "sans-pricing", "pricing": None}]}
+
+    result = prices_from_cards(
+        cards, [PriceTarget("fr", "sans-pricing", 1)], FETCHED_AT
+    )
+
+    assert result.items[0]["pricing"] is None
+
+
+def test_prices_from_cards_reports_absent_cards() -> None:
+    cards = {"fr": [load_fixture("fr_swsh3-136")]}
+    targets = [
+        PriceTarget("fr", "swsh3-136", 483559),
+        PriceTarget("ja", "S7D-019", 571601),
+    ]
+
+    result = prices_from_cards(cards, targets, FETCHED_AT)
+
+    assert [r["card_id"] for r in result.items] == ["swsh3-136"]
+    assert result.failed == ["ja/S7D-019"]
+
+
+def test_prices_from_cards_matches_fetch_prices(tcgdex_client: TcgdexClient) -> None:
+    cards = {
+        language: fetch_catalogue(tcgdex_client, language).items
+        for language in ("fr", "en", "ja")
+    }
+    targets = price_targets_from_table(catalogue_table(cards, FETCHED_AT))
+
+    fetched = fetch_prices(tcgdex_client, targets, now=lambda: FETCHED_AT)
+    derived = prices_from_cards(cards, targets, FETCHED_AT)
+
+    assert derived == fetched
+    assert price_table(derived.items).equals(price_table(fetched.items))
