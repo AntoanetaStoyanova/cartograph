@@ -55,7 +55,8 @@ Le code de sortie vaut 1 si une étape demandée échoue. Les logs vont dans `lo
 
 Le workflow `Collecte` du dépôt public [`cartograph-data`](https://github.com/AntoanetaStoyanova/cartograph-data) installe ce dépôt depuis `main` et lance la collecte. Il est déclenché chaque jour à 03:17 UTC par [cron-job.org](https://cron-job.org), qui appelle l'API GitHub `workflow_dispatch` : le cron de GitHub Actions ne garantit pas ses déclenchements. À chaque exécution :
 
-- prix chaque jour (1 h à 1 h 30), avec le dernier catalogue publié ; le lundi (paramètre `catalogue` à `auto`), catalogue puis prix (≈ 3 h 45) ;
+- prix chaque jour (1 h à 1 h 30), avec le dernier catalogue publié ; le lundi (paramètre `catalogue` à `auto`), catalogue seul (2 h 30 à 3 h 15 selon les erreurs 503 de TCGdex), les prix étant lus dans ses fiches sans nouvel appel à l'API ;
+- résumé écrit après le catalogue puis à la fin : une exécution coupée pendant les prix publie quand même le catalogue ;
 - catalogue publié dans la Release `catalogue` de `cartograph-data` ;
 - prix et brut envoyés dans la Release `data-AAAA-MM` du dépôt privé `cartograph-prices` (secret `PRICES_TOKEN`) ;
 - résumé et log gardés 7 jours en artefact, sans aucun prix.
