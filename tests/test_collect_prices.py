@@ -175,3 +175,13 @@ def test_price_targets_from_catalogue_without_requested_language(
     assert selection == PriceSelection(
         targets=[], missing_languages=["en", "ja"], skipped_without_id_product=0
     )
+
+
+def test_price_targets_from_catalogue_without_languages(tmp_path: Path) -> None:
+    source = _catalogue_file(tmp_path, {"fr": [load_fixture("fr_swsh3-136")]})
+
+    selection = price_targets_from_catalogue(source, [])
+
+    assert selection == PriceSelection(
+        targets=[], missing_languages=[], skipped_without_id_product=0
+    )

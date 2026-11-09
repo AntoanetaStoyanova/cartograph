@@ -139,7 +139,9 @@ def price_targets_from_catalogue(
     """
     table = pq.read_table(source, columns=_TARGET_COLUMNS)
     available = set(table.column("language").unique().to_pylist())
-    table = table.filter(pc.is_in(table.column("language"), pa.array(languages)))
+    table = table.filter(
+        pc.is_in(table.column("language"), pa.array(languages, type=pa.string()))
+    )
     return PriceSelection(
         targets=price_targets_from_table(table),
         missing_languages=[lang for lang in languages if lang not in available],
