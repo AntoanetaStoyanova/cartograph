@@ -1,5 +1,5 @@
 """
-Orchestration d'une collecte : catalogue, puis prix, puis résumé.
+Orchestration d'une collecte : catalogue, puis prix, avec un résumé après chacun.
 
 Ce module enchaîne les étapes, choisit le catalogue source des prix, décide
 de l'échec d'une étape et sert le CLI ; la récupération, la sélection des prix
@@ -81,6 +81,13 @@ def collect(
     -------
     CollectSummary
         Résumé écrit dans ``runs/collect-AAAA-MM-JJ.json``.
+
+    Notes
+    -----
+    Quand le catalogue et les prix sont demandés, le résumé est écrit une
+    première fois après le catalogue, avec les prix à ``failed``, puis
+    remplacé à la fin : une collecte coupée pendant les prix laisse un
+    catalogue publiable.
     """
     started_at = now().astimezone(UTC)
     day = started_at.date()
@@ -92,20 +99,17 @@ def collect(
     )
     prices_report = skipped_step()
     if prices:
+        if catalogue:
+            _write_summary(
+                paths, started_at, now, catalogue_report, _interrupted_step()
+            )
         source = (
             paths.cards
             if catalogue_report["status"] == "ok"
             else latest_catalogue(paths.cards.parent)
         )
         prices_report = _collect_prices(client, paths, source, languages, now)
-    summary: CollectSummary = {
-        "date": day.isoformat(),
-        "started_at": started_at.isoformat(),
-        "finished_at": now().astimezone(UTC).isoformat(),
-        "steps": {"catalogue": catalogue_report, "prices": prices_report},
-    }
-    write_json(summary, paths.summary)
-    return summary
+    return _write_summary(paths, started_at, now, catalogue_report, prices_report)
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -185,6 +189,57 @@ def _languages(value: str) -> tuple[str, ...]:
             f"langues inconnues : {value!r} (attendu parmi {','.join(LANGUAGES)})"
         )
     return languages
+
+
+def _interrupted_step() -> StepSummary:
+    """
+    Bilan provisoire d'une étape lancée mais pas terminée.
+
+    Returns
+    -------
+    StepSummary
+        Statut ``failed``, erreur « étape interrompue avant la fin ».
+    """
+    report = skipped_step()
+    report["status"] = "failed"
+    report["error"] = "étape interrompue avant la fin"
+    return report
+
+
+def _write_summary(
+    paths: SnapshotPaths,
+    started_at: datetime,
+    now: Callable[[], datetime],
+    catalogue_report: StepSummary,
+    prices_report: StepSummary,
+) -> CollectSummary:
+    """
+    Écrit le résumé de la collecte dans son état courant.
+
+    Parameters
+    ----------
+    paths : SnapshotPaths
+        Fichiers du jour.
+    started_at : datetime
+        Début de la collecte, en UTC.
+    now : Callable[[], datetime]
+        Horloge, pour ``finished_at``.
+    catalogue_report, prices_report : StepSummary
+        Bilans des deux étapes.
+
+    Returns
+    -------
+    CollectSummary
+        Résumé écrit, de façon atomique, dans ``paths.summary``.
+    """
+    summary: CollectSummary = {
+        "date": started_at.date().isoformat(),
+        "started_at": started_at.isoformat(),
+        "finished_at": now().astimezone(UTC).isoformat(),
+        "steps": {"catalogue": catalogue_report, "prices": prices_report},
+    }
+    write_json(summary, paths.summary)
+    return summary
 
 
 def _collect_catalogue(

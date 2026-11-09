@@ -68,6 +68,56 @@ def test_collect_with_catalogue_writes_all_files(
     )
 
 
+def test_collect_interrupted_prices_keep_catalogue_summary(
+    tcgdex_client: TcgdexClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def interrupted(*args: Any, **kwargs: Any) -> Any:
+        raise RuntimeError("délai dépassé")
+
+    monkeypatch.setattr(run, "fetch_prices", interrupted)
+
+    with pytest.raises(RuntimeError):
+        _collect(tcgdex_client, tmp_path)
+
+    paths = snapshot_paths(tmp_path, DAY)
+    summary = json.loads(paths.summary.read_text(encoding="utf-8"))
+    steps = _steps(summary)
+    assert steps["catalogue"]["status"] == "ok"
+    assert [f["name"] for f in steps["catalogue"]["files"]] == [
+        paths.cards.name,
+        paths.raw_cards.name,
+    ]
+    assert steps["prices"]["status"] == "failed"
+    assert steps["prices"]["error"] == "étape interrompue avant la fin"
+
+
+@pytest.mark.parametrize(
+    ("catalogue", "prices", "writes"),
+    [(True, True, 2), (True, False, 1), (False, True, 1)],
+)
+def test_collect_writes_summary_after_each_step(
+    tcgdex_client: TcgdexClient,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    catalogue: bool,
+    prices: bool,
+    writes: int,
+) -> None:
+    _collect(tcgdex_client, tmp_path, day=date(2026, 10, 25), prices=False)
+    summaries: list[Path] = []
+    write_json = run.write_json
+
+    def spy(obj: Any, path: Path) -> int:
+        summaries.append(path)
+        return write_json(obj, path)
+
+    monkeypatch.setattr(run, "write_json", spy)
+
+    _collect(tcgdex_client, tmp_path, catalogue=catalogue, prices=prices)
+
+    assert summaries == [snapshot_paths(tmp_path, DAY).summary] * writes
+
+
 def test_collect_prices_uses_latest_catalogue(
     tcgdex_client: TcgdexClient, tmp_path: Path
 ) -> None:
