@@ -24,6 +24,8 @@ from cartograph.config import SNAPSHOT_COMPRESSION
 
 logger = logging.getLogger(__name__)
 
+SORT_BY = ("card_id", "language")
+
 _CM_STATS = ("avg", "low", "trend", "avg1", "avg7", "avg30")
 _CM_PRICE_FIELDS = {
     **{stat: f"cm_{stat}" for stat in _CM_STATS},
@@ -131,6 +133,23 @@ def snapshot_paths(data_dir: Path, day: date) -> SnapshotPaths:
         raw_prices=data_dir / "raw" / f"prices-{stamp}.json.gz",
         summary=data_dir / "runs" / f"collect-{stamp}.json",
     )
+
+
+def latest_catalogue(snapshots_dir: Path) -> Path | None:
+    """
+    Renvoie le snapshot du catalogue le plus récent.
+
+    Parameters
+    ----------
+    snapshots_dir : Path
+        Dossier des snapshots.
+
+    Returns
+    -------
+    Path | None
+        Dernier ``cards-AAAA-MM-JJ.parquet``, ``None`` s'il n'y en a aucun.
+    """
+    return max(snapshots_dir.glob("cards-*.parquet"), default=None)
 
 
 def price_table(records: Sequence[dict[str, Any]]) -> pa.Table:

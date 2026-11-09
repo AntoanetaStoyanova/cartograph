@@ -20,7 +20,67 @@
 
 ---
 
-## [2026-11-01] — ORC-02 : cron GitHub retiré, documentation, ORC-01 clos
+## [2026-11-09] — STO-01 vérifié en planifié, délai de collecte dépassé le lundi
+
+### Fait
+
+- Session ouverte (`/workspace-init`).
+- Plan lot-sto-01-manifeste — Étape 3 : Vérifications, dernière case cochée. Nuit du 8 novembre : `42442061719` (cron-job.org, 03:17 UTC), succès à 04:20, manifeste `6318e3a` commité par `github-actions[bot]` sans intervention (`summary: true`, prix 29 312, 2 en échec, `repo_kib` 20), ping de succès healthchecks.io envoyé.
+- Incident du lundi 9 novembre : `42555536124` en échec, « Collecter » coupée à 07:47 UTC par `timeout-minutes: 270`. Le catalogue a pris 3 h 11, contre 2 h 36 le 2 novembre, à cause de 279 HTTP 503 de TCGdex (5 cartes en échec). Les prix ont été interrompus après 1 h 19 (30 272 cibles). Aucun résumé : le résumé n'est écrit qu'à la fin de `collect()` dans `run.py`, donc le catalogue écrit sur disque n'a pas été publié. Manifeste `summary: false` commité quand même (`d68275d`), envois vides, `/fail` envoyé : le manifeste s'est comporté comme prévu. Catalogue et prix du 9 novembre perdus. La comparaison du SHA-256 du catalogue est reportée au prochain catalogue publié.
+- Décision d'Antoaneta : délais relevés au maximum dans `../cartograph-data/.github/workflows/collect.yml`, job 300 → 350 min, « Collecter » 270 → 330 min (le maximum sur un runner GitHub est 360). `actionlint` et `zizmor` verts (pre-commit, étape pre-push). Non commité.
+- Antoaneta demande d'optimiser la collecte. Pistes relevées : écrire le résumé après chaque étape (un dépassement de délai ne perd plus le catalogue) ; le lundi, prendre les prix dans les réponses du catalogue (même point d'accès `/{lang}/cards/{id}`, soit environ 1 h 20 de gagnée) ; catalogue incrémental (nouvelles cartes seulement) ; concurrence bornée (à peser face aux 503 de TCGdex).
+- Délais de `collect.yml` commités et poussés par Antoaneta (`7409d43`).
+- `docs/specs/optimisation-collecte.md` et `docs/plans/optimisation-collecte.md` créés. Décisions : format du résumé et du manifeste inchangé ; résumé intermédiaire après le catalogue avec les prix à `failed` (« étape interrompue avant la fin ») ; le lundi, prix tirés des fiches du catalogue (mêmes cibles, `fetched_at` du catalogue) ; catalogue en échec → passe des prix actuelle ; refactor `run.py` en prérequis ; catalogue incrémental et parallélisme hors périmètre.
+- Plan refactor-run-orchestration — Étape 1 : Fondations : snapshot et bilan par défaut. Branche `feature/refactor-run` créée depuis `feature/controle` et non depuis `develop` : `6a91969` et `20001f2` (docs cron-job.org, Mermaid hors Git) n'étaient pas dans `develop` et le journal y divergeait ; ils passeront par la PR du refactor. `latest_catalogue` et `SORT_BY` déplacés dans `snapshot.py`, `skipped_step()` (ex-`_step`) dans `collect/__init__.py` ; test de `latest_catalogue` déplacé dans `tests/test_collect_snapshot.py`, nouveau `tests/test_collect_summary.py`. Spec passée `en cours`. `uv run inv ci` vert (122 tests).
+
+### Reste à faire
+
+- Exécuter docs/plans/refactor-run-orchestration.md — Étape 2 : Sélection des prix dans `prices.py` (branche `feature/refactor-run`, prérequis de l'optimisation).
+- Puis exécuter docs/plans/optimisation-collecte.md — Étape 1 : Résumé écrit après chaque étape (branche `feature/collecte-rapide` depuis `develop`, après fusion du refactor).
+- Antoaneta : rattrapage du 9 novembre, relance prix seuls (`-f catalogue=non`, environ 1 h 20), à confirmer.
+- Exécuter docs/plans/lot-sto-01-manifeste.md — Étape 4 : Documentation. SHA-256 du catalogue à comparer sur le prochain manifeste avec catalogue.
+- Antoaneta : avant PRO-02, demander aux testeurs leur logiciel de caisse et un fichier d'import exemple.
+- `cadrage-flux.md` : flux d'export pro (FX7 et FX8, écrans) à ajouter quand PRO-01 et PRO-02 seront planifiés.
+
+### Références
+
+- [../docs/plans/lot-sto-01-manifeste.md](../docs/plans/lot-sto-01-manifeste.md), [../docs/specs/lot-sto-01-manifeste.md](../docs/specs/lot-sto-01-manifeste.md)
+- [../docs/plans/refactor-run-orchestration.md](../docs/plans/refactor-run-orchestration.md), `src/cartograph/bin/collect/snapshot.py`, `src/cartograph/bin/collect/__init__.py`
+- [../docs/specs/optimisation-collecte.md](../docs/specs/optimisation-collecte.md), [../docs/plans/optimisation-collecte.md](../docs/plans/optimisation-collecte.md)
+- `../cartograph-data/.github/workflows/collect.yml`, `src/cartograph/bin/collect/run.py`
+
+## [2026-11-07] — ORC-02 clos, manifeste STO-01 en service et vérifié
+
+### Fait
+
+- Session ouverte (`/workspace-init`).
+- Plan lot-orc-02-declencheur — Étape 3 : Relais vérifié et retrait du cron GitHub, cases 3 et 4. Lundi 2 novembre : `41382239961` (`workflow_dispatch`, `9883d2c`), créée à 03:17:06 UTC, succès à 07:11 UTC (3 h 54), « Catalogue : true, prix : true » ; catalogue 58 687 cartes, 0 échec, `cards-2026-11-02.parquet` publié dans la Release `catalogue` (empreinte différente de `cards-2026-10-28.parquet`, même taille) ; prix 29 314, 0 échec, `source` : `cards-2026-11-02.parquet` ; prix et brut du jour dans `data-2026-11`. Log du job et artefact sans prix. Nuits du 3 au 7 novembre : toutes lancées à 03:17 UTC et réussies.
+- Commits ORC-02 déjà poussés : `9883d2c` (`cartograph-data`, README) et `6a91969` (`cartograph`, README) ; il ne reste en local dans `cartograph-data` que STO-01 (`collect.yml`, section « Manifeste »).
+- Étape 4 : ORC-02 coché dans la roadmap. Spec ORC-02 : tous les critères cochés. Plan et spec ORC-02 en `statut: fait`.
+- Plan lot-sto-01-manifeste — Étape 2 : Workflow, dernière case : `cartograph-data` à jour avec `origin/main`, diff relu ; découpage en deux commits atomiques proposé ; poussé par Antoaneta en un seul commit `661d2ae` (`feat: manifeste quotidien commité dans cartograph-data`, `collect.yml` et README). Étape 2 cochée.
+- Plan lot-sto-01-manifeste — Étape 3 : première exécution manuelle prix seuls `42387603283` lancée à 15:41 UTC sur `661d2ae`, en échec à 16:57 à « Calculer le manifeste » : `TCGDEX_USER_AGENT` absent (exigé à l'import de `cartograph.config`, transmis seulement à « Collecter » ; la variable du dépôt existe mais n'est pas passée d'office aux étapes). Envois et commit du manifeste sautés, `/fail` envoyé ; prix de 04:33 UTC intacts dans `data-2026-11`. Accord d'Antoaneta : variable ajoutée à l'`env:` de « Calculer le manifeste » dans `collect.yml` (non commité) ; `actionlint` et `zizmor` verts. Poussé par Antoaneta (`973641c`). Relance `42394662685` réussie à 18:35 UTC : manifeste commité par `github-actions[bot]` (`4b1b71d`), sans prix, prix 29 314 ; SHA-256 et octets identiques à `sha256sum` des fichiers de `data-2026-11`. Cases 1 et 2 de l'étape 3 cochées (SHA-256 du catalogue à refaire sur le manifeste du lundi 9 novembre).
+- Plan lot-sto-01-manifeste — Étape 3, case 3 : relance `42402307346` réussie à 19:42 UTC, manifeste du jour remplacé (`4751219` après `4b1b71d`), pas d'erreur sur le `sha`, SHA-256 identiques aux fichiers remplacés dans `data-2026-11`.
+- Plan lot-sto-01-manifeste — Étape 3, case 4 : échec volontaire `42407696764` (`-f catalogue=non -f prices=false`), en échec à 19:45 UTC : aucun résumé, manifeste `summary: false` commité (`00ad75d`), `/fail` envoyé ; healthchecks.io en « down », « failure » (Antoaneta) ; case cochée.
+- `cartograph-data` : le workflow commite le manifeste chaque jour sur `main`, donc le dépôt local a un commit de retard. Accord d'Antoaneta : `pull.rebase true`, `rebase.autoStash true` et alias `git envoyer` (`git pull && git push`) dans `.git/config` du dépôt ; ruleset GitHub « main protégée » (`26771497`) : force push et suppression de `main` interdits. Pas d'invoke dans `cartograph-data` (aucun Python). Manifestes du 7 novembre tirés en local.
+- Plan STO-01 : section « Pour la soutenance » ajoutée (trace et surveillance, `repo_kib`, `fetched` et `failed`, `sha256`, règle fichier → Release, incident `42387603283`, compétences C13.3, C16.3, C14.1 et preuves). Antoaneta : e-mails « down » de GitHub et de healthchecks.io reçus le 7 novembre à 20:45 (Paris), soit l'échec volontaire `42407696764`.
+- `competences/suivi-competences.md` mis à jour (demande d'Antoaneta) : P18 « Manifeste quotidien » (champs `repo_kib`, `fetched`, `failed`, `sha256`, vérifications, incident), P10 (e-mails « down » reçus), P11 (cron-job.org, nuits de novembre), prochaines actions de C13.3, C14.1 et C16.3 ; aucun changement de statut.
+- Revue de `src/cartograph/bin/collect/run.py` (demande d'Antoaneta) : la longueur vient surtout des docstrings, mais `run.py` fait du travail sur les données (sélection des prix, table du catalogue, nommage des snapshots). `docs/specs/refactor-run-orchestration.md` et `docs/plans/refactor-run-orchestration.md` créés : déplacements vers `prices.py` (`price_targets_from_catalogue`, `PriceSelection`), `snapshot.py` (`latest_catalogue`, `SORT_BY`, `catalogue_table`), `__init__.py` (`skipped_step`) ; règles d'échec et logs restent dans `run.py` ; commits `refactor:` sur `feature/refactor-run` depuis `develop`.
+- `actionlint` et `zizmor` verts sur `collect.yml` (version locale avec STO-01) ; `uv run inv ci` et `inv okflint` verts (119 tests, couverture 99,83 %). Critères de fin du plan cochés.
+
+### Reste à faire
+
+- Exécuter docs/plans/lot-sto-01-manifeste.md — Étape 3 : Vérifications, dernière case : nuit du 8 novembre (03:17 UTC), manifeste commité sans intervention et healthchecks.io revenu à « up ». SHA-256 du catalogue à comparer sur le manifeste du lundi 9 novembre. Puis Étape 4 : Documentation.
+- Exécuter docs/plans/refactor-run-orchestration.md — Étape 1 : Fondations : snapshot et bilan par défaut après la fin de l'Étape 3 de STO-01 (branche `feature/refactor-run` depuis `develop`).
+- Antoaneta : avant PRO-02, demander aux testeurs leur logiciel de caisse et un fichier d'import exemple.
+- `cadrage-flux.md` : flux d'export pro (FX7 et FX8, écrans) à ajouter quand PRO-01 et PRO-02 seront planifiés.
+
+### Références
+
+- [../docs/plans/lot-orc-02-declencheur.md](../docs/plans/lot-orc-02-declencheur.md), [../docs/specs/lot-orc-02-declencheur.md](../docs/specs/lot-orc-02-declencheur.md), [../docs/plans/roadmap-lots.md](../docs/plans/roadmap-lots.md)
+- [../docs/plans/lot-sto-01-manifeste.md](../docs/plans/lot-sto-01-manifeste.md)
+- [../docs/specs/refactor-run-orchestration.md](../docs/specs/refactor-run-orchestration.md), [../docs/plans/refactor-run-orchestration.md](../docs/plans/refactor-run-orchestration.md)
+
+## [2026-11-01] — ORC-02 documenté, ORC-01 clos, manifeste STO-01 en local, export pro dans la spec
 
 ### Fait
 
@@ -30,12 +90,17 @@
 - `docs/schemas/collecte-quotidienne.md` (demande d'Antoaneta) : schémas Mermaid de la collecte (vue d'ensemble, déroulé d'une nuit, lots livrés), en-tête okflint `type: note` ; `/docs/schemas/` ajouté au `.gitignore`.
 - cron-job.org (capture d'Antoaneta) : « Successful (204 No Content) » à 4:17:04 AM heure de Paris, soit 03:17:04 UTC, une seconde avant la création de `41268549547`. Case 1 de l'étape 3 cochée. Commit `e027675` `chore: retrait du cron GitHub, collecte lancée par cron-job.org` poussé par Antoaneta (`collect.yml` et `README.md`) ; `gh workflow view` ne montre plus que `workflow_dispatch`. Case 2 cochée.
 - Plan lot-orc-02-declencheur — Étape 4 : Documentation (accord d'Antoaneta sur la liste des modifications avant de les appliquer). `cartograph-data/README.md` : section « Déclenchement » (cron-job.org à 03:17 UTC, pas de cron GitHub et pourquoi, paramètres par défaut, relance manuelle et `-f catalogue=non` un lundi), « Surveillance » corrigée (« aucune collecte lancée » au lieu de « GitHub ne lance pas le cron »), e-mail de cron-job.org ajouté ; liens d'ancre remplacés par du texte (MD051). `README.md` de `cartograph`, « Collecte automatique » : déclenchement par cron-job.org, lundi par `auto`, options de `catalogue`, e-mail de cron-job.org. Spec maîtresse : N13 « Déclenchement de la collecte » ; décisions « Emplacement du workflow de collecte » (raison sans les 60 jours) et nouvelle ligne « Déclenchement de la collecte » (alternatives écartées : cron GitHub, Dagster) ; point 1 « Déclenchement » et « Fiabilité et surveillance » réécrits ; raison de « Surveillance », T5 (seuil des 60 jours retiré) et point ouvert des 60 jours (sans objet) mis à jour ; lien upptime. `cadrage-flux.md` : participant `cron-job.org` et appel 204 avant `/start`, FX1 et FX2. ORC-01 : critère reformulé (« une exécution déclenchée sans intervention réussit ») et coché avec `41268549547`, périmètre et décision « Fréquence » mis à jour, dernières cases du plan cochées, spec et plan en `statut: fait`. Roadmap : ORC-01 coché, ligne ORC-02 ajoutée (non cochée), ORC-02 dans l'ordre recommandé. Spec ORC-02 : 4 critères sur 6 cochés. `uv run inv ci` vert (119 tests, couverture 99,83 %), `inv okflint` vert, markdownlint sans nouvelle erreur (MD060 et MD036 déjà présents dans la roadmap, la spec maîtresse et les specs ORC). `cartograph-data/README.md` non commité.
+- STO-01 : N13 retiré de la spec (contexte, décision « Jour en échec », périmètre ; point « Garder le dépôt actif » sans objet depuis ORC-02 en hors périmètre) et de la roadmap ; le manifeste sert à F3 (traçabilité) et N16 (taille). Prérequis « après le 31 octobre » coché.
+- Plan lot-sto-01-manifeste — Étape 2 : Workflow (en local, non poussé). Accord d'Antoaneta sur les modifications présentées. `cartograph-data/.github/workflows/collect.yml` : étape « Calculer le manifeste » (après « Lire le résumé ») ; « Publier le catalogue » et « Envoyer prix et brut » pilotés par `files` du manifeste ; « Commiter le manifeste » (`gh api -X PUT contents/manifest/AAAA/AAAA-MM-JJ.json`, `sha` si relance, `continue-on-error`). Décision d'Antoaneta (« ne pas perdre les prix du jour ») : `repo_kib = -1` si `gh api` échoue, pour ne pas bloquer les envois ; un bug du module bloque les envois, `/fail` part, relance le jour même. Défaut trouvé en test et corrigé : `mapfile < <(jq …)` masquait une erreur de `jq` en « rien à envoyer » ; remplacé par `list=$(jq …)`. Six scénarios testés en local (faux `gh`, `jq` 1.7.1 vérifié par SHA-256, résumé réel du 1er novembre), tous conformes ; `actionlint` et `zizmor` verts. `cartograph-data/README.md` : section « Manifeste ». Spec STO-01 : décision « Taille du dépôt » complétée (`-1`).
+- Demande de testeurs professionnels (discussion avec Antoaneta) : export CSV d'une carte scannée pour un logiciel de caisse, et lien vers Cardmarket. Décisions d'Antoaneta : CSV d'une carte ou d'un lot au choix ; seul le prix **prédit** (modèle A) est affiché et exporté, l'utilisateur le corrige après avoir consulté Cardmarket lui-même (pas de redistribution des prix collectés, T8) ; trois vitrines avec comptes écartées au profit d'un mode pro local, sans prix collectés ni jeton de `cartograph-prices`. Spec maîtresse : F26 (lien Cardmarket, P2), F27 (export CSV, P2), F28 (écart prédit / saisi, P3) ; décisions « Prix montré aux professionnels » et « Mode pro et rôles » ; lignes P2 et P3 ; pages « Scan », « Fiche carte » et nouvelle page « Export (mode pro) » ; phrase ajoutée dans « Données publiées » ; trois points ouverts (logiciel de caisse et fichier d'import, format du lien Cardmarket, testeurs) ; « Vingt-sept points ». Marge sur prix payé (F16) : prix Cardmarket en usage personnel, prix prédit ou saisi en mode pro (décision « Mode pro et rôles » et page « Ma collection »), car prix payé + marge redonnent le prix. En mode pro, aucun écart par carte entre prédiction et prix Cardmarket (même en fourchette) : seulement l'erreur agrégée du modèle (moyenne, par tranche de prix) et l'intervalle de la prédiction ; cartes aux prix anormaux de « Marché » réservées à l'usage personnel. Roadmap : lots PRO-01 (F26), PRO-02 (F27) en P2, PRO-03 (F28) en P3 ; critère de fin « F1 à F28 ».
 
 ### Reste à faire
 
-- Antoaneta : commit et push de `cartograph-data/README.md` (`docs: déclenchement par cron-job.org et relance manuelle`) ; commit de `README.md` de `cartograph` (`docs: collecte déclenchée par cron-job.org`).
+- Antoaneta : `cartograph-data/README.md` mêle maintenant la doc ORC-02 (« Déclenchement », « Surveillance ») et STO-01 (« Manifeste ») ; commit ORC-02 seul par `git add -p` (`docs: déclenchement par cron-job.org et relance manuelle`), ou tout ensemble après lundi. Commit de `README.md` de `cartograph` (`docs: collecte déclenchée par cron-job.org`).
 - Lundi 2 novembre : exécuter docs/plans/lot-orc-02-declencheur.md — Étape 3 : Relais vérifié et retrait du cron GitHub, cases 3 et 4 : première nuit sans cron GitHub, « Catalogue : true, prix : true », `cards-2026-11-02.parquet` dans la Release `catalogue` et prix collectés avec ce catalogue ; contrôle sans prix dans le log et l'artefact. Puis cocher les critères « lundi » et « ORC-01 et ORC-02 cochés » de la spec ORC-02, ORC-02 dans la roadmap, critères de fin du plan, plan et spec ORC-02 en `statut: fait`.
-- Après la nuit du lundi 2 novembre : exécuter docs/plans/lot-sto-01-manifeste.md — Étape 2 : Workflow (manifeste calculé avant les envois, envois pilotés par le manifeste) ; ne pas pousser de changement de `collect.yml` avant, pour ne pas mêler deux causes.
+- Après la nuit du lundi 2 novembre et la clôture d'ORC-02 : docs/plans/lot-sto-01-manifeste.md — Étape 2 : Workflow, dernière case : commit (`feat: manifeste quotidien commité, envois pilotés par le manifeste`) et push de `collect.yml` et de la section « Manifeste » par Antoaneta. Puis Étape 3 : Vérifications (exécution manuelle prix seuls `-f catalogue=non`, SHA-256 comparés, relance le même jour, échec volontaire, nuit suivante).
+- Antoaneta : avant PRO-02, demander aux testeurs leur logiciel de caisse et un fichier d'import exemple.
+- `cadrage-flux.md` : flux d'export pro (FX7 et FX8, écrans) à ajouter quand PRO-01 et PRO-02 seront planifiés.
 
 ### Références
 
@@ -44,6 +109,7 @@
 - [../docs/schemas/collecte-quotidienne.md](../docs/schemas/collecte-quotidienne.md)
 - [../docs/plans/lot-orc-01-workflow.md](../docs/plans/lot-orc-01-workflow.md), [../docs/specs/lot-orc-01-workflow.md](../docs/specs/lot-orc-01-workflow.md), [../docs/plans/roadmap-lots.md](../docs/plans/roadmap-lots.md), [../docs/specs/cadrage-flux.md](../docs/specs/cadrage-flux.md)
 - `README.md`, `cartograph-data/README.md` (« Déclenchement », « Surveillance »), spec maîtresse (N13, décisions, « Collecte et stockage »)
+- [../docs/plans/lot-sto-01-manifeste.md](../docs/plans/lot-sto-01-manifeste.md), [../docs/specs/lot-sto-01-manifeste.md](../docs/specs/lot-sto-01-manifeste.md), `cartograph-data/README.md` (« Manifeste »)
 
 ## [2026-10-31] — SUR-01 terminé, ORC-02 : cron-job.org en place
 

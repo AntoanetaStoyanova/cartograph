@@ -21,13 +21,20 @@ import pyarrow as pa
 import pyarrow.compute as pc
 import pyarrow.parquet as pq
 
-from cartograph.bin.collect import CollectSummary, FileSummary, StepSummary
+from cartograph.bin.collect import (
+    CollectSummary,
+    FileSummary,
+    StepSummary,
+    skipped_step,
+)
 from cartograph.bin.collect.catalogue import fetch_catalogue
 from cartograph.bin.collect.client import TcgdexClient, TcgdexError
 from cartograph.bin.collect.prices import fetch_prices, price_targets_from_table
 from cartograph.bin.collect.snapshot import (
+    SORT_BY,
     SnapshotPaths,
     card_table,
+    latest_catalogue,
     price_table,
     snapshot_paths,
     write_json,
@@ -39,25 +46,7 @@ from cartograph.log import setup_logging
 
 logger = logging.getLogger(__name__)
 
-SORT_BY = ("card_id", "language")
 _TARGET_COLUMNS = ["language", "card_id", "id_product"]
-
-
-def latest_catalogue(snapshots_dir: Path) -> Path | None:
-    """
-    Renvoie le snapshot du catalogue le plus récent.
-
-    Parameters
-    ----------
-    snapshots_dir : Path
-        Dossier des snapshots.
-
-    Returns
-    -------
-    Path | None
-        Dernier ``cards-AAAA-MM-JJ.parquet``, ``None`` s'il n'y en a aucun.
-    """
-    return max(snapshots_dir.glob("cards-*.parquet"), default=None)
 
 
 def collect(
@@ -96,9 +85,11 @@ def collect(
     day = started_at.date()
     paths = snapshot_paths(data_dir, day)
     catalogue_report = (
-        _collect_catalogue(client, paths, languages, now) if catalogue else _step()
+        _collect_catalogue(client, paths, languages, now)
+        if catalogue
+        else skipped_step()
     )
-    prices_report = _step()
+    prices_report = skipped_step()
     if prices:
         source = (
             paths.cards
@@ -195,27 +186,6 @@ def _languages(value: str) -> tuple[str, ...]:
     return languages
 
 
-def _step() -> StepSummary:
-    """
-    Bilan vide d'une étape, ``skipped`` tant qu'elle n'a pas tourné.
-
-    Returns
-    -------
-    StepSummary
-        Statut ``skipped``, aucun fichier ni échec.
-    """
-    return {
-        "status": "skipped",
-        "fetched": 0,
-        "failed": [],
-        "skipped_without_id_product": 0,
-        "files": [],
-        "source": None,
-        "missing_languages": [],
-        "error": None,
-    }
-
-
 def _collect_catalogue(
     client: TcgdexClient,
     paths: SnapshotPaths,
@@ -242,7 +212,7 @@ def _collect_catalogue(
         ``failed`` si une langue échoue (rien n'est alors écrit) ou si la
         conversion en table échoue (le brut est alors conservé).
     """
-    report = _step()
+    report = skipped_step()
     fetched_at = now()
     cards: dict[str, list[dict[str, Any]]] = {}
     try:
@@ -301,7 +271,7 @@ def _collect_prices(
         collecte s'arrête ou si la conversion en table échoue (le brut est
         alors conservé).
     """
-    report = _step()
+    report = skipped_step()
     if source is None:
         report["status"] = "failed"
         report["error"] = "aucun catalogue disponible"

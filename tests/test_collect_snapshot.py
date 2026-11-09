@@ -15,6 +15,7 @@ from cartograph.bin.collect.snapshot import (
     PRICE_SCHEMA,
     _write_atomic,
     card_table,
+    latest_catalogue,
     price_table,
     snapshot_paths,
     strip_prices,
@@ -277,3 +278,13 @@ def test_card_table_empty_cards() -> None:
 
     assert table.schema == CARD_SCHEMA
     assert table.num_rows == 0
+
+
+def test_latest_catalogue_ignores_other_files(tmp_path: Path) -> None:
+    for name in ["cards-2026-10-20.parquet", "cards-2026-10-25.parquet"]:
+        (tmp_path / name).touch()
+    (tmp_path / "prices-2026-10-27.parquet").touch()
+    (tmp_path / "tmpabc.tmp").touch()
+
+    assert latest_catalogue(tmp_path) == tmp_path / "cards-2026-10-25.parquet"
+    assert latest_catalogue(tmp_path / "absent") is None
