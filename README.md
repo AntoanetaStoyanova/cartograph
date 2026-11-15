@@ -32,6 +32,7 @@ cp .env.example .env
 
 - **En service** : collecte quotidienne des prix et collecte hebdomadaire du catalogue depuis [TCGdex](https://tcgdex.dev), en français, anglais et japonais (voir « Collecte » et « Collecte automatique »).
 - **À venir** : base de données reconstruite en local avec dbt et DuckDB, identification d'une carte à partir d'une photo, modèle d'estimation du prix, application locale.
+- **Pilotage** : calendrier, rapports de suivi mensuels (`inv suivi`) et bilan Green IT dans [`docs/gouvernance/`](docs/gouvernance/).
 
 ## Collecte
 

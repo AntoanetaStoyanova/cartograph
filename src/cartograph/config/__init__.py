@@ -36,6 +36,21 @@ LOG_DIR : pathlib.Path
     Dossier des fichiers de log, ignoré par Git.
 SNAPSHOT_COMPRESSION : str
     Codec de compression des snapshots Parquet.
+DATA_REPO : str
+    Dépôt GitHub de la collecte, lu par le tableau de suivi.
+COLLECT_WORKFLOW : str
+    Fichier du workflow de collecte dans ``DATA_REPO``.
+ACTIONS_USD_PER_MIN : float
+    Prix d'une minute de runner Linux de 4 processeurs, équivalent payant du
+    runner gratuit d'un dépôt public.
+RUNNER_VCPUS : int
+    Processeurs d'un runner de dépôt public.
+RUNNER_MEMORY_GB : int
+    Mémoire d'un runner de dépôt public.
+RUNNER_WATTS : float
+    Puissance estimée d'un runner, méthode Cloud Carbon Footprint.
+GRID_KG_CO2E_PER_KWH : float
+    Facteur d'émission de l'électricité du runner.
 """
 
 import os
@@ -92,3 +107,21 @@ PROGRESS_EVERY = 1000
 DATA_DIR = PROJECT_ROOT / "data"
 LOG_DIR = PROJECT_ROOT / "logs"
 SNAPSHOT_COMPRESSION = "zstd"
+
+DATA_REPO = "AntoanetaStoyanova/cartograph-data"
+COLLECT_WORKFLOW = "collect.yml"
+# `linux_4_core`, 2026-11-15 :
+# docs.github.com/en/billing/reference/actions-runner-pricing
+ACTIONS_USD_PER_MIN = 0.012
+RUNNER_VCPUS = 4
+RUNNER_MEMORY_GB = 16
+# Cloud Carbon Footprint (cloudcarbonfootprint.org/docs/methodology, 2026-11-15) :
+# moyenne Azure 0,78 à 3,76 W par vCPU, 50 % d'utilisation faute de mesure,
+# 0,392 W par Go de mémoire, PUE 1,185 ; région du runner inconnue, East US retenue.
+_CCF_MIN_W, _CCF_MAX_W, _CCF_UTILISATION = 0.78, 3.76, 0.5
+_CCF_MEMORY_W_PER_GB, _CCF_PUE = 0.392, 1.185
+RUNNER_WATTS = _CCF_PUE * (
+    RUNNER_VCPUS * (_CCF_MIN_W + _CCF_UTILISATION * (_CCF_MAX_W - _CCF_MIN_W))
+    + RUNNER_MEMORY_GB * _CCF_MEMORY_W_PER_GB
+)
+GRID_KG_CO2E_PER_KWH = 0.379069
