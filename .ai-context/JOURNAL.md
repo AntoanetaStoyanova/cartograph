@@ -25,6 +25,7 @@
 - Décision d'Antoaneta : le temps de travail n'est pas valorisé en euros, ni affiché. Retirés : `DAILY_RATE_EUR` de `cartograph.config`, `valued_cost_eur` d'`Estimates`, `estimate(billed_minutes)` seul, ligne du rapport ; section renommée « Collecte : coût et énergie (estimations) ». Spec GOV-04 mise à jour (C6.2 : équivalent payant et quotas gratuits). Rapports régénérés avec `--force` (commentaires gardés). `uv run inv ci` vert (173 tests).
 - Plan gov-04-pilotage-green-it — Étape 4 : Calendrier. `docs/gouvernance/calendrier.md` : cinq phases (0 collecte et porte 0, 1 pipeline et application déc.-janv., 2 scan févr.-mars, 3 modèle A et P2 avr.-juin, 4 rendu et soutenance juil.-sept.), portes 1 à 3 au 31 janvier, 31 mars et 30 juin 2027 (validées par Antoaneta, recalées à chaque porte), Gantt Mermaid, rythme mesuré (9 jours en 2,9 semaines, 20 lots P1), scénarios jusqu'au gel (environ 100 jours observés contre 32 au rythme bas, pour 37 P1 et 12 P2 ; rythme bas : P2 et P3 coupés, au moins 1,2 jour par semaine pour finir le cœur), ressources, coût 0 €. Spec maîtresse : « Calendrier et jalons » renvoie au calendrier ; points ouverts « Calendrier » et « Temps réel disponible » cochés. okflint vert.
 - Décision d'Antoaneta : `calendrier.md` révisé à chaque porte franchie. Section « Révisions » ajoutée (date réelle, rythme depuis la porte précédente, phases recalées, lots coupés ; première ligne : porte 0).
+- Plan gov-04-pilotage-green-it — Étape 5 : Bilan Green IT et clôture. `docs/gouvernance/green-it.md` (choix sobres avec effet mesuré, chiffres d'octobre et novembre, extrapolation annuelle environ 30 000 minutes, 9 kWh, 3,5 kg CO₂e, hypothèses Cloud Carbon Footprint et sources, limites) ; `README.md` : ligne « Pilotage » vers `docs/gouvernance/` ; roadmap : GOV-04 coché, sa description corrigée (équivalent payant des minutes Actions au lieu du coût valorisé, temps de travail non valorisé). Spec et plan GOV-04 passés à `fait`. `uv run inv ci` vert, okflint vert.
 > ### Reste à faire
 > - ce qu'il reste à faire
 >
@@ -33,7 +34,7 @@
 
 ---
 
-## [2026-11-15] — STO-01 documenté, T5 passé, STO-03 clos, DOC-01 presque clos, SCN-T7 passé, COL-T2 passé, EMB-T9 passé, porte 0 franchie, GOV-04 planifié
+## [2026-11-15] — STO-01 documenté, T5 passé, STO-03 clos, DOC-01 presque clos, SCN-T7 passé, COL-T2 passé, EMB-T9 passé, porte 0 franchie, GOV-04 fait
 
 ### Fait
 
@@ -70,7 +71,8 @@
 
 ### Reste à faire
 
-- Exécuter docs/plans/gov-04-pilotage-green-it.md — Étape 5 : Bilan Green IT et clôture. Rapport de novembre à régénérer en fin de mois (`inv suivi --mois 2026-11 --force`), puis `statut: fait`.
+- Rapport de novembre à régénérer en fin de mois (`inv suivi --mois 2026-11 --force`, commentaire gardé), puis `statut: fait` ; mettre à jour les chiffres de `docs/gouvernance/green-it.md`. Chaque début de mois : `inv ci` puis `inv suivi`, commentaire.
+- Antoaneta : PR `feature/gov-04` vers `develop`. Suite : GOV-05 (dossier de veille), puis phase 1 (CI-01). Revue possible avec `/cr`.
 - optimisation-collecte : l'exécution `42687236424` (9 novembre au soir, `catalogue=oui`, 2 h 04) peut cocher l'exécution manuelle attendue ; reste la PR et la release si pas encore faites (code déjà sur `main`).
 - Antoaneta : `inv release` sur `develop` (sans effet sur la version : seulement `docs` et `chore`, rien à taguer ; PR directe `develop` → `main` possible), PR `develop` → `main`. Puis vérifier `gh repo view AntoanetaStoyanova/cartograph --json licenseInfo` = MIT, cocher la dernière case de docs/plans/lot-doc-01-readme-licence.md et passer plan et spec à `fait`.
 - Antoaneta : commit de la doc, PR `feature/collecte-rapide` vers `develop`, `inv release`, PR vers `main` ; commit et `git envoyer` du README de `cartograph-data`.
