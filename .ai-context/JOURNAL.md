@@ -23,6 +23,8 @@
 - Brouillons des sections « Commentaire » écrits dans `docs/gouvernance/suivi/2026-10.md` et `2026-11.md` à la demande d'Antoaneta, d'après le journal (avancement, écarts et incidents, décisions, RSE) ; échecs vérifiés par `gh run list` (octobre : 2 échecs volontaires `41044860655` et `41195887664`). Restent `statut: brouillon` jusqu'à sa relecture.
 - Commentaires approuvés par Antoaneta ; octobre passé à `statut: fait`. `write_report` avec `force` garde le statut et la section « Commentaire » du rapport existant (3 tests). Libellés des coûts clarifiés (Antoaneta ne paie rien) : « Temps valorisé (non facturé) », « Équivalent Actions payant (gratuit : dépôt public) », phrase d'explication sous le tableau. Rapports régénérés avec `--force`. Étape 3 terminée. `uv run inv ci` vert (173 tests), okflint vert.
 - Décision d'Antoaneta : le temps de travail n'est pas valorisé en euros, ni affiché. Retirés : `DAILY_RATE_EUR` de `cartograph.config`, `valued_cost_eur` d'`Estimates`, `estimate(billed_minutes)` seul, ligne du rapport ; section renommée « Collecte : coût et énergie (estimations) ». Spec GOV-04 mise à jour (C6.2 : équivalent payant et quotas gratuits). Rapports régénérés avec `--force` (commentaires gardés). `uv run inv ci` vert (173 tests).
+- Plan gov-04-pilotage-green-it — Étape 4 : Calendrier. `docs/gouvernance/calendrier.md` : cinq phases (0 collecte et porte 0, 1 pipeline et application déc.-janv., 2 scan févr.-mars, 3 modèle A et P2 avr.-juin, 4 rendu et soutenance juil.-sept.), portes 1 à 3 au 31 janvier, 31 mars et 30 juin 2027 (validées par Antoaneta, recalées à chaque porte), Gantt Mermaid, rythme mesuré (9 jours en 2,9 semaines, 20 lots P1), scénarios jusqu'au gel (environ 100 jours observés contre 32 au rythme bas, pour 37 P1 et 12 P2 ; rythme bas : P2 et P3 coupés, au moins 1,2 jour par semaine pour finir le cœur), ressources, coût 0 €. Spec maîtresse : « Calendrier et jalons » renvoie au calendrier ; points ouverts « Calendrier » et « Temps réel disponible » cochés. okflint vert.
+- Décision d'Antoaneta : `calendrier.md` révisé à chaque porte franchie. Section « Révisions » ajoutée (date réelle, rythme depuis la porte précédente, phases recalées, lots coupés ; première ligne : porte 0).
 > ### Reste à faire
 > - ce qu'il reste à faire
 >
@@ -68,7 +70,7 @@
 
 ### Reste à faire
 
-- Exécuter docs/plans/gov-04-pilotage-green-it.md — Étape 4 : Calendrier. Rapport de novembre à régénérer en fin de mois (`inv suivi --mois 2026-11 --force`, commentaire gardé), puis `statut: fait`.
+- Exécuter docs/plans/gov-04-pilotage-green-it.md — Étape 5 : Bilan Green IT et clôture. Rapport de novembre à régénérer en fin de mois (`inv suivi --mois 2026-11 --force`), puis `statut: fait`.
 - optimisation-collecte : l'exécution `42687236424` (9 novembre au soir, `catalogue=oui`, 2 h 04) peut cocher l'exécution manuelle attendue ; reste la PR et la release si pas encore faites (code déjà sur `main`).
 - Antoaneta : `inv release` sur `develop` (sans effet sur la version : seulement `docs` et `chore`, rien à taguer ; PR directe `develop` → `main` possible), PR `develop` → `main`. Puis vérifier `gh repo view AntoanetaStoyanova/cartograph --json licenseInfo` = MIT, cocher la dernière case de docs/plans/lot-doc-01-readme-licence.md et passer plan et spec à `fait`.
 - Antoaneta : commit de la doc, PR `feature/collecte-rapide` vers `develop`, `inv release`, PR vers `main` ; commit et `git envoyer` du README de `cartograph-data`.
