@@ -16,6 +16,7 @@
 - Plan p0-dec-porte-0 — Étape 1 : Vérifications. Spec passée à `en cours`, section « Vérifications » ajoutée. T3 : prix seuls 63 à 94 min (médiane 76) sur 13 exécutions planifiées ; jours du catalogue 3 h 54 (2 novembre), coupure à 4 h 30 le 9 (ancien délai), 2 h 04 en une passe le 9 au soir (`42687236424`, `catalogue=oui`) ; `repo_kib` 37. Replis T1, T6, T8 appliqués ; écarts : « Scan d'une carte » encore conditionnel sur les variantes (T2), « Modèles » renvoie encore la priorité du modèle B à la fin de la phase 0 (T4). Constat : `42687236424` est l'exécution manuelle `catalogue=oui` attendue par optimisation-collecte (2 h 04, catalogue `cards-2026-11-09` publié).
 - Plan p0-dec-porte-0 — Étape 2 : Décision et reports (4 tâches sur 7). Spec maîtresse : ligne T3 « Tranché le 15 novembre 2026 : passé » (durées réelles de novembre, liens vers les notes) ; ligne T9 : modèle choisi dans EMB-02 ; « Scan d'une carte » : tampons et finitions attribués à la carte de base (constat T2) ; « Modèles » : modèle B en P3 d'après T4 ; introduction de la porte : seuils retenus. Roadmap EMB-02 : choix du modèle par top-1 sur le jeu de réglage, dépendance SCN-02. Paragraphe de décision proposé à Antoaneta, en attente de son accord. okflint vert.
 - Décision d'Antoaneta : porte 0 franchie le 15 novembre 2026. Paragraphe « Décision » écrit sous le tableau de la porte 0 (tests bloquants et informatifs, replis, reports QUA-02 et SUR-02, début de la phase 1). Roadmap : P0-DEC coché. Spec et plan P0-DEC passés à `fait`. `uv run inv ci` vert (143 tests), okflint vert.
+- `docs/specs/gov-04-pilotage-green-it.md` et `docs/plans/gov-04-pilotage-green-it.md` créés (GOV-04). Décisions d'Antoaneta : documents de gouvernance dans `docs/gouvernance/`, suivi par Git (dépôt public, chiffres agrégés seulement) ; pas d'hypothèse fixe de temps (une journée par weekend ou tous les jours selon les semaines) : calendrier fondé sur le rythme mesuré par le journal, avec un scénario bas ; tableau de suivi calculé par `inv suivi` (roadmap, journal, minutes Actions par `gh`, tests et couverture, estimations de coût et d'énergie) puis commenté à la main. Autres décisions : module `cartograph.bin.suivi`, `gh` injectable pour les tests, constantes sourcées dans `cartograph.config`, rapport existant jamais écrasé sans `--force`.
 > ### Reste à faire
 > - ce qu'il reste à faire
 >
@@ -24,7 +25,7 @@
 
 ---
 
-## [2026-11-15] — STO-01 documenté, T5 passé, STO-03 clos, DOC-01 presque clos, SCN-T7 passé, COL-T2 passé, EMB-T9 passé, porte 0 franchie
+## [2026-11-15] — STO-01 documenté, T5 passé, STO-03 clos, DOC-01 presque clos, SCN-T7 passé, COL-T2 passé, EMB-T9 passé, porte 0 franchie, GOV-04 planifié
 
 ### Fait
 
@@ -61,7 +62,7 @@
 
 ### Reste à faire
 
-- Phase suivante : GOV-04 (calendrier, tableau de suivi, Green IT), puis GOV-05. Planifier avec `/workspace-plan`.
+- Exécuter docs/plans/gov-04-pilotage-green-it.md — Étape 1 : Lecture de la roadmap et du journal (branche `feature/gov-04` depuis `develop`).
 - optimisation-collecte : l'exécution `42687236424` (9 novembre au soir, `catalogue=oui`, 2 h 04) peut cocher l'exécution manuelle attendue ; reste la PR et la release si pas encore faites (code déjà sur `main`).
 - Antoaneta : `inv release` sur `develop` (sans effet sur la version : seulement `docs` et `chore`, rien à taguer ; PR directe `develop` → `main` possible), PR `develop` → `main`. Puis vérifier `gh repo view AntoanetaStoyanova/cartograph --json licenseInfo` = MIT, cocher la dernière case de docs/plans/lot-doc-01-readme-licence.md et passer plan et spec à `fait`.
 - Antoaneta : commit de la doc, PR `feature/collecte-rapide` vers `develop`, `inv release`, PR vers `main` ; commit et `git envoyer` du README de `cartograph-data`.
@@ -76,6 +77,7 @@
 
 - [../docs/specs/emb-t9-embeddings-cpu.md](../docs/specs/emb-t9-embeddings-cpu.md), [../docs/plans/emb-t9-embeddings-cpu.md](../docs/plans/emb-t9-embeddings-cpu.md), [../scripts/emb_t9.py](../scripts/emb_t9.py), [../.github/workflows/emb-t9.yml](../.github/workflows/emb-t9.yml) (branche `feature/emb-t9`)
 - [../docs/specs/p0-dec-porte-0.md](../docs/specs/p0-dec-porte-0.md), [../docs/plans/p0-dec-porte-0.md](../docs/plans/p0-dec-porte-0.md)
+- [../docs/specs/gov-04-pilotage-green-it.md](../docs/specs/gov-04-pilotage-green-it.md), [../docs/plans/gov-04-pilotage-green-it.md](../docs/plans/gov-04-pilotage-green-it.md)
 - [../docs/specs/col-t2-couverture-francaise.md](../docs/specs/col-t2-couverture-francaise.md), [../docs/plans/col-t2-couverture-francaise.md](../docs/plans/col-t2-couverture-francaise.md)
 - [../docs/specs/scn-t7-cartes-physiques.md](../docs/specs/scn-t7-cartes-physiques.md), [../docs/plans/scn-t7-cartes-physiques.md](../docs/plans/scn-t7-cartes-physiques.md)
 - [../docs/specs/lot-doc-01-readme-licence.md](../docs/specs/lot-doc-01-readme-licence.md), [../docs/plans/lot-doc-01-readme-licence.md](../docs/plans/lot-doc-01-readme-licence.md)
