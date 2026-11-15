@@ -20,7 +20,7 @@
 
 ---
 
-## [2026-11-15] — STO-01 documenté, T5 passé, STO-03 clos, DOC-01 presque clos, SCN-T7 passé
+## [2026-11-15] — STO-01 documenté, T5 passé, STO-03 clos, DOC-01 presque clos, SCN-T7 passé, COL-T2 passé
 
 ### Fait
 
@@ -42,6 +42,11 @@
 
 - Plan scn-t7-cartes-physiques — Étape 3 : Décisions et reports (plan et spec `fait`). Décisions d'Antoaneta : T7 passé au minimum (58 cartes FR, sans emprunt) ; scan japonais gardé, une carte JP retrouvée par son homologue international ou par son image `ja` de `assets.tcgdex.net`, nom, set et prix pris sur la fiche `ja` quand elle existe, même sans image (prix Cardmarket propres vérifiés sur `SV9-119` et `S12a-182`) ; pokemontcg.io exclu (Scrydex payant). Constat : `assets.tcgdex.net` a les images japonaises de 12 cartes sur 13 (S4a et S10D compris, pas SMM) alors que l'API n'a pas leurs fiches ; le Shiny Vault `swsh4.5sv` n'a aucune image FR ou EN. Spec maîtresse : T6 et T7 tranchés dans la porte 0, ligne « Cartes réelles » et point ouvert « Cartes réelles » mis à jour. Roadmap : SCN-T7 coché, JPN-01 précisé. okflint vert.
 - Scan japonais précisé (demande d'Antoaneta) : identification en trois temps, lecture du code de set et du numéro par OCR (OCR-01), recherche dans le catalogue `ja` (nom, set, prix de la fiche même sans image), sinon image de l'homologue international ou image `assets.tcgdex.net`. Limites écrites : 9 cartes JP sur 13 sans fiche `ja` (prix européen de l'homologue à défaut), pas d'image pour l'homologue Shiny Vault des S4a. Spec maîtresse : « Scan d'une carte » (protocole, jeu FR à 58 cartes) et décision T6 ; roadmap : JPN-01 (dépend aussi d'OCR-01) et OCR-01 (code de set lu aussi) ; spec SCN-T7 alignée. okflint vert.
+- `docs/specs/col-t2-couverture-francaise.md` et `docs/plans/col-t2-couverture-francaise.md` créés (COL-T2). Décisions : script jetable ; dénominateur = `cardCount.total` du set ; « a un prix » = au moins un champ Cardmarket non nul du jour (normal ou holo) ; seuil de 90 % calculé sur les sets d'extension, promos (`mep`, `svp`, `swshp`) et Énergies (`mee`) à part ; reverse et holo acceptées sans fiche distincte si la finition et son prix existent ; aucune variante à tampon possédée.
+- Plan col-t2-couverture-francaise — Étape 1 : Couverture des sets possédés. Prix (catalogue du 9 novembre, prix du 15) : 98,6 % des cartes des 11 sets d'extension possédés, seuil de 90 % passé ; seul `sm115` est sous 90 % (78,3 %, une carte possédée, avec prix) ; seule carte possédée sans prix : Lanterne Aventure `me06-090` (pas d'`id_product`). Images : `me06` n'en avait aucune dans le catalogue du 9 novembre, mais l'API les a toutes depuis le 8 (le catalogue du 16 devrait les reprendre) ; 6 des 58 cartes FR de T7 restent sans image française (`mep-080`, `-089`, `-091`, `swshp-SWSH282`, `-284`, `sm115-69`, ce dernier avec image anglaise). Mesures dans la spec (passée `en cours`) ; plan corrigé : jointure des prix sur `id_product`, pas sur `card_id`. okflint vert.
+- Identification sans image écrite (demande d'Antoaneta) : `card_id` = `<set_id>-<numéro>`, `set_id` trouvé par l'abréviation officielle des fiches de set (`DLR` → `me06`, `MEP` → `mep`, `PGO` → `swsh10.5`, `HIF` → `sm115` ; `swshp` sans abréviation, numéro unique) ; fiche et prix récupérés sans image, seule voie pour les 5 cartes FR possédées sans image. Spec maîtresse (« Scan d'une carte »), décision dans la spec COL-T2, OCR-01 précisé dans la roadmap. okflint vert.
+- Plan col-t2-couverture-francaise — Étape 2 : Variantes possédées. Aucune fiche distincte par finition ni par tampon : normale, holo, reverse et tampons (`variants_detailed`, attribut `stamp`) sont une seule fiche. `swsh10.5` : finitions déclarées, prix holo/reverse séparé (`cm_avg_holo`). `me06` : seule la normale est déclarée (encore dans l'API le 15 novembre), pas de prix reverse pour Onix, Steelix, Drakkarmin ; Altaria n'a qu'un prix holo. Aucune variante à tampon possédée. Mesures dans la spec. okflint vert.
+- Plan col-t2-couverture-francaise — Étape 3 : Décision et reports (plan et spec `fait`). T2 tranché dans la porte 0 : passé, repli appliqué pour les variantes (reverse de Règne Delta attribuées à la carte de base, sans prix reverse ; tampons non distincts, aucun possédé) ; 5 cartes sans image identifiées par code et numéro. Point ouvert « Complétude du français et du japonais » coché ; roadmap : COL-T2 coché. okflint vert.
 
 ### Reste à faire
 
@@ -50,12 +55,13 @@
 - Antoaneta : exécution manuelle `catalogue=oui` avant le lundi 16 novembre ; relever la durée de « Collecter », vérifier catalogue publié, prix dans `data-2026-11`, manifeste ; comparer le SHA-256 du catalogue au manifeste (STO-01). Puis cocher les dernières cases de docs/plans/optimisation-collecte.md et passer plan et spec à `fait`.
 - Antoaneta : rattrapage du 9 novembre, relance prix seuls (`-f catalogue=non`, environ 1 h 20), à confirmer.
 - Clore docs/plans/lot-sto-01-manifeste.md : après l'exécution `catalogue=oui`, comparer le SHA-256 du catalogue (`gh release download catalogue`) au manifeste, cocher le dernier critère de la spec, passer plan et spec à `fait`.
-- Porte 0, date limite fin novembre : COL-T2 (prérequis SCN-T7 levé), EMB-T9, puis P0-DEC. `/workspace-plan COL-T2` à lancer.
+- Porte 0, date limite fin novembre : EMB-T9 (informatif, `/workspace-plan EMB-T9`), puis P0-DEC. Tests bloquants tranchés dans la porte 0 : T1, T2, T5, T7, T8. T3 : lot COL-T3 fait (spec `fait`) mais sans mention « Tranché » dans la ligne T3 de la porte 0, à reporter lors de P0-DEC.
 - Antoaneta : avant PRO-02, demander aux testeurs leur logiciel de caisse et un fichier d'import exemple.
 - `cadrage-flux.md` : flux d'export pro (FX7 et FX8, écrans) à ajouter quand PRO-01 et PRO-02 seront planifiés.
 
 ### Références
 
+- [../docs/specs/col-t2-couverture-francaise.md](../docs/specs/col-t2-couverture-francaise.md), [../docs/plans/col-t2-couverture-francaise.md](../docs/plans/col-t2-couverture-francaise.md)
 - [../docs/specs/scn-t7-cartes-physiques.md](../docs/specs/scn-t7-cartes-physiques.md), [../docs/plans/scn-t7-cartes-physiques.md](../docs/plans/scn-t7-cartes-physiques.md)
 - [../docs/specs/lot-doc-01-readme-licence.md](../docs/specs/lot-doc-01-readme-licence.md), [../docs/plans/lot-doc-01-readme-licence.md](../docs/plans/lot-doc-01-readme-licence.md)
 - [../docs/plans/lot-sto-01-manifeste.md](../docs/plans/lot-sto-01-manifeste.md), [../docs/specs/lot-sto-01-manifeste.md](../docs/specs/lot-sto-01-manifeste.md)
