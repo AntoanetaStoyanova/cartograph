@@ -20,12 +20,15 @@
 
 ---
 
-## [2026-11-15] — Documentation de STO-01
+## [2026-11-15] — Documentation de STO-01, T5 passé, STO-03 clos
 
 ### Fait
 
 - Session ouverte (`/workspace-init`).
 - Plan lot-sto-01-manifeste — Étape 4 : Documentation. Spec maîtresse : N16 (`repo_kib` du manifeste), point 7 « Dépôt de données » (le manifeste ne garde plus le dépôt actif, ORC-02), nouvelle ligne « Manifeste du dépôt de données » dans les décisions d'architecture. `docs/specs/cadrage-flux.md` : FX5 (manifeste commité après les envois, même en échec ; lot STO-01) et séquence réordonnée comme `collect.yml` (résumé, manifeste, envois pilotés par le manifeste, commit) ; FX1 corrigé (catalogue dans la Release `catalogue` de `cartograph-data`, pas `data-AAAA-MM`). `README.md` : manifeste dans « Collecte automatique ». `docs/plans/roadmap-lots.md` : STO-01 coché, lien vers le plan. Critères d'acceptation de la spec cochés sauf le SHA-256 du catalogue ; plan et spec restent `en cours` jusqu'à cette comparaison. `uv run inv ci` vert (143 tests), okflint vert.
+- Branches `feature/collecte-rapide`, `feature/controle`, `feature/refactor-run` vérifiées fusionnées dans `develop` (local et `origin`) : suppression possible. Antoaneta a commité la doc sur `develop` (`f0d0bab`, non poussé) ; il partira avec la prochaine branche feature.
+- Décision T5 (accord d'Antoaneta) : passé. Collectes planifiées réussies du 1er au 8 novembre, puis du 10 au 15 ; le 9 rattrapé le soir (`42687236424`) ; alertes d'échec (31 octobre, 7 novembre) et de collecte non lancée (« down » du 30 octobre) reçues ; test de fraîcheur reporté à QUA-02. Écrit dans la porte 0 de la spec maîtresse ; SUR-T5 coché dans la roadmap.
+- Décision STO-03 (accord d'Antoaneta) : clos sans développement. Le brut quotidien est déjà dans `data-AAAA-MM` de `cartograph-prices` ; une archive mensuelle doublerait les fichiers ou réécrirait l'historique. Prix quotidiens (Parquet et brut) gardés pour l'historique des modèles. Spec maîtresse : point 4 « Données brutes » réécrit (plus d'artefact ni d'archive mensuelle), ligne « Rotation des fichiers » complétée ; roadmap : STO-03 barré.
 
 ### Reste à faire
 
@@ -33,6 +36,7 @@
 - Antoaneta : exécution manuelle `catalogue=oui` avant le lundi 16 novembre ; relever la durée de « Collecter », vérifier catalogue publié, prix dans `data-2026-11`, manifeste ; comparer le SHA-256 du catalogue au manifeste (STO-01). Puis cocher les dernières cases de docs/plans/optimisation-collecte.md et passer plan et spec à `fait`.
 - Antoaneta : rattrapage du 9 novembre, relance prix seuls (`-f catalogue=non`, environ 1 h 20), à confirmer.
 - Clore docs/plans/lot-sto-01-manifeste.md : après l'exécution `catalogue=oui`, comparer le SHA-256 du catalogue (`gh release download catalogue`) au manifeste, cocher le dernier critère de la spec, passer plan et spec à `fait`.
+- Porte 0, date limite fin novembre : DOC-01 (README, licence, avertissement), SCN-T7 (inventaire et photos FR et JP, prérequis de COL-T2), COL-T2, EMB-T9, puis P0-DEC. `/workspace-plan` à lancer pour le lot choisi.
 - Antoaneta : avant PRO-02, demander aux testeurs leur logiciel de caisse et un fichier d'import exemple.
 - `cadrage-flux.md` : flux d'export pro (FX7 et FX8, écrans) à ajouter quand PRO-01 et PRO-02 seront planifiés.
 
