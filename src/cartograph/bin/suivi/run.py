@@ -11,6 +11,7 @@ import subprocess
 import sys
 from collections.abc import Sequence
 from datetime import date
+from pathlib import Path
 
 from cartograph.bin.suivi.actions import collect_runs
 from cartograph.bin.suivi.estimates import estimate
@@ -41,13 +42,21 @@ def _month(value: str) -> str:
     return value
 
 
-def _coverage_json() -> None:
-    if COVERAGE_DATA.exists():
-        subprocess.run(
-            ["uv", "run", "coverage", "json", "-q", "-o", "coverage.json"],
-            cwd=COVERAGE_DATA.parent,
-            check=False,
-        )
+def _coverage_json() -> Path:
+    report = COVERAGE_DATA.parent / "coverage.json"
+    report.unlink(missing_ok=True)
+    if not COVERAGE_DATA.exists():
+        logger.warning("Pas de .coverage : couverture non mesurée (lancer inv ci)")
+        return report
+    result = subprocess.run(
+        ["uv", "run", "coverage", "json", "-q", "-o", report.name],
+        cwd=COVERAGE_DATA.parent,
+        check=False,
+    )
+    if result.returncode != 0:
+        report.unlink(missing_ok=True)
+        logger.warning("coverage json en échec : couverture non mesurée")
+    return report
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -77,7 +86,6 @@ def main(argv: Sequence[str] | None = None) -> int:
     month = args.mois or generated.strftime("%Y-%m")
     days = worked_days(JOURNAL, month)
     runs = collect_runs(month)
-    _coverage_json()
     report = Report(
         month=month,
         generated=generated,
@@ -85,7 +93,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         days=days,
         runs=runs,
         tests=count_tests(),
-        coverage=read_coverage(COVERAGE_DATA.parent / "coverage.json"),
+        coverage=read_coverage(_coverage_json(), COVERAGE_DATA),
         estimates=estimate(runs.billed_minutes),
     )
     path = OUT_DIR / f"{month}.md"

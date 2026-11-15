@@ -27,19 +27,22 @@ class RunStats:
     Attributes
     ----------
     runs : int
-        Nombre d'exécutions.
+        Exécutions terminées.
     succeeded : int
         Exécutions réussies.
     failed : int
         Exécutions qui ne sont pas réussies (échec, annulation, délai).
     billed_minutes : int
-        Minutes de runner, arrondies à la minute par job.
+        Minutes de runner des exécutions terminées, arrondies à la minute par job.
+    in_progress : int
+        Exécutions pas encore terminées, hors des autres comptes.
     """
 
     runs: int
     succeeded: int
     failed: int
     billed_minutes: int
+    in_progress: int
 
 
 def gh_api(path: str, key: str) -> list[dict[str, Any]]:
@@ -57,13 +60,21 @@ def gh_api(path: str, key: str) -> list[dict[str, Any]]:
     -------
     list[dict[str, Any]]
         Éléments de toutes les pages.
+
+    Raises
+    ------
+    RuntimeError
+        Si ``gh`` échoue, avec son message d'erreur.
     """
-    result = subprocess.run(
-        ["gh", "api", "--paginate", "--jq", f".{key}[]", path],
-        capture_output=True,
-        text=True,
-        check=True,
-    )
+    try:
+        result = subprocess.run(
+            ["gh", "api", "--paginate", "--jq", f".{key}[]", path],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    except subprocess.CalledProcessError as exc:
+        raise RuntimeError(f"gh api {path} : {exc.stderr.strip()}") from exc
     return [json.loads(line) for line in result.stdout.splitlines() if line]
 
 
@@ -93,15 +104,18 @@ def collect_runs(month: str, fetch: Fetch = gh_api) -> RunStats:
     """
     year, number = (int(part) for part in month.split("-"))
     last = calendar.monthrange(year, number)[1]
-    runs = fetch(
+    found = fetch(
         f"repos/{DATA_REPO}/actions/workflows/{COLLECT_WORKFLOW}/runs"
         f"?created={month}-01..{month}-{last:02d}&per_page=100",
         "workflow_runs",
     )
+    runs = [run for run in found if run["status"] == "completed"]
     succeeded = sum(run["conclusion"] == "success" for run in runs)
     minutes = sum(
         _minutes(job)
         for run in runs
         for job in fetch(f"repos/{DATA_REPO}/actions/runs/{run['id']}/jobs", "jobs")
     )
-    return RunStats(len(runs), succeeded, len(runs) - succeeded, minutes)
+    return RunStats(
+        len(runs), succeeded, len(runs) - succeeded, minutes, len(found) - len(runs)
+    )

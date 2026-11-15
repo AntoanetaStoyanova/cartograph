@@ -82,7 +82,7 @@ def collect(
 
 @task
 def suivi(c: Context, mois: str = "", force: bool = False) -> None:
-    """Écrit docs/gouvernance/suivi/AAAA-MM.md (après inv ci pour la couverture)."""
+    """Rapport de suivi du mois (en cours par défaut) ; lancer après inv ci."""
     args = ["uv run python -m cartograph.bin.suivi.run"]
     if mois:
         args.append(f"--mois {shlex.quote(mois)}")

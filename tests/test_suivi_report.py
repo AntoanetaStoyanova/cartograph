@@ -28,9 +28,11 @@ def report(**changes: object) -> Report:
         "generated": date(2026, 11, 15),
         "lots": LOTS,
         "days": [date(2026, 11, 1), date(2026, 11, 7)],
-        "runs": RunStats(runs=20, succeeded=17, failed=3, billed_minutes=1879),
+        "runs": RunStats(
+            runs=20, succeeded=17, failed=3, billed_minutes=1879, in_progress=0
+        ),
         "tests": 162,
-        "coverage": Coverage(percent=97.5, statements=812),
+        "coverage": Coverage(percent=97.5, statements=812, measured=date(2026, 11, 14)),
         "estimates": estimate(billed_minutes=1879),
     }
     values.update(changes)
@@ -51,7 +53,10 @@ def test_render_a_full_month() -> None:
     assert "| Exécutions | 20 (17 réussies, 3 en échec) |" in text
     assert "| Minutes facturables | 1 879 |" in text
     assert "| Tests | 162 |" in text
-    assert "| Couverture | 97,5 % (812 instructions) |" in text
+    assert (
+        "| Couverture | 97,5 % (812 instructions, mesurée le 14 novembre 2026) |"
+        in text
+    )
     assert "## Commentaire" in text
 
 
@@ -59,7 +64,7 @@ def test_render_a_month_without_data() -> None:
     text = render(
         report(
             days=[],
-            runs=RunStats(0, 0, 0, 0),
+            runs=RunStats(0, 0, 0, 0, 1),
             tests=None,
             coverage=None,
             estimates=estimate(billed_minutes=0),
@@ -67,7 +72,9 @@ def test_render_a_month_without_data() -> None:
     )
 
     assert "| Jours travaillés | 0 |" in text
-    assert "| Exécutions | 0 (0 réussies, 0 en échec) |" in text
+    assert (
+        "| Exécutions | 0 (0 réussies, 0 en échec ; 1 en cours, non comptée) |" in text
+    )
     assert "| Tests | non mesuré |" in text
     assert "| Couverture | non mesuré |" in text
 
@@ -121,3 +128,17 @@ def test_write_report_with_force_over_a_free_text(tmp_path: Path) -> None:
     write_report(path, render(report()), force=True)
 
     assert path.read_text(encoding="utf-8") == render(report())
+
+
+def test_write_report_with_force_keeps_a_comment_with_a_second_title(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "2026-11.md"
+    comment = "Texte.\n\n## Commentaire\n\nSuite.\n"
+    path.write_text(
+        render(report()).replace(COMMENT_PLACEHOLDER, comment), encoding="utf-8"
+    )
+
+    write_report(path, render(report(tests=170)), force=True)
+
+    assert path.read_text(encoding="utf-8").endswith(comment)

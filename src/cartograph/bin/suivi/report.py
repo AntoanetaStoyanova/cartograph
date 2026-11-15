@@ -99,6 +99,13 @@ def _days(days: list[date]) -> str:
     return f"{len(days)} ({numbers})"
 
 
+def _in_progress(runs: RunStats) -> str:
+    if not runs.in_progress:
+        return ""
+    noun = "comptée" if runs.in_progress == 1 else "comptées"
+    return f" ; {runs.in_progress} en cours, non {noun}"
+
+
 def render(report: Report) -> str:
     """
     Écrit le rapport Markdown d'un mois.
@@ -121,7 +128,8 @@ def render(report: Report) -> str:
         _UNMEASURED
         if report.coverage is None
         else f"{_number(report.coverage.percent, 1)} % "
-        f"({_number(report.coverage.statements)} instructions)"
+        f"({_number(report.coverage.statements)} instructions,"
+        f" mesurée le {_long_date(report.coverage.measured)})"
     )
     lines = [
         "---",
@@ -147,7 +155,7 @@ def render(report: Report) -> str:
         "| --- | --- |",
         f"| Jours travaillés | {_days(report.days)} |",
         f"| Exécutions | {runs.runs} ({runs.succeeded} réussies,"
-        f" {runs.failed} en échec) |",
+        f" {runs.failed} en échec{_in_progress(runs)}) |",
         f"| Minutes facturables | {_number(runs.billed_minutes)} |",
         "",
         "## Qualité",
@@ -183,7 +191,9 @@ def _keep_written_parts(old: str, new: str) -> str:
         new = _STATUS.sub(status.group(0), new, count=1)
     if _COMMENT_TITLE in old:
         new = (
-            new.split(_COMMENT_TITLE)[0] + _COMMENT_TITLE + old.split(_COMMENT_TITLE)[1]
+            new.split(_COMMENT_TITLE)[0]
+            + _COMMENT_TITLE
+            + old.split(_COMMENT_TITLE, 1)[1]
         )
     return new
 

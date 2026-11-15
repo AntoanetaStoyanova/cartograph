@@ -32,8 +32,9 @@ def test_collect_runs_counts_runs_and_bills_whole_minutes() -> None:
     fetch = fake_fetch(
         {
             RUNS_PATH: [
-                {"id": 1, "conclusion": "success"},
-                {"id": 2, "conclusion": "failure"},
+                {"id": 1, "status": "completed", "conclusion": "success"},
+                {"id": 2, "status": "completed", "conclusion": "failure"},
+                {"id": 3, "status": "in_progress", "conclusion": None},
             ],
             "repos/AntoanetaStoyanova/cartograph-data/actions/runs/1/jobs": [
                 job("2026-11-01T03:17:00Z", "2026-11-01T04:20:30Z")
@@ -46,8 +47,9 @@ def test_collect_runs_counts_runs_and_bills_whole_minutes() -> None:
     )
 
     assert collect_runs("2026-11", fetch=fetch) == RunStats(
-        runs=2, succeeded=1, failed=1, billed_minutes=64 + 1
+        runs=2, succeeded=1, failed=1, billed_minutes=64 + 1, in_progress=1
     )
+    assert not any("/runs/3/" in call for call in fetch.calls)
 
 
 def test_collect_runs_of_a_month_without_runs() -> None:
@@ -55,7 +57,7 @@ def test_collect_runs_of_a_month_without_runs() -> None:
         {RUNS_PATH.replace("11-01..2026-11-30", "12-01..2026-12-31"): []}
     )
 
-    assert collect_runs("2026-12", fetch=fetch) == RunStats(0, 0, 0, 0)
+    assert collect_runs("2026-12", fetch=fetch) == RunStats(0, 0, 0, 0, 0)
 
 
 def test_gh_api_reads_every_page(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -71,3 +73,15 @@ def test_gh_api_reads_every_page(monkeypatch: pytest.MonkeyPatch) -> None:
     assert gh_api("repos/x/runs", "workflow_runs") == [{"id": 0}, {"id": 1}, {"id": 2}]
     assert seen[0][:4] == ["gh", "api", "--paginate", "--jq"]
     assert seen[0][4] == ".workflow_runs[]"
+
+
+def test_gh_api_failure_shows_gh_message(monkeypatch: pytest.MonkeyPatch) -> None:
+    def run(args: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
+        raise subprocess.CalledProcessError(
+            1, args, output="", stderr="gh: To get started, run: gh auth login\n"
+        )
+
+    monkeypatch.setattr(actions.subprocess, "run", run)
+
+    with pytest.raises(RuntimeError, match="gh auth login"):
+        gh_api("repos/x/runs", "workflow_runs")
