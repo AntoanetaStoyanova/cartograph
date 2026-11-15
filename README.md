@@ -59,7 +59,8 @@ Le workflow `Collecte` du dépôt public [`cartograph-data`](https://github.com/
 - résumé écrit après le catalogue puis à la fin : une exécution coupée pendant les prix publie quand même le catalogue ;
 - catalogue publié dans la Release `catalogue` de `cartograph-data` ;
 - prix et brut envoyés dans la Release `data-AAAA-MM` du dépôt privé `cartograph-prices` (secret `PRICES_TOKEN`) ;
-- résumé et log gardés 7 jours en artefact, sans aucun prix.
+- résumé et log gardés 7 jours en artefact, sans aucun prix ;
+- manifeste `manifest/AAAA/AAAA-MM-JJ.json` commité dans `cartograph-data`, même si la collecte échoue : statut des étapes, fichiers envoyés (Release, lignes, octets, SHA-256) et taille du dépôt, sans aucun prix. Il est calculé avant les envois et donne la Release de chaque fichier ; `sha256sum` d'un fichier téléchargé doit redonner son `sha256`.
 
 Surveillance :
 
