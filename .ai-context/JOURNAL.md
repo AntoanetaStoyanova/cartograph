@@ -20,7 +20,7 @@
 
 ---
 
-## [2026-11-15] — STO-01 documenté, T5 passé, STO-03 clos, DOC-01 commencé
+## [2026-11-15] — STO-01 documenté, T5 passé, STO-03 clos, DOC-01 presque clos, SCN-T7 passé
 
 ### Fait
 
@@ -33,19 +33,30 @@
 - `docs/specs/lot-doc-01-readme-licence.md` et `docs/plans/lot-doc-01-readme-licence.md` créés (DOC-01). Décisions d'Antoaneta : licence MIT pour `cartograph` et `cartograph-data` (le catalogue garde la licence de TCGdex). Autres décisions : texte MIT officiel en anglais, README en français, « Utilisation » remplacée par l'état du projet, pas de champ `license` dans `pyproject.toml` (SPDX demande setuptools 77, `[build-system]` vient du template).
 - Plan lot-doc-01-readme-licence — Étape 1 : Licence MIT dans les deux dépôts. `LICENSE` (texte MIT officiel, `Copyright (c) 2026 Antoaneta Stoyanova`) à la racine de `cartograph` (branche `feature/doc-01`) et de `../cartograph-data` (non commité). Spec passée `en cours`. pre-commit vert ; `uv run inv ci` vert (143 tests).
 - Plan lot-doc-01-readme-licence — Étape 2 : README des deux dépôts. `README.md` de `cartograph` : « Utilisation » remplacée par « État du projet » (collecte en service, le reste à venir) ; sections « Données et licences », « Avertissement », « Licence » ajoutées à la fin. `../cartograph-data/README.md` : section « Licence » à la fin (non commité). markdownlint vert dans les deux dépôts ; `uv run inv ci` vert (143 tests).
+- Plan lot-doc-01-readme-licence — Étape 3 (sauf la vérification GitHub sur `cartograph`). PR #10 `feature/doc-01` → `develop` fusionnée par Antoaneta ; `cartograph-data` poussé (`789134a`, `224b0e6`), licence MIT reconnue par GitHub. Spec maîtresse : « Licence » de « Sécurité, légalité et éthique » réécrit, point « Licence du dépôt » coché ; roadmap : DOC-01 coché. Critères de la spec cochés sauf la licence affichée pour `cartograph` (GitHub lit `main`).
+- SCN-T7 (sans plan) : `data/inventaire/inventaire.csv` pré-rempli depuis les 83 photos de `data/inventaire/photos` (lecture visuelle). 79 lignes, une par photo : 66 FR (64 cartes distinctes avec la variante ; Gaulet ex JTG 011 et Shaymin DLR 008 photographiés deux fois) et 13 JP. Quatre fichiers sont des copies identiques (même MD5) et restent hors du CSV : `1000011547.jpg` (= 546), `1000011601 (1).jpg`, `…_15103.jpg` (= 572), `…_15105.jpg` (= 573). `set` = code imprimé (PR-SW, PGO, CRE et HIF pour les sets sans code), variante = rareté (codes japonais pour les JP), « reverse » supposé d'après l'aspect métallisé (Onix 051, Steelix 052, Drakkarmin 072). À relire par Antoaneta.
+- `docs/specs/scn-t7-cartes-physiques.md` et `docs/plans/scn-t7-cartes-physiques.md` créés (SCN-T7). Décisions : script jetable, recherche dans le dernier catalogue Parquet (API seulement pour confirmer une absence), une carte TCGdex distincte par `card_id` (normale et reverse comptent pour une), Énergies de base exclues du compte retenu, doublons comptés une fois, verdict « passé » dès 50 et « avec marge » dès 60, relecture de l'inventaire limitée aux lignes absentes ou douteuses.
+
+- Plan scn-t7-cartes-physiques — Étape 1 : Vérification des cartes françaises. Catalogue `cards-2026-11-09.parquet` ; 66 lignes FR sur 66 trouvées (DLR = `me06`, CRI = `me04`, POR = `me03`, 30C = `30th`, MEP = `mep`, MEE = `mee`, autres codes classiques), aucune erreur de lecture. Noms des 4 Énergies alignés sur TCGdex dans `data/inventaire/inventaire.csv` (`mee-001` « Énergie Plante »…). 62 cartes distinctes, 58 sans Énergies de base : T7 passe le minimum de 50, sous la cible de 60. Section « Mesures » ajoutée à la spec (passée `en cours`). okflint vert ; pas de code, CI non concernée.
+- Plan scn-t7-cartes-physiques — Étape 2 : Couverture japonaise (T6). 4 cartes JP sur 13 dans TCGdex (SV9, S11, S12a, SV7). S4a (7 cartes chromatiques) et S10D sont déclarés dans l'API `ja` sans aucune fiche ; SMM (Jirachi GX 002/031) est inconnu (404). Tableau par set dans la section « Mesures » de la spec. okflint vert.
+
+- Plan scn-t7-cartes-physiques — Étape 3 : Décisions et reports (plan et spec `fait`). Décisions d'Antoaneta : T7 passé au minimum (58 cartes FR, sans emprunt) ; scan japonais gardé, une carte JP retrouvée par son homologue international ou par son image `ja` de `assets.tcgdex.net`, nom, set et prix pris sur la fiche `ja` quand elle existe, même sans image (prix Cardmarket propres vérifiés sur `SV9-119` et `S12a-182`) ; pokemontcg.io exclu (Scrydex payant). Constat : `assets.tcgdex.net` a les images japonaises de 12 cartes sur 13 (S4a et S10D compris, pas SMM) alors que l'API n'a pas leurs fiches ; le Shiny Vault `swsh4.5sv` n'a aucune image FR ou EN. Spec maîtresse : T6 et T7 tranchés dans la porte 0, ligne « Cartes réelles » et point ouvert « Cartes réelles » mis à jour. Roadmap : SCN-T7 coché, JPN-01 précisé. okflint vert.
+- Scan japonais précisé (demande d'Antoaneta) : identification en trois temps, lecture du code de set et du numéro par OCR (OCR-01), recherche dans le catalogue `ja` (nom, set, prix de la fiche même sans image), sinon image de l'homologue international ou image `assets.tcgdex.net`. Limites écrites : 9 cartes JP sur 13 sans fiche `ja` (prix européen de l'homologue à défaut), pas d'image pour l'homologue Shiny Vault des S4a. Spec maîtresse : « Scan d'une carte » (protocole, jeu FR à 58 cartes) et décision T6 ; roadmap : JPN-01 (dépend aussi d'OCR-01) et OCR-01 (code de set lu aussi) ; spec SCN-T7 alignée. okflint vert.
+
 ### Reste à faire
 
-- Exécuter docs/plans/lot-doc-01-readme-licence.md — Étape 3 : Spec maîtresse, roadmap et publication (branche `feature/doc-01`).
+- Antoaneta : `inv release` sur `develop` (sans effet sur la version : seulement `docs` et `chore`, rien à taguer ; PR directe `develop` → `main` possible), PR `develop` → `main`. Puis vérifier `gh repo view AntoanetaStoyanova/cartograph --json licenseInfo` = MIT, cocher la dernière case de docs/plans/lot-doc-01-readme-licence.md et passer plan et spec à `fait`.
 - Antoaneta : commit de la doc, PR `feature/collecte-rapide` vers `develop`, `inv release`, PR vers `main` ; commit et `git envoyer` du README de `cartograph-data`.
 - Antoaneta : exécution manuelle `catalogue=oui` avant le lundi 16 novembre ; relever la durée de « Collecter », vérifier catalogue publié, prix dans `data-2026-11`, manifeste ; comparer le SHA-256 du catalogue au manifeste (STO-01). Puis cocher les dernières cases de docs/plans/optimisation-collecte.md et passer plan et spec à `fait`.
 - Antoaneta : rattrapage du 9 novembre, relance prix seuls (`-f catalogue=non`, environ 1 h 20), à confirmer.
 - Clore docs/plans/lot-sto-01-manifeste.md : après l'exécution `catalogue=oui`, comparer le SHA-256 du catalogue (`gh release download catalogue`) au manifeste, cocher le dernier critère de la spec, passer plan et spec à `fait`.
-- Porte 0, date limite fin novembre : DOC-01 (README, licence, avertissement), SCN-T7 (inventaire et photos FR et JP, prérequis de COL-T2), COL-T2, EMB-T9, puis P0-DEC. `/workspace-plan` à lancer pour le lot choisi.
+- Porte 0, date limite fin novembre : COL-T2 (prérequis SCN-T7 levé), EMB-T9, puis P0-DEC. `/workspace-plan COL-T2` à lancer.
 - Antoaneta : avant PRO-02, demander aux testeurs leur logiciel de caisse et un fichier d'import exemple.
 - `cadrage-flux.md` : flux d'export pro (FX7 et FX8, écrans) à ajouter quand PRO-01 et PRO-02 seront planifiés.
 
 ### Références
 
+- [../docs/specs/scn-t7-cartes-physiques.md](../docs/specs/scn-t7-cartes-physiques.md), [../docs/plans/scn-t7-cartes-physiques.md](../docs/plans/scn-t7-cartes-physiques.md)
 - [../docs/specs/lot-doc-01-readme-licence.md](../docs/specs/lot-doc-01-readme-licence.md), [../docs/plans/lot-doc-01-readme-licence.md](../docs/plans/lot-doc-01-readme-licence.md)
 - [../docs/plans/lot-sto-01-manifeste.md](../docs/plans/lot-sto-01-manifeste.md), [../docs/specs/lot-sto-01-manifeste.md](../docs/specs/lot-sto-01-manifeste.md)
 - [../docs/specs/cadrage-flux.md](../docs/specs/cadrage-flux.md), [../docs/plans/roadmap-lots.md](../docs/plans/roadmap-lots.md), `README.md`
