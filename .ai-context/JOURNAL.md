@@ -12,6 +12,8 @@
 > ### Fait
 > - ce qui a été fait
 >
+- `docs/specs/p0-dec-porte-0.md` et `docs/plans/p0-dec-porte-0.md` créés (P0-DEC). Décision d'Antoaneta : le modèle d'embedding se choisit dans EMB-02 (top-1 d'open_clip et DINOv2 sur le jeu de réglage, puis modèle figé), EMB-04 reste la comparaison complète en P3 ; la ligne T9 qui renvoyait à EMB-04 sera corrigée. Autres décisions : T3 revu avec les durées réelles des collectes de novembre avant d'être tranché ; seuils de la porte gardés ; porte déclarée franchie seulement après accord d'Antoaneta.
+- Plan p0-dec-porte-0 — Étape 1 : Vérifications. Spec passée à `en cours`, section « Vérifications » ajoutée. T3 : prix seuls 63 à 94 min (médiane 76) sur 13 exécutions planifiées ; jours du catalogue 3 h 54 (2 novembre), coupure à 4 h 30 le 9 (ancien délai), 2 h 04 en une passe le 9 au soir (`42687236424`, `catalogue=oui`) ; `repo_kib` 37. Replis T1, T6, T8 appliqués ; écarts : « Scan d'une carte » encore conditionnel sur les variantes (T2), « Modèles » renvoie encore la priorité du modèle B à la fin de la phase 0 (T4). Constat : `42687236424` est l'exécution manuelle `catalogue=oui` attendue par optimisation-collecte (2 h 04, catalogue `cards-2026-11-09` publié).
 > ### Reste à faire
 > - ce qu'il reste à faire
 >
@@ -20,7 +22,7 @@
 
 ---
 
-## [2026-11-15] — STO-01 documenté, T5 passé, STO-03 clos, DOC-01 presque clos, SCN-T7 passé, COL-T2 passé, EMB-T9 passé
+## [2026-11-15] — STO-01 documenté, T5 passé, STO-03 clos, DOC-01 presque clos, SCN-T7 passé, COL-T2 passé, EMB-T9 passé, P0-DEC planifié
 
 ### Fait
 
@@ -57,7 +59,8 @@
 
 ### Reste à faire
 
-- Porte 0 : P0-DEC (décision écrite pour chaque test, dont la mention « Tranché » de T3), puis GOV-04. Planifier avec `/workspace-plan`.
+- Exécuter docs/plans/p0-dec-porte-0.md — Étape 2 : Décision et reports (paragraphe de décision à faire approuver par Antoaneta).
+- optimisation-collecte : l'exécution `42687236424` (9 novembre au soir, `catalogue=oui`, 2 h 04) peut cocher l'exécution manuelle attendue ; reste la PR et la release si pas encore faites (code déjà sur `main`).
 - Antoaneta : `inv release` sur `develop` (sans effet sur la version : seulement `docs` et `chore`, rien à taguer ; PR directe `develop` → `main` possible), PR `develop` → `main`. Puis vérifier `gh repo view AntoanetaStoyanova/cartograph --json licenseInfo` = MIT, cocher la dernière case de docs/plans/lot-doc-01-readme-licence.md et passer plan et spec à `fait`.
 - Antoaneta : commit de la doc, PR `feature/collecte-rapide` vers `develop`, `inv release`, PR vers `main` ; commit et `git envoyer` du README de `cartograph-data`.
 - Antoaneta : exécution manuelle `catalogue=oui` avant le lundi 16 novembre ; relever la durée de « Collecter », vérifier catalogue publié, prix dans `data-2026-11`, manifeste ; comparer le SHA-256 du catalogue au manifeste (STO-01). Puis cocher les dernières cases de docs/plans/optimisation-collecte.md et passer plan et spec à `fait`.
@@ -70,6 +73,7 @@
 ### Références
 
 - [../docs/specs/emb-t9-embeddings-cpu.md](../docs/specs/emb-t9-embeddings-cpu.md), [../docs/plans/emb-t9-embeddings-cpu.md](../docs/plans/emb-t9-embeddings-cpu.md), [../scripts/emb_t9.py](../scripts/emb_t9.py), [../.github/workflows/emb-t9.yml](../.github/workflows/emb-t9.yml) (branche `feature/emb-t9`)
+- [../docs/specs/p0-dec-porte-0.md](../docs/specs/p0-dec-porte-0.md), [../docs/plans/p0-dec-porte-0.md](../docs/plans/p0-dec-porte-0.md)
 - [../docs/specs/col-t2-couverture-francaise.md](../docs/specs/col-t2-couverture-francaise.md), [../docs/plans/col-t2-couverture-francaise.md](../docs/plans/col-t2-couverture-francaise.md)
 - [../docs/specs/scn-t7-cartes-physiques.md](../docs/specs/scn-t7-cartes-physiques.md), [../docs/plans/scn-t7-cartes-physiques.md](../docs/plans/scn-t7-cartes-physiques.md)
 - [../docs/specs/lot-doc-01-readme-licence.md](../docs/specs/lot-doc-01-readme-licence.md), [../docs/plans/lot-doc-01-readme-licence.md](../docs/plans/lot-doc-01-readme-licence.md)
