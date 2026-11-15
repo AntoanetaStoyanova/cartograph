@@ -20,7 +20,7 @@
 
 ---
 
-## [2026-11-15] — STO-01 documenté, T5 passé, STO-03 clos, DOC-01 presque clos, SCN-T7 passé, COL-T2 passé, EMB-T9 passé, porte 0 franchie, GOV-04 fait, GOV-05 planifié
+## [2026-11-15] — STO-01 documenté, T5 passé, STO-03 clos, DOC-01 presque clos, SCN-T7 passé, COL-T2 passé, EMB-T9 passé, porte 0 franchie, GOV-04 fait, GOV-05 fait
 
 ### Fait
 
@@ -72,10 +72,12 @@
 - `docs/specs/gov-05-dossier-veille.md` et `docs/plans/gov-05-dossier-veille.md` créés (GOV-05). Décisions d'Antoaneta : périmètre sources, légal et technique (technique limitée à ce qui change une décision) ; veille revue à chaque porte, changement vu entre deux portes noté tout de suite. Dossier dans `docs/gouvernance/veille.md`, pages officielles d'abord, date de vérification par ligne. Entrées P0-DEC et GOV-04 remises dans cette entrée (elles étaient tombées dans le bloc d'usage en tête du journal).
 - Plan gov-05-dossier-veille — Étape 1 : Sources de données et quotas (branche `feature/gov-05`). Spec passée à `en cours`. `docs/gouvernance/veille.md` créé : méthode, tableaux « Sources de données » (TCGdex FAQ, prix relayés, état des langues ; pokemontcg.io ; Scrydex ; API TCGplayer ; `tcgdex/price-history` et `cards-database` par `gh api`) et « Quotas » (runners et limites Actions, Releases, cron-job.org, healthchecks.io, Hugging Face, Kaggle), « Changements constatés », « Révisions ». Aucune décision à changer ; quota GPU de Kaggle illisible sans navigateur, reste ouvert jusqu'à la porte 2. `uv run inv ci` vert (177 tests), okflint vert.
 - Plan gov-05-dossier-veille — Étape 2 : Veille légale. Tableau « Veille légale » dans `docs/gouvernance/veille.md` : Cardmarket et TCGplayer (HTTP 403 sans navigateur, lecture du 27 octobre conservée jusqu'à la porte 1), directive 96/9/CE (articles 7 et 10), licence MIT de TCGdex, open_clip (code et poids MIT ; la fiche laion2b déclare hors cadre tout usage déployé, critère pour EMB-02), DINOv2 et `timm` (Apache 2.0), conditions de Hugging Face, Kaggle (illisible), RGPD (article 2.2.c, aucune donnée personnelle collectée), marques Pokémon. « Changements constatés » complété.
+- Plan gov-05-dossier-veille — Étape 3 : Veille technique et clôture (plan et spec `fait`). Tableau « Veille technique » (versions PyPI du 15 novembre 2026 : open_clip 4.2.2, timm 1.0.31, torch 2.15.0, DuckDB 2.0.0, dbt-core 1.12.7 et dbt-duckdb 1.11.1, NiceGUI 4.0.0, Dash Mantine 3.0.0, EasyOCR 1.7.2 sans version depuis 2024, PaddleOCR 3.7.0, pile du modèle A, MLflow). Spec maîtresse : « Sources consultées » renvoie au dossier de veille ; points ouverts « Quotas et conditions » et « Licences » mis à jour (restent Kaggle, Cardmarket et TCGplayer dans un navigateur, choix du modèle). `calendrier.md` : revue de veille à chaque porte. Roadmap : GOV-05 coché. Phase 0 terminée.
+- Demande d'Antoaneta : rappel du suivi à chaque fin de porte. Spec maîtresse, « Calendrier et jalons » : consigne « À chaque fin de porte » (franchie, ou date atteinte sans le critère) : `inv ci` puis `inv suivi`, révision de `calendrier.md`, `veille.md`, `green-it.md`, décision écrite ; dates et critères des portes 1 à 3 (31 janvier, 31 mars, 30 juin 2027). Rappel aussi enregistré dans la mémoire de Claude Code.
 
 ### Reste à faire
 
-- Exécuter docs/plans/gov-05-dossier-veille.md — Étape 3 : Veille technique et clôture.
+- Phase 1 : `/workspace-plan CI-01`. Avant la porte 1 : relire dans un navigateur les conditions de Cardmarket et de TCGplayer (veille). Revue possible de `feature/gov-05` avec `/cr`, puis PR vers `develop`.
 - Rapport de novembre à régénérer en fin de mois (`inv suivi --mois 2026-11 --force`, commentaire gardé), puis `statut: fait` ; mettre à jour les chiffres de `docs/gouvernance/green-it.md`. Chaque début de mois : `inv ci` puis `inv suivi`, commentaire.
 - PR #11 (`feature/gov-04`) fusionnée dans `develop` le 15 novembre 2026 ; branche à supprimer (locale et `origin`). Après GOV-05 : phase 1 (CI-01).
 - optimisation-collecte : l'exécution `42687236424` (9 novembre au soir, `catalogue=oui`, 2 h 04) peut cocher l'exécution manuelle attendue ; reste la PR et la release si pas encore faites (code déjà sur `main`).

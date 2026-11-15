@@ -60,6 +60,24 @@ Constats tirés des textes ; pas un avis juridique.
 | RGPD | [Règlement 2016/679](https://eur-lex.europa.eu/legal-content/FR/TXT/?uri=CELEX:32016R0679), article 2, paragraphe 2, point c | 15 novembre 2026 | Le règlement ne s'applique pas au traitement « par une personne physique dans le cadre d'une activité strictement personnelle ou domestique » | Aucune donnée personnelle collectée : la collection reste sur le poste de l'utilisateur, l'application des testeurs ne remonte rien ; à revoir si une remontée de données est ajoutée | GOV-01, GOV-03 |
 | Marques Pokémon | [Mentions légales de Pokémon](https://www.pokemon.com/us/legal) | 15 novembre 2026 | « © 1995–2026 Nintendo/Creatures Inc./GAME FREAK inc. » ; noms des Pokémon déposés comme marques ; rien sur les images de cartes | Avertissement dans le README ; images de cartes jamais stockées ni publiées | DOC-01 |
 
+## Veille technique
+
+Dernières versions sur PyPI (et activité des dépôts GitHub), relevées le 15 novembre 2026 ; seules les lignes qui touchent un lot à venir. Le projet est en Python 3.13.
+
+| Outil | Version, date | Constat | Décision | Lot |
+| --- | --- | --- | --- | --- |
+| open_clip (`open-clip-torch`) | 4.2.2, 10 novembre 2026 | MIT ; maintenu | Candidat d'EMB-02 ; version figée dans le module d'embedding | EMB-02 |
+| `timm` (DINOv2) | 1.0.31, 3 novembre 2026 | Apache 2.0 ; maintenu | Candidat d'EMB-02 ; `img_size=224` comme en T9 | EMB-02 |
+| PyTorch | 2.15.0, 28 octobre 2026 | Python 3.11 au moins | Version CPU (`--torch-backend cpu`), figée avec l'index | EMB-02 |
+| DuckDB | 2.0.0, 21 octobre 2026 | Version majeure récente ; `dbt-duckdb` 1.11.1 accepte `duckdb>=1.0.0` sans borne haute ; deux tickets ouverts sur DuckDB 2.0 (dépôts d'extensions) | Versions figées par `uv.lock` ; essai de DuckDB 2.0 au début de DBT-01, repli sur la dernière 1.x si un test échoue | DBT-01 |
+| dbt-core et `dbt-duckdb` | 1.12.7 (12 novembre 2026) et 1.11.1 (26 octobre 2026) | Apache 2.0 ; adaptateur une version mineure derrière | Versions figées ensemble à DBT-01 | DBT-01 |
+| NiceGUI | 4.0.0, 4 novembre 2026 | MIT ; version majeure récente, Python 3.11 au moins | Prototype APP-T1 sur la 4.x ; notes de version à lire avant | APP-T1 |
+| Dash Mantine Components | 3.0.0, 30 octobre 2026 | MIT ; version majeure récente | Repli d'APP-T1 inchangé | APP-T1 |
+| EasyOCR | 1.7.2, 24 septembre 2024 | Apache 2.0 ; aucune version publiée depuis deux ans, dépôt encore actif (13 novembre 2026) | Comparé tel quel en OCR-01 ; installation à vérifier en Python 3.13 | OCR-01 |
+| PaddleOCR | 3.7.0, 11 juin 2026 | Apache 2.0 ; `paddlepaddle` 3.3.1 publie des paquets pour Python 3.13 | Comparé en OCR-01 | OCR-01 |
+| scikit-learn, LightGBM, XGBoost | 1.9.1, 4.7.0, 3.4.1 | XGBoost demande Python 3.12 au moins (compatible) | Pile du modèle A inchangée | MLA-01 |
+| MLflow | 3.18.0, 3 novembre 2026 | Maintenu | Reste en P2, local | MLF-01 |
+
 ## Changements constatés
 
 Revérification du 15 novembre 2026 par rapport à la spec maîtresse (sources du 26 et du 27 octobre 2026) :
@@ -69,9 +87,10 @@ Revérification du 15 novembre 2026 par rapport à la spec maîtresse (sources d
 - Le quota GPU de Kaggle reste non vérifié sur la page officielle (page non lisible sans navigateur).
 - Conditions de Cardmarket et de TCGplayer : pages refusées sans navigateur le 15 novembre 2026 ; la lecture du 27 octobre 2026 tient jusqu'à la porte 1.
 - Fiche du modèle open_clip laion2b : usage déployé déclaré hors cadre par les auteurs, alors que la licence MIT le permet. Fait nouveau pour EMB-02, sans changer de décision avant la comparaison des deux modèles.
+- DuckDB 2.0 et NiceGUI 4.0 sont sortis en octobre et novembre 2026 : versions majeures à essayer au début de DBT-01 et d'APP-T1, sans changer d'outil.
 
 ## Révisions
 
 | Date | Porte | Changement |
 | --- | --- | --- |
-| 15 novembre 2026 | 0 | Dossier créé (GOV-05) : sources de données, quotas et veille légale revérifiés sur les pages officielles |
+| 15 novembre 2026 | 0 | Dossier créé (GOV-05) : sources de données, quotas et veille légale revérifiés sur les pages officielles ; versions des outils des lots à venir relevées |
