@@ -42,6 +42,24 @@ Ce dossier suit les sources de données, les services gratuits, les conditions l
 | [Stockage de Hugging Face Hub](https://huggingface.co/docs/hub/storage-limits) | 15 novembre 2026 | Compte gratuit : stockage public « best-effort », 100 Go en privé ; 500 Go au plus par fichier | Index d'embeddings de quelques dizaines de Mo : sans contrainte, public ou privé | EMB-02 |
 | [Notebooks Kaggle](https://www.kaggle.com/docs/notebooks) | 15 novembre 2026 | Page rendue en JavaScript, quota GPU illisible en texte ; le chiffre de la spec maîtresse vient d'une source secondaire | Point ouvert maintenu ; à relire connecté avant toute décision de fine-tuning (porte 2) | SCN-D1 |
 
+## Veille légale
+
+Constats tirés des textes ; pas un avis juridique.
+
+| Sujet | Source | Vérifié le | Constat | Décision | Lot |
+| --- | --- | --- | --- | --- | --- |
+| Prix Cardmarket | [Conditions générales de Cardmarket](https://www.cardmarket.com/en/Policies/GeneralTermsAndConditions/D) | 15 novembre 2026 | Page refusée sans navigateur (HTTP 403) ; lecture du 27 octobre 2026 conservée | Prix jamais republiés (T8) ; à relire dans un navigateur à la porte 1 | T8 |
+| Droit des bases de données | [Directive 96/9/CE](https://eur-lex.europa.eu/legal-content/FR/TXT/?uri=CELEX:31996L0009), articles 7 et 10 | 15 novembre 2026 | Le fabricant peut interdire l'extraction et la réutilisation d'une partie substantielle ; l'extraction répétée et systématique de parties non substantielles l'est aussi si elle lèse ses intérêts ; durée de 15 ans | Prix bruts dans le dépôt privé `cartograph-prices` ; seuls des agrégats et des prédictions sont publiés | T8, STO-01 |
+| Prix TCGplayer | [Conditions d'utilisation de TCGplayer](https://help.tcgplayer.com/hc/en-us/articles/205004918-Terms-of-ServiceTCGplayer) | 15 novembre 2026 | Page refusée sans navigateur (HTTP 403) ; lecture du 27 octobre 2026 conservée (« pricing information and card databases are the property of TCGplayer, Inc. ») | Prix TCGplayer collectés, jamais republiés | T8 |
+| Catalogue TCGdex | [Licence de `tcgdex/cards-database`](https://github.com/tcgdex/cards-database) (API GitHub) | 15 novembre 2026 | MIT ; la FAQ dit seulement « open source » | Catalogue republié sans images, avec attribution (README) | DOC-01 |
+| Code d'open_clip | [Licence d'open_clip](https://github.com/mlfoundations/open_clip/blob/main/LICENSE) | 15 novembre 2026 | Texte MIT (© Ilharco et al., 2012-2021), non reconnu automatiquement par GitHub | Utilisable et citable | EMB-02 |
+| Poids open_clip ViT-B/32 laion2b_s34b_b79k | [Fiche du modèle](https://huggingface.co/laion/CLIP-ViT-B-32-laion2B-s34B-b79K) | 15 novembre 2026 | Licence MIT ; la fiche déclare hors cadre « any deployed use case of the model - whether commercial or not », déconseille la recherche d'images même en environnement restreint et limite l'usage à l'anglais | Licence compatible ; usage hors cadre recommandé par les auteurs : critère à peser dans le choix d'EMB-02 et à citer s'il est retenu | EMB-02 |
+| Code et poids DINOv2 | [Fiche `timm`](https://huggingface.co/timm/vit_small_patch14_dinov2.lvd142m), [dépôt `facebookresearch/dinov2`](https://github.com/facebookresearch/dinov2) | 15 novembre 2026 | Apache 2.0 pour le code et les poids ; aucune restriction d'usage dans la fiche ; `timm` sous Apache 2.0 | Utilisable, publication des vecteurs possible avec la mention de licence | EMB-02 |
+| Publication sur Hugging Face | [Conditions de Hugging Face](https://huggingface.co/terms-of-service) | 15 novembre 2026 | L'auteur est seul responsable de ses contenus et garantit en avoir le droit ; un dépôt public donne à tout utilisateur une licence perpétuelle d'usage ; les mentions de licence ne peuvent pas être retirées | Seuls les vecteurs et le code sont publiés, jamais les images ; licence du modèle citée dans la fiche du dépôt d'index | EMB-02 |
+| Kaggle | [Conditions de Kaggle](https://www.kaggle.com/terms) | 15 novembre 2026 | Page rendue en JavaScript, illisible sans navigateur | À lire avant un fine-tuning (porte 2) | SCN-D1 |
+| RGPD | [Règlement 2016/679](https://eur-lex.europa.eu/legal-content/FR/TXT/?uri=CELEX:32016R0679), article 2, paragraphe 2, point c | 15 novembre 2026 | Le règlement ne s'applique pas au traitement « par une personne physique dans le cadre d'une activité strictement personnelle ou domestique » | Aucune donnée personnelle collectée : la collection reste sur le poste de l'utilisateur, l'application des testeurs ne remonte rien ; à revoir si une remontée de données est ajoutée | GOV-01, GOV-03 |
+| Marques Pokémon | [Mentions légales de Pokémon](https://www.pokemon.com/us/legal) | 15 novembre 2026 | « © 1995–2026 Nintendo/Creatures Inc./GAME FREAK inc. » ; noms des Pokémon déposés comme marques ; rien sur les images de cartes | Avertissement dans le README ; images de cartes jamais stockées ni publiées | DOC-01 |
+
 ## Changements constatés
 
 Revérification du 15 novembre 2026 par rapport à la spec maîtresse (sources du 26 et du 27 octobre 2026) :
@@ -49,9 +67,11 @@ Revérification du 15 novembre 2026 par rapport à la spec maîtresse (sources d
 - Aucune décision à changer : pokemontcg.io, Scrydex, TCGplayer, `tcgdex/price-history` et les limites de GitHub sont tels que la spec les décrit.
 - Chiffres nouveaux : couverture par langue de TCGdex, quotas de cron-job.org, healthchecks.io et Hugging Face, 20 jobs simultanés sur GitHub Actions.
 - Le quota GPU de Kaggle reste non vérifié sur la page officielle (page non lisible sans navigateur).
+- Conditions de Cardmarket et de TCGplayer : pages refusées sans navigateur le 15 novembre 2026 ; la lecture du 27 octobre 2026 tient jusqu'à la porte 1.
+- Fiche du modèle open_clip laion2b : usage déployé déclaré hors cadre par les auteurs, alors que la licence MIT le permet. Fait nouveau pour EMB-02, sans changer de décision avant la comparaison des deux modèles.
 
 ## Révisions
 
 | Date | Porte | Changement |
 | --- | --- | --- |
-| 15 novembre 2026 | 0 | Dossier créé (GOV-05) : sources de données et quotas revérifiés sur les pages officielles |
+| 15 novembre 2026 | 0 | Dossier créé (GOV-05) : sources de données, quotas et veille légale revérifiés sur les pages officielles |
