@@ -76,6 +76,22 @@ def collect(
 
 
 # ---------------------------------------------------------------------------
+# Pilotage
+# ---------------------------------------------------------------------------
+
+
+@task
+def suivi(c: Context, mois: str = "", force: bool = False) -> None:
+    """Écrit docs/gouvernance/suivi/AAAA-MM.md (après inv ci pour la couverture)."""
+    args = ["uv run python -m cartograph.bin.suivi.run"]
+    if mois:
+        args.append(f"--mois {shlex.quote(mois)}")
+    if force:
+        args.append("--force")
+    c.run(" ".join(args))
+
+
+# ---------------------------------------------------------------------------
 # Documentation
 # ---------------------------------------------------------------------------
 
