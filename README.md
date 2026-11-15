@@ -28,11 +28,10 @@ uv sync
 cp .env.example .env
 ```
 
-## Utilisation
+## État du projet
 
-```bash
-uv run python -m cartograph
-```
+- **En service** : collecte quotidienne des prix et collecte hebdomadaire du catalogue depuis [TCGdex](https://tcgdex.dev), en français, anglais et japonais (voir « Collecte » et « Collecte automatique »).
+- **À venir** : base de données reconstruite en local avec dbt et DuckDB, identification d'une carte à partir d'une photo, modèle d'estimation du prix, application locale.
 
 ## Collecte
 
@@ -76,3 +75,16 @@ Relance manuelle : onglet *Actions* de `cartograph-data`, `Collecte`, *Run workf
 ```bash
 cruft update
 ```
+
+## Données et licences
+
+- **Catalogue** : il provient de [TCGdex](https://github.com/tcgdex/cards-database), sous licence MIT, © TCGdex. Il est republié sans images dans la Release `catalogue` de [`cartograph-data`](https://github.com/AntoanetaStoyanova/cartograph-data).
+- **Prix** : les prix Cardmarket et TCGplayer et les réponses brutes de l'API ne sont jamais publiés. Les prix TCGplayer appartiennent à TCGplayer, et ceux de Cardmarket relèvent du droit des bases de données. Ils sont conservés dans un dépôt privé, `cartograph-prices`. Seuls le catalogue, le manifeste et des résultats dérivés, sans prix par carte, sont publics.
+
+## Avertissement
+
+Ce projet n'est ni produit ni soutenu par Nintendo, The Pokémon Company, Creatures ou Game Freak. Pokémon et les noms associés sont des marques de leurs propriétaires.
+
+## Licence
+
+Le code est sous licence MIT (voir [`LICENSE`](LICENSE)). Les données collectées gardent la licence de leur source.

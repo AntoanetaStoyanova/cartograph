@@ -32,9 +32,10 @@
 
 - `docs/specs/lot-doc-01-readme-licence.md` et `docs/plans/lot-doc-01-readme-licence.md` créés (DOC-01). Décisions d'Antoaneta : licence MIT pour `cartograph` et `cartograph-data` (le catalogue garde la licence de TCGdex). Autres décisions : texte MIT officiel en anglais, README en français, « Utilisation » remplacée par l'état du projet, pas de champ `license` dans `pyproject.toml` (SPDX demande setuptools 77, `[build-system]` vient du template).
 - Plan lot-doc-01-readme-licence — Étape 1 : Licence MIT dans les deux dépôts. `LICENSE` (texte MIT officiel, `Copyright (c) 2026 Antoaneta Stoyanova`) à la racine de `cartograph` (branche `feature/doc-01`) et de `../cartograph-data` (non commité). Spec passée `en cours`. pre-commit vert ; `uv run inv ci` vert (143 tests).
+- Plan lot-doc-01-readme-licence — Étape 2 : README des deux dépôts. `README.md` de `cartograph` : « Utilisation » remplacée par « État du projet » (collecte en service, le reste à venir) ; sections « Données et licences », « Avertissement », « Licence » ajoutées à la fin. `../cartograph-data/README.md` : section « Licence » à la fin (non commité). markdownlint vert dans les deux dépôts ; `uv run inv ci` vert (143 tests).
 ### Reste à faire
 
-- Exécuter docs/plans/lot-doc-01-readme-licence.md — Étape 2 : README des deux dépôts (branche `feature/doc-01`).
+- Exécuter docs/plans/lot-doc-01-readme-licence.md — Étape 3 : Spec maîtresse, roadmap et publication (branche `feature/doc-01`).
 - Antoaneta : commit de la doc, PR `feature/collecte-rapide` vers `develop`, `inv release`, PR vers `main` ; commit et `git envoyer` du README de `cartograph-data`.
 - Antoaneta : exécution manuelle `catalogue=oui` avant le lundi 16 novembre ; relever la durée de « Collecter », vérifier catalogue publié, prix dans `data-2026-11`, manifeste ; comparer le SHA-256 du catalogue au manifeste (STO-01). Puis cocher les dernières cases de docs/plans/optimisation-collecte.md et passer plan et spec à `fait`.
 - Antoaneta : rattrapage du 9 novembre, relance prix seuls (`-f catalogue=non`, environ 1 h 20), à confirmer.
