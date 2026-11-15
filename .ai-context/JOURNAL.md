@@ -20,7 +20,7 @@
 
 ---
 
-## [2026-11-15] — STO-01 documenté, T5 passé, STO-03 clos, DOC-01 presque clos, SCN-T7 passé, COL-T2 passé
+## [2026-11-15] — STO-01 documenté, T5 passé, STO-03 clos, DOC-01 presque clos, SCN-T7 passé, COL-T2 passé, EMB-T9 planifié
 
 ### Fait
 
@@ -47,20 +47,25 @@
 - Identification sans image écrite (demande d'Antoaneta) : `card_id` = `<set_id>-<numéro>`, `set_id` trouvé par l'abréviation officielle des fiches de set (`DLR` → `me06`, `MEP` → `mep`, `PGO` → `swsh10.5`, `HIF` → `sm115` ; `swshp` sans abréviation, numéro unique) ; fiche et prix récupérés sans image, seule voie pour les 5 cartes FR possédées sans image. Spec maîtresse (« Scan d'une carte »), décision dans la spec COL-T2, OCR-01 précisé dans la roadmap. okflint vert.
 - Plan col-t2-couverture-francaise — Étape 2 : Variantes possédées. Aucune fiche distincte par finition ni par tampon : normale, holo, reverse et tampons (`variants_detailed`, attribut `stamp`) sont une seule fiche. `swsh10.5` : finitions déclarées, prix holo/reverse séparé (`cm_avg_holo`). `me06` : seule la normale est déclarée (encore dans l'API le 15 novembre), pas de prix reverse pour Onix, Steelix, Drakkarmin ; Altaria n'a qu'un prix holo. Aucune variante à tampon possédée. Mesures dans la spec. okflint vert.
 - Plan col-t2-couverture-francaise — Étape 3 : Décision et reports (plan et spec `fait`). T2 tranché dans la porte 0 : passé, repli appliqué pour les variantes (reverse de Règne Delta attribuées à la carte de base, sans prix reverse ; tampons non distincts, aucun possédé) ; 5 cartes sans image identifiées par code et numéro. Point ouvert « Complétude du français et du japonais » coché ; roadmap : COL-T2 coché. okflint vert.
+- `docs/specs/emb-t9-embeddings-cpu.md` et `docs/plans/emb-t9-embeddings-cpu.md` créés (EMB-T9). Décisions d'Antoaneta : mesurer open_clip ViT-B/32 et DINOv2 ViT-S/14 dans la même exécution (mêmes 500 images, l'un après l'autre) ; runner par workflow jetable sur `feature/emb-t9`, jamais fusionnée, supprimée après. Autres décisions : dépendances installées à la volée (pas de changement de `pyproject.toml`), temps de calcul compté hors téléchargements (mesurés à part), lots de 32, extrapolation linéaire aux fiches `fr` avec image.
+- Relecture critique de la spec et du plan EMB-T9, puis révision. Décisions d'Antoaneta : mesure sur le runner seul (pas de PC, écart avec la ligne T9 de la spec maîtresse, à corriger à l'étape 3) ; workflow dans `cartograph`, rien dans `cartograph-data` ; repli Kaggle remplacé par l'indexation étalée sur plusieurs jours dans GitHub Actions (chaque exécution calcule ce qui manque dans un budget de temps, puis seules les nouvelles cartes). Autres corrections : déclenchement par `push` sur `feature/emb-t9` (`workflow_dispatch` exige le fichier sur `main`), un processus par modèle (`ru_maxrss` cumulatif), DINOv2 par `timm`, versions figées et index CPU de torch (`uv run --with` n'écrit pas dans `uv.lock`), fils par défaut de torch notés avec le modèle de CPU, téléchargement hors extrapolation. okflint vert.
+- Dernière revue de la spec et du plan EMB-T9, corrections appliquées : DINOv2 `timm` en `img_size=224` (518 px par défaut, 6 à 8 fois plus lent) ; installation par `uv venv` + `uv pip install --torch-backend cpu` avec `torchvision` ; sélection du catalogue comme `collect.yml`, colonne `image` non vide ; artefact JSON seul (`retention-days: 7`, jamais d'images) ; droit `workflow` du jeton pour le push ; `ru_maxrss` en Kio. okflint vert.
 
 ### Reste à faire
 
+- Exécuter docs/plans/emb-t9-embeddings-cpu.md — Étape 1 : Script de mesure.
 - Antoaneta : `inv release` sur `develop` (sans effet sur la version : seulement `docs` et `chore`, rien à taguer ; PR directe `develop` → `main` possible), PR `develop` → `main`. Puis vérifier `gh repo view AntoanetaStoyanova/cartograph --json licenseInfo` = MIT, cocher la dernière case de docs/plans/lot-doc-01-readme-licence.md et passer plan et spec à `fait`.
 - Antoaneta : commit de la doc, PR `feature/collecte-rapide` vers `develop`, `inv release`, PR vers `main` ; commit et `git envoyer` du README de `cartograph-data`.
 - Antoaneta : exécution manuelle `catalogue=oui` avant le lundi 16 novembre ; relever la durée de « Collecter », vérifier catalogue publié, prix dans `data-2026-11`, manifeste ; comparer le SHA-256 du catalogue au manifeste (STO-01). Puis cocher les dernières cases de docs/plans/optimisation-collecte.md et passer plan et spec à `fait`.
 - Antoaneta : rattrapage du 9 novembre, relance prix seuls (`-f catalogue=non`, environ 1 h 20), à confirmer.
 - Clore docs/plans/lot-sto-01-manifeste.md : après l'exécution `catalogue=oui`, comparer le SHA-256 du catalogue (`gh release download catalogue`) au manifeste, cocher le dernier critère de la spec, passer plan et spec à `fait`.
-- Porte 0, date limite fin novembre : EMB-T9 (informatif, `/workspace-plan EMB-T9`), puis P0-DEC. Tests bloquants tranchés dans la porte 0 : T1, T2, T5, T7, T8. T3 : lot COL-T3 fait (spec `fait`) mais sans mention « Tranché » dans la ligne T3 de la porte 0, à reporter lors de P0-DEC.
+- Porte 0, date limite fin novembre : EMB-T9 (en cours), puis P0-DEC. Tests bloquants tranchés dans la porte 0 : T1, T2, T5, T7, T8. T3 : lot COL-T3 fait (spec `fait`) mais sans mention « Tranché » dans la ligne T3 de la porte 0, à reporter lors de P0-DEC.
 - Antoaneta : avant PRO-02, demander aux testeurs leur logiciel de caisse et un fichier d'import exemple.
 - `cadrage-flux.md` : flux d'export pro (FX7 et FX8, écrans) à ajouter quand PRO-01 et PRO-02 seront planifiés.
 
 ### Références
 
+- [../docs/specs/emb-t9-embeddings-cpu.md](../docs/specs/emb-t9-embeddings-cpu.md), [../docs/plans/emb-t9-embeddings-cpu.md](../docs/plans/emb-t9-embeddings-cpu.md)
 - [../docs/specs/col-t2-couverture-francaise.md](../docs/specs/col-t2-couverture-francaise.md), [../docs/plans/col-t2-couverture-francaise.md](../docs/plans/col-t2-couverture-francaise.md)
 - [../docs/specs/scn-t7-cartes-physiques.md](../docs/specs/scn-t7-cartes-physiques.md), [../docs/plans/scn-t7-cartes-physiques.md](../docs/plans/scn-t7-cartes-physiques.md)
 - [../docs/specs/lot-doc-01-readme-licence.md](../docs/specs/lot-doc-01-readme-licence.md), [../docs/plans/lot-doc-01-readme-licence.md](../docs/plans/lot-doc-01-readme-licence.md)
