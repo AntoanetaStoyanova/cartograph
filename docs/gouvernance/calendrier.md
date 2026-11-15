@@ -71,7 +71,7 @@ Coût : 0 €. Les minutes Actions sont gratuites pour un dépôt public ; leur 
 
 ## Révisions
 
-À chaque porte : date réelle de passage, rythme mesuré depuis la porte précédente, dates des phases suivantes recalées, lots coupés s'il y en a. Les versions précédentes restent dans l'historique Git.
+À chaque porte : date réelle de passage, rythme mesuré depuis la porte précédente, dates des phases suivantes recalées, lots coupés s'il y en a. La même porte déclenche la revue du [dossier de veille](veille.md). Les versions précédentes restent dans l'historique Git.
 
 | Date | Porte | Changement |
 | --- | --- | --- |
