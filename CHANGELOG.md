@@ -1,3 +1,41 @@
+## v0.3.0 (2026-11-15)
+
+### Nouveautés
+
+- lecture des lots de la roadmap et des jours travaillés pour le suivi
+
+### Corrections
+
+- suivi sans exécutions en cours, erreurs de gh visibles, couverture datée
+
+### Réécritures
+
+- temps de travail retiré des estimations du suivi
+
+### Documentation
+
+- corrections de la revue du dossier de veille
+- veille technique et revue de veille à chaque porte
+- veille légale, licences des modèles et conditions des services
+- dossier de veille, sources et quotas revérifiés
+- GOV-05 planifié, entrées P0-DEC et GOV-04 remises dans le journal
+- bilan Green IT et lien vers la gouvernance dans le README
+- calendrier révisé à chaque porte, dates des portes 1 à 3 validées
+- plan gouvernance
+- porte 0 franchie, neuf tests tranchés
+- porte 0, durées réelles de novembre et replis vérifiés
+- T9 passé, embeddings sur CPU en 15 minutes au plus sur un runner
+- EMB-T9 revu, mesure sur runner seul et repli par indexation étalée
+- COL-T2 passé, couverture française et variantes tranchées
+- scan japonais par lecture du code et du numéro, limites notées
+- avertissement, données et licence dans le README
+- T5 passé, STO-03 clos
+- manifeste quotidien décrit dans le README
+
+### Maintenance
+
+- licence MIT
+
 ## v0.2.1 (2026-11-09)
 
 ### Corrections

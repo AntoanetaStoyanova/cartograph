@@ -28,11 +28,11 @@ uv sync
 cp .env.example .env
 ```
 
-## Utilisation
+## État du projet
 
-```bash
-uv run python -m cartograph
-```
+- **En service** : collecte quotidienne des prix et collecte hebdomadaire du catalogue depuis [TCGdex](https://tcgdex.dev), en français, anglais et japonais (voir « Collecte » et « Collecte automatique »).
+- **À venir** : base de données reconstruite en local avec dbt et DuckDB, identification d'une carte à partir d'une photo, modèle d'estimation du prix, application locale.
+- **Pilotage** : calendrier, rapports de suivi mensuels (`inv suivi`) et bilan Green IT dans [`docs/gouvernance/`](docs/gouvernance/).
 
 ## Collecte
 
@@ -59,7 +59,8 @@ Le workflow `Collecte` du dépôt public [`cartograph-data`](https://github.com/
 - résumé écrit après le catalogue puis à la fin : une exécution coupée pendant les prix publie quand même le catalogue ;
 - catalogue publié dans la Release `catalogue` de `cartograph-data` ;
 - prix et brut envoyés dans la Release `data-AAAA-MM` du dépôt privé `cartograph-prices` (secret `PRICES_TOKEN`) ;
-- résumé et log gardés 7 jours en artefact, sans aucun prix.
+- résumé et log gardés 7 jours en artefact, sans aucun prix ;
+- manifeste `manifest/AAAA/AAAA-MM-JJ.json` commité dans `cartograph-data`, même si la collecte échoue : statut des étapes, fichiers envoyés (Release, lignes, octets, SHA-256) et taille du dépôt, sans aucun prix. Il est calculé avant les envois et donne la Release de chaque fichier ; `sha256sum` d'un fichier téléchargé doit redonner son `sha256`.
 
 Surveillance :
 
@@ -75,3 +76,16 @@ Relance manuelle : onglet *Actions* de `cartograph-data`, `Collecte`, *Run workf
 ```bash
 cruft update
 ```
+
+## Données et licences
+
+- **Catalogue** : il provient de [TCGdex](https://github.com/tcgdex/cards-database), sous licence MIT, © TCGdex. Il est republié sans images dans la Release `catalogue` de [`cartograph-data`](https://github.com/AntoanetaStoyanova/cartograph-data).
+- **Prix** : les prix Cardmarket et TCGplayer et les réponses brutes de l'API ne sont jamais publiés. Les prix TCGplayer appartiennent à TCGplayer, et ceux de Cardmarket relèvent du droit des bases de données. Ils sont conservés dans un dépôt privé, `cartograph-prices`. Seuls le catalogue, le manifeste et des résultats dérivés, sans prix par carte, sont publics.
+
+## Avertissement
+
+Ce projet n'est ni produit ni soutenu par Nintendo, The Pokémon Company, Creatures ou Game Freak. Pokémon et les noms associés sont des marques de leurs propriétaires.
+
+## Licence
+
+Le code est sous licence MIT (voir [`LICENSE`](LICENSE)). Les données collectées gardent la licence de leur source.
