@@ -7,7 +7,7 @@ Extrait des snapshots publics du catalogue (Release `catalogue` de `cartograph-d
 | `en` `tk-xy-su` (30 cartes le 9, 29 le 16) | `tk-xy-su-26` disparue le 16 ; trois catégories |
 | `fr` `hgss3` (91 cartes) | `local_id` non numérique (`THREE`) ; catégories en français |
 | `ja` `SV2P` (99 cartes) | 28 raretés vides |
-| `ja` `M6-077`, `M6-078` | rareté modifiée entre le 9 et le 16 (`Mega Hyper Rare` → `Illustration rare`) |
+| `ja` `M6-077`, `M6-078` | fiche corrigée par TCGdex le 12 (rareté provisoire `Mega Hyper Rare` → `Illustration rare`) : le modèle doit garder la version du 16 |
 
 ## Recette
 

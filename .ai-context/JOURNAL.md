@@ -60,7 +60,7 @@
 
 - Exécuter docs/plans/dbt-01-staging-catalogue.md — Étape 3 : `stg_tcgdex__sets` et vraies données.
 - Antoaneta : décider collecte du catalogue hebdomadaire ou mensuelle après l'analyse de l'étape 3.
-- Antoaneta : choisir le standard SQL (sqlfluff, style dbt Labs) et l'avancer ou non avant DBT-02 (lot CI-02).
+- Décision d'Antoaneta : CI-02 (sqlfluff, standard SQL) avancé avant DBT-02, juste après DBT-01 ; tâche roadmap ajoutée à l'étape 4 du plan DBT-01. Puis `/workspace-plan CI-02` : choisir les règles (style dbt Labs, templater, longueur de ligne, mots-clés comme noms de colonnes, ordre des colonnes).
 - Corriger le logger de `cartograph.bin.collect.run` (`__name__` vaut `__main__` sous `-m`) : petit `fix` à part.
 - `inv release` sur `develop` quand STO-02 est fusionné (v0.4.0 : FND-02 contient un `feat`), puis PR `develop` → `main`.
 - Avant la porte 1 : relire dans un navigateur les conditions de Cardmarket et de TCGplayer (veille).
