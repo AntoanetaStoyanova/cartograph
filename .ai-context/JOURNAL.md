@@ -20,7 +20,7 @@
 
 ---
 
-## [2026-11-16] — CI-01, FND-02 et STO-02 livrés, DBT-01 planifié
+## [2026-11-16] — CI-01, FND-02 et STO-02 livrés, DBT-01 commencé
 
 ### Fait
 
@@ -51,11 +51,13 @@
 - Plan sto-02-reconstruction-base — Étape 3 : Tâche `inv rebuild`. `tasks/__init__.py` : section « Collecte » renommée « Données » ; `rebuild(c, skip_download=False)` (`python -m cartograph.bin.rebuild` sauf `--skip-download`, base temporaire `data/cartograph.rebuild.duckdb` supprimée puis créée vide, `dbt build` avec `CARTOGRAPH_DUCKDB`, `replace` vers `data/cartograph.duckdb` et retrait de l'ancien `.wal` en succès, temporaire supprimée et `Exit` en échec, durée affichée) ; `_dbt_command` partagé avec `dbt`. Constat : dbt sans modèle ne crée pas le fichier DuckDB, d'où la base vide créée avant dbt. `tests/test_tasks_rebuild.py` (5 tests). Essai réel : 49,7 s, 42,2 s avec `--skip-download` ; modèle faux → base intacte (même MD5). `uv run inv ci` vert (208 tests).
 - Plan sto-02-reconstruction-base — Étape 4 : Documentation et clôture. `CONTRIBUTING.md` : `inv rebuild` et `--skip-download`, fichiers rapatriés, accès `gh` au dépôt privé, SHA-256, orphelins gardés, base temporaire remplacée seulement en succès. Roadmap : STO-02 coché, décrit tel que livré. Critère « sans accès au dépôt privé » vérifié par test (`RuntimeError` qui nomme le dépôt), pas par un essai réel. Plan et spec passés à `fait`.
 - `docs/specs/dbt-01-staging-catalogue.md` et `docs/plans/dbt-01-staging-catalogue.md` créés (DBT-01). Décisions d'Antoaneta : toutes les cartes vues gardées dans leur dernière version (`last_seen_on`, `is_current`) ; date de sortie des sets reportée à un nouveau lot COL-04 (les snapshots n'en contiennent pas, seul le modèle A s'en sert). Autres décisions : source `tcgdex.cards` par `external_location` et variable `snapshot_dir` ; `stg_tcgdex__sets` tiré de `raw_json->'set'` ; `category` normalisée, rareté brute (DBT-03) ; échantillon de deux catalogues dans `dbt/sample/snapshots/` ; `inv dbt --sample` dans `data/cartograph.sample.duckdb`, utilisé par `inv ci`.
+- Plan dbt-01-staging-catalogue — Étape 1 : Échantillon et source (branche `feature/dbt-01`). Spec passée à `en cours`. `dbt/sample/snapshots/cards-2026-11-09.parquet` et `cards-2026-11-16.parquet` (76 Ko, 222 et 221 lignes : `en` `tk-xy-su` avec `tk-xy-su-26` disparue, `fr` `hgss3` avec `local_id` `THREE`, `ja` `SV2P` avec 28 raretés vides, `ja` `M6-077`/`078` à rareté modifiée), recette dans `dbt/sample/README.md`. `dbt_project.yml` : `vars.snapshot_dir`. `dbt/models/staging/tcgdex/sources.yml` (`external_location` avec `var`, rendu par dbt), `.gitkeep` retiré. `tasks/__init__.py` : `dbt(..., sample=False)`, `SAMPLE_DIR`, `SAMPLE_DATABASE`, `ci` par `call(dbt, sample=True)` ; décision en cours de route : `inv finish` et `inv release` passent aussi par l'échantillon (comme la CI, sans `data/snapshots/` ni écrasement de la base). Tests : `tests/test_tasks_dbt.py`, commandes de `test_tasks_finish.py` et `test_tasks_release.py`. Vérif : source = 443 lignes (2 fichiers) sur l'échantillon, 236 184 (4 fichiers) sur les vrais snapshots ; `data/cartograph.duckdb` même MD5 après `inv ci`. `uv run inv ci` vert (210 tests), okflint vert.
+- Demandes d'Antoaneta en cours d'étape : un `.yml` par `.sql` (plan et spec mis à jour, plus de `schema.yml` commun) ; mesurer les changements hebdomadaires du catalogue pour choisir entre collecte hebdomadaire (lundi) et mensuelle (tâche `dbt/analyses/catalogue_changes.sql` ajoutée à l'étape 3). Premier relevé : 28/10→02/11 rien ; 02/11→09/11 724 ajoutées (nouveaux sets `me06`, `M6a`…), 1 retirée ; 09/11→16/11 0 ajoutée, 10 retirées ; changements réels rares (36 raretés, 14 `id_product`, 2 noms), le reste n'est que le champ `updated`.
 
 ### Reste à faire
 
-- Antoaneta : commit de la doc, `uv run inv finish` (PR `feature/sto-02` → `develop`), fusion une fois `ci` vert ; puis branche `feature/dbt-01` depuis `develop`.
-- Exécuter docs/plans/dbt-01-staging-catalogue.md — Étape 1 : Échantillon et source.
+- Exécuter docs/plans/dbt-01-staging-catalogue.md — Étape 2 : `stg_tcgdex__cards`.
+- Antoaneta : décider collecte du catalogue hebdomadaire ou mensuelle après l'analyse de l'étape 3.
 - Corriger le logger de `cartograph.bin.collect.run` (`__name__` vaut `__main__` sous `-m`) : petit `fix` à part.
 - `inv release` sur `develop` quand STO-02 est fusionné (v0.4.0 : FND-02 contient un `feat`), puis PR `develop` → `main`.
 - Avant la porte 1 : relire dans un navigateur les conditions de Cardmarket et de TCGplayer (veille).
@@ -73,7 +75,7 @@
 ### Références
 
 - [../docs/specs/dbt-01-staging-catalogue.md](../docs/specs/dbt-01-staging-catalogue.md)
-- [../docs/plans/dbt-01-staging-catalogue.md](../docs/plans/dbt-01-staging-catalogue.md)
+- [../docs/plans/dbt-01-staging-catalogue.md](../docs/plans/dbt-01-staging-catalogue.md), `dbt/sample/`, `dbt/models/staging/tcgdex/sources.yml`, `dbt/dbt_project.yml`, `tasks/__init__.py`, `tests/test_tasks_dbt.py`
 - [../docs/specs/sto-02-reconstruction-base.md](../docs/specs/sto-02-reconstruction-base.md)
 - [../docs/plans/sto-02-reconstruction-base.md](../docs/plans/sto-02-reconstruction-base.md), `src/cartograph/bin/rebuild.py`, `tests/test_rebuild.py`, `tasks/__init__.py`, `tests/test_tasks_rebuild.py`, `CONTRIBUTING.md`, [../docs/plans/roadmap-lots.md](../docs/plans/roadmap-lots.md), `src/cartograph/config/__init__.py`
 - [../docs/specs/fnd-02-squelette-dbt.md](../docs/specs/fnd-02-squelette-dbt.md), [../docs/plans/fnd-02-squelette-dbt.md](../docs/plans/fnd-02-squelette-dbt.md), `dbt/`, `tests/test_tasks_dbt.py`

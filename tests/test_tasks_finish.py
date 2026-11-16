@@ -9,7 +9,8 @@ CHECKS = [
     "uv run pre-commit run --all-files",
     "uv run mypy src/cartograph",
     "uv run pytest",
-    "uv run dbt build --project-dir dbt --profiles-dir dbt",
+    "uv run dbt build --vars '{snapshot_dir: dbt/sample/snapshots}'"
+    " --project-dir dbt --profiles-dir dbt",
     "uv run okflint validate --manifest okf-base.yaml",
 ]
 PUSH = "git push -u origin HEAD"

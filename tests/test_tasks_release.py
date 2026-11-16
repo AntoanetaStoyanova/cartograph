@@ -10,7 +10,8 @@ CI = [
     "uv run pre-commit run --all-files",
     "uv run mypy src/cartograph",
     "uv run pytest",
-    "uv run dbt build --project-dir dbt --profiles-dir dbt",
+    "uv run dbt build --vars '{snapshot_dir: dbt/sample/snapshots}'"
+    " --project-dir dbt --profiles-dir dbt",
 ]
 DOCS = "uv run sphinx-build -b html docs docs/_build/html"
 VERSION = "uv version --short"
