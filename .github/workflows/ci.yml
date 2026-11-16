@@ -34,7 +34,9 @@ jobs:
           key: pre-commit-${{ runner.os }}-${{ hashFiles('.pre-commit-config.yaml') }}
 
       - name: Installer les dépendances
-        run: uv sync --locked
+        run: uv sync --locked && cp .env.example .env
 
       - name: Contrôles
+        env:
+          TCGDEX_USER_AGENT: ${{ vars.TCGDEX_USER_AGENT }} # exigé à l'import de cartograph.config
         run: uv run inv ci
