@@ -1,0 +1,134 @@
+version: 2
+
+models:
+  - name: stg_tcgdex__cards
+    config:
+      contract:
+        enforced: true
+    description: >
+      Une ligne par carte et par langue, dans sa version du dernier snapshot où elle
+      figure ; une carte retirée de l'API est gardée avec `is_current = false`.
+    data_tests:
+      - unique:
+          arguments:
+            column_name: "card_id || '|' || language"
+    columns:
+      - name: card_id
+        data_type: varchar
+        description: Identifiant TCGdex de la carte, commun aux langues.
+        data_tests:
+          - not_null
+      - name: language
+        data_type: varchar
+        description: Langue de la fiche.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [fr, en, ja]
+      - name: local_id
+        data_type: varchar
+        description: Numéro dans le set, pas toujours numérique (`33b`, `THREE`).
+      - name: name
+        data_type: varchar
+        description: Nom dans la langue de la fiche.
+        data_tests:
+          - not_null
+      - name: set_id
+        data_type: varchar
+        description: Identifiant TCGdex du set.
+        data_tests:
+          - not_null
+      - name: category
+        data_type: varchar
+        description: Catégorie normalisée, commune aux langues.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [pokemon, trainer, energy]
+      - name: rarity
+        data_type: varchar
+        description: Rareté brute, propre à chaque langue, parfois vide (normalisée par DBT-03).
+      - name: types
+        data_type: varchar[]
+        description: Types d'énergie du Pokémon, dans la langue de la fiche.
+      - name: hp
+        data_type: integer
+        description: Points de vie, vide hors Pokémon.
+      - name: stage
+        data_type: varchar
+        description: Stade d'évolution, dans la langue de la fiche.
+      - name: dex_ids
+        data_type: integer[]
+        description: Numéros du Pokédex national.
+      - name: illustrator
+        data_type: varchar
+        description: Illustrateur.
+      - name: regulation_mark
+        data_type: varchar
+        description: Marque de règlement (lettre), absente des cartes anciennes.
+      - name: is_legal_standard
+        data_type: boolean
+        description: Jouable en format Standard.
+      - name: is_legal_expanded
+        data_type: boolean
+        description: Jouable en format Étendu.
+      - name: image_url
+        data_type: varchar
+        description: URL de base de l'image (sans qualité ni extension).
+      - name: cardmarket_product_id
+        data_type: bigint
+        description: Produit Cardmarket, clé des prix ; parfois absent.
+      - name: updated_at
+        data_type: timestamp with time zone
+        description: Dernière mise à jour de la fiche chez TCGdex.
+      - name: last_seen_on
+        data_type: date
+        description: Date du dernier snapshot où la carte figure.
+      - name: is_current
+        data_type: boolean
+        description: Présente dans le dernier snapshot.
+
+unit_tests:
+  - name: stg_tcgdex__cards_keeps_latest_version
+    description: >
+      Une carte modifiée est rendue dans sa version la plus récente, une carte absente
+      du dernier snapshot est gardée avec is_current à faux, la catégorie est normalisée.
+    model: stg_tcgdex__cards
+    given:
+      - input: source('tcgdex', 'cards')
+        format: sql
+        rows: |
+          select * from (values
+              ('ja', 'M6-077', '077', 'a', 'M6', 'M6', 'Mega Hyper Rare', 'Pokemon', null, null, null::bigint, null::timestamptz, null::timestamptz, '{}', 'snapshots/cards-2026-11-09.parquet'),
+              ('ja', 'M6-077', '077', 'a', 'M6', 'M6', 'Illustration rare', 'Pokemon', null, null, null, null, null, '{}', 'snapshots/cards-2026-11-16.parquet'),
+              ('en', 'tk-xy-su-26', '26', 'b', 'tk-xy-su', 'tk', 'Common', 'Trainer', null, null, null, null, null, '{}', 'snapshots/cards-2026-11-09.parquet'),
+              ('fr', 'hgss3-1', '1', 'c', 'hgss3', 'Indomptable', 'Rare', 'Dresseur', null, null, null, null, null, '{}', 'snapshots/cards-2026-11-16.parquet')
+          ) as t (language, card_id, local_id, name, set_id, set_name, rarity, category, illustrator, image, id_product, updated, fetched_at, raw_json, filename)
+    expect:
+      rows:
+        - {
+            card_id: M6-077,
+            language: ja,
+            category: pokemon,
+            rarity: Illustration rare,
+            last_seen_on: 2026-11-16,
+            is_current: true,
+          }
+        - {
+            card_id: tk-xy-su-26,
+            language: en,
+            category: trainer,
+            rarity: Common,
+            last_seen_on: 2026-11-09,
+            is_current: false,
+          }
+        - {
+            card_id: hgss3-1,
+            language: fr,
+            category: trainer,
+            rarity: Rare,
+            last_seen_on: 2026-11-16,
+            is_current: true,
+          }

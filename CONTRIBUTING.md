@@ -112,7 +112,7 @@ uv run inv finish      # inv ci et inv okflint, push, puis pull request vers dev
 `inv finish` refuse une autre branche qu'une `feature/…` et un arbre de travail non propre ; si la pull request existe déjà, il affiche son lien. Les contrôles se lancent aussi seuls :
 
 ```bash
-uv run inv ci          # pre-commit sur tous les fichiers, mypy, pytest, dbt build
+uv run inv ci          # pre-commit sur tous les fichiers, mypy, pytest, dbt build sur l'échantillon
 uv run inv okflint     # en-tête et liens des specs et plans locaux de docs/
 ```
 
@@ -147,18 +147,27 @@ Les transformations dbt (dbt-duckdb) vivent dans `dbt/`, hors du paquet Python :
 
 ```text
 dbt/
-├── dbt_project.yml     # matérialisations par couche
+├── dbt_project.yml     # matérialisations par couche, variable snapshot_dir
 ├── profiles.yml        # profil DuckDB versionné, sans secret
+├── sample/snapshots/   # échantillon du catalogue pour la CI (recette dans sample/README.md)
+├── analyses/           # requêtes lancées à la demande, sans table créée
+├── macros/             # fonctions Jinja partagées (snapshot_date)
 └── models/
     ├── staging/        # stg_<source>__<entité> : nettoyage des sources, en vue
     ├── intermediate/   # int_ : jointures et règles métier, en vue
     └── marts/          # fct_, dim_, mart_ : tables lues par l'application
 ```
 
+Chaque modèle, analyse ou macro `<nom>.sql` a son fichier de propriétés `<nom>.yml` à côté (description, colonnes, tests) ; les sources sont déclarées dans `sources.yml`. Chaque colonne déclare son `data_type` ; les modèles ont un contrat (`contract: enforced: true`) : un type qui ne correspond plus fait échouer `dbt build`. Une règle de calcul (dernière version, `is_current`…) est couverte par un test unitaire dbt (`unit_tests:`, données en `format: sql`, car dbt-duckdb ne lit pas les colonnes d'une source externe). Les modèles de staging du catalogue (`staging/tcgdex/`) sont `stg_tcgdex__cards` (une ligne par carte et par langue, dernière version vue, `is_current` à faux pour une carte retirée de TCGdex) et `stg_tcgdex__sets` (une ligne par set et par langue).
+
 ```bash
-uv run inv dbt                    # dbt build
+uv run inv dbt                    # dbt build sur data/snapshots/
+uv run inv dbt --sample           # dbt build sur l'échantillon, base data/cartograph.sample.duckdb
 uv run inv dbt --args debug       # autre commande dbt (debug, docs generate…)
+uv run inv dbt --args "show --select catalogue_changes"  # changements du catalogue par semaine
 ```
+
+La source `tcgdex.cards` lit `cards-*.parquet` dans le dossier de la variable dbt `snapshot_dir` (`data/snapshots` par défaut) ; la date du snapshot vient du nom du fichier. `inv dbt --sample` la fait pointer vers `dbt/sample/snapshots/` et écrit dans `data/cartograph.sample.duckdb` : c'est ce que lancent `inv ci`, `inv finish` et `inv release`, sans `data/snapshots/` ni appel aux APIs, et sans toucher à `data/cartograph.duckdb`. L'échantillon ne contient que du catalogue public, jamais de prix ; si le schéma des snapshots change, le régénérer avec la recette de `dbt/sample/README.md`.
 
 La base est `data/cartograph.duckdb` (jamais versionnée, reconstruite à la demande) ; la variable `CARTOGRAPH_DUCKDB` en désigne une autre. `dbt/target/` et `dbt/logs/` sont recréés à chaque commande et ignorés par Git.
 

@@ -6,7 +6,7 @@ import time
 from pathlib import Path
 
 import duckdb
-from invoke import Context, Exit, task
+from invoke import Context, Exit, call, task
 
 # ---------------------------------------------------------------------------
 # Qualité du code
@@ -50,13 +50,22 @@ def test(c: Context) -> None:
 
 DATABASE = Path("data/cartograph.duckdb")
 REBUILD_DATABASE = Path("data/cartograph.rebuild.duckdb")
+SAMPLE_DIR = Path("dbt/sample/snapshots")
+SAMPLE_DATABASE = Path("data/cartograph.sample.duckdb")
 
 
 @task
-def dbt(c: Context, args: str = "build") -> None:
-    """Lance dbt (build par défaut, --args pour une autre commande) sur dbt/."""
+def dbt(c: Context, args: str = "build", sample: bool = False) -> None:
+    """Lance dbt (build par défaut) ; --sample : échantillon et base d'échantillon."""
     Path("data").mkdir(exist_ok=True)
-    c.run(_dbt_command(args))
+    if not sample:
+        c.run(_dbt_command(args))
+        return
+    variables = shlex.quote(f"{{snapshot_dir: {SAMPLE_DIR.as_posix()}}}")
+    c.run(
+        _dbt_command(f"{args} --vars {variables}"),
+        env={"CARTOGRAPH_DUCKDB": str(SAMPLE_DATABASE)},
+    )
 
 
 def _dbt_command(args: str) -> str:
@@ -64,9 +73,9 @@ def _dbt_command(args: str) -> str:
     return f"uv run dbt {args} --project-dir dbt --profiles-dir dbt"
 
 
-@task(pre=[check, test, dbt])  # type: ignore[misc]
+@task(pre=[check, test, call(dbt, sample=True)])  # type: ignore[misc]
 def ci(c: Context) -> None:
-    """Lance la suite complète CI : lint, typecheck, tests, dbt."""
+    """Lance la suite complète CI : lint, typecheck, tests, dbt sur l'échantillon."""
 
 
 # ---------------------------------------------------------------------------
@@ -187,7 +196,7 @@ def release(c: Context, dry_run: bool = False) -> None:
     lint(c)
     typecheck(c)
     test(c)
-    dbt(c)
+    dbt(c, sample=True)
     _bump(c, "uv run cz bump --yes")
     docs(c)
     c.run("git push --follow-tags")
@@ -204,7 +213,7 @@ def finish(c: Context) -> None:
     lint(c)
     typecheck(c)
     test(c)
-    dbt(c)
+    dbt(c, sample=True)
     okflint(c)
     c.run("git push -u origin HEAD")
     existing = c.run("gh pr view --json url --jq .url", hide=True, warn=True)

@@ -1,0 +1,70 @@
+with
+
+source as (
+
+    select
+        language,
+        card_id,
+        json_merge_patch(raw_json, '{"updated": null}') as card_json,
+        {{ snapshot_date('filename') }} as snapshot_date
+    from {{ source('tcgdex', 'cards') }}
+
+),
+
+snapshots as (
+
+    select
+        snapshot_date,
+        lag(snapshot_date) over (order by snapshot_date) as previous_date
+    from (select distinct snapshot_date from source)
+
+),
+
+current_cards as (
+
+    select
+        source.*,
+        snapshots.previous_date
+    from source
+    inner join snapshots on source.snapshot_date = snapshots.snapshot_date
+    where snapshots.previous_date is not null
+
+),
+
+previous_cards as (
+
+    select
+        source.*,
+        snapshots.snapshot_date as next_date
+    from source
+    inner join snapshots on source.snapshot_date = snapshots.previous_date
+
+),
+
+compared as (
+
+    select
+        coalesce(curr.snapshot_date, prev.next_date) as snapshot_date,
+        coalesce(curr.previous_date, prev.snapshot_date) as previous_date,
+        coalesce(curr.language, prev.language) as language,
+        prev.card_id is null as is_added,
+        curr.card_id is null as is_removed,
+        prev.card_json <> curr.card_json as is_modified
+    from current_cards as curr
+    full outer join previous_cards as prev
+        on curr.snapshot_date = prev.next_date
+        and curr.card_id = prev.card_id
+        and curr.language = prev.language
+
+)
+
+select
+    snapshot_date,
+    previous_date,
+    language,
+    count(*) filter (where is_added) as added,
+    count(*) filter (where is_removed) as removed,
+    count(*) filter (where is_modified) as modified
+from compared
+group by snapshot_date, previous_date, language
+order by snapshot_date, language
