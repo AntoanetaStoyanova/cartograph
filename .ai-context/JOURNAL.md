@@ -31,10 +31,11 @@
 - Plan ci-01-ci-python — Étape 1 : Workflow CI (branche `feature/ci-01`). Spec passée à `en cours`. `.github/workflows/ci.yml` (PR vers `develop` et `main`, `workflow_dispatch`, `permissions: {}`, `concurrency` par PR avec annulation, job `ci` : checkout et setup-uv épinglés comme `collect.yml`, `actions/cache` v6.1.0 sur `~/.cache/pre-commit`, `uv sync --locked`, `uv run inv ci`). `.pre-commit-config.yaml` : actionlint v1.7.12 et zizmor v1.31.1 `--persona=pedantic`. Un workflow invalide est refusé par les deux hooks (essai puis fichier retiré). Constat : `workflow_dispatch` ne marche qu'une fois le workflow sur `main` ; vérification sur GitHub déplacée à la PR de l'étape 4 (plan et spec mis à jour). `uv run inv ci` vert (177 tests), okflint vert.
 - Plan ci-01-ci-python — Étape 2 : `inv finish`. `tasks/__init__.py` : tâche `finish` (refus hors `feature/…` et avec un arbre non propre ; `lint`, `typecheck`, `test`, `okflint` ; `git push -u origin HEAD` ; lien de la PR existante par `gh pr view`, sinon `gh pr create --base develop --fill`) ; `_current_branch` et `_require_clean` extraites de `release` et partagées. `tests/test_tasks_finish.py` (6 tests, `MockContext`). `uv run inv ci` vert (183 tests), okflint vert.
 - Plan ci-01-ci-python — Étape 3 : PR `develop` → `main` dans `inv release`. `tasks/__init__.py` : `_open_release_pr` après `git push --follow-tags` (version par `uv version --short`, PR ouverte cherchée par `gh pr list --base main --head develop --state open`, sinon `gh pr create` titre `Release vX.Y.Z`, corps = section de la version dans `CHANGELOG.md` par un fichier temporaire) ; `_changelog_section(text, tag)` (`Exit` si la version manque). `tests/test_tasks_release.py` : CHANGELOG de test dans `tmp_path`, PR ouverte ou existante, `--dry-run` sans `gh`, 4 tests de `_changelog_section`. Essai sur le vrai `CHANGELOG.md` (section v0.2.1) correct. `uv run inv ci` vert (188 tests), okflint vert.
+- Plan ci-01-ci-python — Étape 4 : Protection des branches (1 tâche sur 4). `.github/rulesets/develop-main.json` : `develop` et `main`, suppression et force-push interdits, PR obligatoire (0 approbation, merge commit seul), check `ci` requis et limité à GitHub Actions (`integration_id` 15368, vérifié par `gh api apps/github-actions`), contournement admin `always`. JSON et prettier verts.
 
 ### Reste à faire
 
-- Exécuter docs/plans/ci-01-ci-python.md — Étape 4 : Protection des branches (premier `inv finish` réel, puis ruleset appliqué par Antoaneta). Étape 3 à commiter sur `feature/ci-01`.
+- Exécuter docs/plans/ci-01-ci-python.md — Étape 4 : Protection des branches, à partir de « PR `feature/ci-01` → `develop` ouverte par `uv run inv finish` ». Antoaneta : commiter l'étape 3 et le ruleset, lancer `uv run inv finish`, relever la durée du check `ci`, puis appliquer le ruleset (`gh api`).
 - Avant la porte 1 : relire dans un navigateur les conditions de Cardmarket et de TCGplayer (veille).
 - Rapport de novembre à régénérer en fin de mois (`inv suivi --mois 2026-11 --force`, commentaire gardé), puis `statut: fait` ; mettre à jour les chiffres de `docs/gouvernance/green-it.md`. Chaque début de mois : `inv ci` puis `inv suivi`, commentaire.
 - optimisation-collecte : l'exécution `42687236424` (9 novembre au soir, `catalogue=oui`, 2 h 04) peut cocher l'exécution manuelle attendue ; reste la PR et la release si pas encore faites (code déjà sur `main`).
@@ -49,7 +50,7 @@
 
 ### Références
 
-- [../docs/specs/ci-01-ci-python.md](../docs/specs/ci-01-ci-python.md), [../docs/plans/ci-01-ci-python.md](../docs/plans/ci-01-ci-python.md), [../.github/workflows/ci.yml](../.github/workflows/ci.yml), `.pre-commit-config.yaml`, `tasks/__init__.py`, `tests/test_tasks_finish.py`, `tests/test_tasks_release.py`
+- [../docs/specs/ci-01-ci-python.md](../docs/specs/ci-01-ci-python.md), [../docs/plans/ci-01-ci-python.md](../docs/plans/ci-01-ci-python.md), [../.github/workflows/ci.yml](../.github/workflows/ci.yml), `.pre-commit-config.yaml`, `tasks/__init__.py`, `tests/test_tasks_finish.py`, `tests/test_tasks_release.py`, `.github/rulesets/develop-main.json`
 
 ## [2026-11-15] — STO-01 documenté, T5 passé, STO-03 clos, DOC-01 presque clos, SCN-T7 passé, COL-T2 passé, EMB-T9 passé, porte 0 franchie, GOV-04 fait, GOV-05 fait
 
