@@ -20,7 +20,7 @@
 
 ---
 
-## [2026-11-16] — CI-01, FND-02 et STO-02 livrés
+## [2026-11-16] — CI-01, FND-02 et STO-02 livrés, DBT-01 planifié
 
 ### Fait
 
@@ -50,10 +50,12 @@
 - Plan sto-02-reconstruction-base — Étape 2 : Téléchargement et contrôle. `src/cartograph/bin/rebuild.py` : `download` (`gh release download --clobber`, SHA-256 recontrôlé, `RuntimeError` avec le nom du fichier), `sync` (deux dépôts de `SOURCES`, orphelins en `warning`, nombres et durée dans le log), CLI `python -m cartograph.bin.rebuild [--snapshot-dir]` (0 ou 1). `tests/test_rebuild.py` (12 tests). Constat : lancé par `-m`, `__name__` vaut `__main__` et les logs du module se perdaient (fichier de log vide) ; logger nommé en dur `cartograph.bin.rebuild`. Même défaut dans `cartograph.bin.collect.run` (ses propres messages, comme « Collecte terminée », ne sortent pas), non corrigé ici. Essai réel : dossier vide → 24 fichiers (57 Mio) en 51 s ; second passage 0 en 6 s ; fichier corrompu et fichier absent retéléchargés, Parquet local non publié signalé et gardé. `uv run inv ci` vert (203 tests), okflint vert.
 - Plan sto-02-reconstruction-base — Étape 3 : Tâche `inv rebuild`. `tasks/__init__.py` : section « Collecte » renommée « Données » ; `rebuild(c, skip_download=False)` (`python -m cartograph.bin.rebuild` sauf `--skip-download`, base temporaire `data/cartograph.rebuild.duckdb` supprimée puis créée vide, `dbt build` avec `CARTOGRAPH_DUCKDB`, `replace` vers `data/cartograph.duckdb` et retrait de l'ancien `.wal` en succès, temporaire supprimée et `Exit` en échec, durée affichée) ; `_dbt_command` partagé avec `dbt`. Constat : dbt sans modèle ne crée pas le fichier DuckDB, d'où la base vide créée avant dbt. `tests/test_tasks_rebuild.py` (5 tests). Essai réel : 49,7 s, 42,2 s avec `--skip-download` ; modèle faux → base intacte (même MD5). `uv run inv ci` vert (208 tests).
 - Plan sto-02-reconstruction-base — Étape 4 : Documentation et clôture. `CONTRIBUTING.md` : `inv rebuild` et `--skip-download`, fichiers rapatriés, accès `gh` au dépôt privé, SHA-256, orphelins gardés, base temporaire remplacée seulement en succès. Roadmap : STO-02 coché, décrit tel que livré. Critère « sans accès au dépôt privé » vérifié par test (`RuntimeError` qui nomme le dépôt), pas par un essai réel. Plan et spec passés à `fait`.
+- `docs/specs/dbt-01-staging-catalogue.md` et `docs/plans/dbt-01-staging-catalogue.md` créés (DBT-01). Décisions d'Antoaneta : toutes les cartes vues gardées dans leur dernière version (`last_seen_on`, `is_current`) ; date de sortie des sets reportée à un nouveau lot COL-04 (les snapshots n'en contiennent pas, seul le modèle A s'en sert). Autres décisions : source `tcgdex.cards` par `external_location` et variable `snapshot_dir` ; `stg_tcgdex__sets` tiré de `raw_json->'set'` ; `category` normalisée, rareté brute (DBT-03) ; échantillon de deux catalogues dans `dbt/sample/snapshots/` ; `inv dbt --sample` dans `data/cartograph.sample.duckdb`, utilisé par `inv ci`.
 
 ### Reste à faire
 
-- Antoaneta : commit de la doc, `uv run inv finish` (PR `feature/sto-02` → `develop`), fusion une fois `ci` vert. Ensuite `/workspace-plan DBT-01` (sources et staging du catalogue).
+- Antoaneta : commit de la doc, `uv run inv finish` (PR `feature/sto-02` → `develop`), fusion une fois `ci` vert ; puis branche `feature/dbt-01` depuis `develop`.
+- Exécuter docs/plans/dbt-01-staging-catalogue.md — Étape 1 : Échantillon et source.
 - Corriger le logger de `cartograph.bin.collect.run` (`__name__` vaut `__main__` sous `-m`) : petit `fix` à part.
 - `inv release` sur `develop` quand STO-02 est fusionné (v0.4.0 : FND-02 contient un `feat`), puis PR `develop` → `main`.
 - Avant la porte 1 : relire dans un navigateur les conditions de Cardmarket et de TCGplayer (veille).
@@ -70,6 +72,8 @@
 
 ### Références
 
+- [../docs/specs/dbt-01-staging-catalogue.md](../docs/specs/dbt-01-staging-catalogue.md)
+- [../docs/plans/dbt-01-staging-catalogue.md](../docs/plans/dbt-01-staging-catalogue.md)
 - [../docs/specs/sto-02-reconstruction-base.md](../docs/specs/sto-02-reconstruction-base.md)
 - [../docs/plans/sto-02-reconstruction-base.md](../docs/plans/sto-02-reconstruction-base.md), `src/cartograph/bin/rebuild.py`, `tests/test_rebuild.py`, `tasks/__init__.py`, `tests/test_tasks_rebuild.py`, `CONTRIBUTING.md`, [../docs/plans/roadmap-lots.md](../docs/plans/roadmap-lots.md), `src/cartograph/config/__init__.py`
 - [../docs/specs/fnd-02-squelette-dbt.md](../docs/specs/fnd-02-squelette-dbt.md), [../docs/plans/fnd-02-squelette-dbt.md](../docs/plans/fnd-02-squelette-dbt.md), `dbt/`, `tests/test_tasks_dbt.py`
