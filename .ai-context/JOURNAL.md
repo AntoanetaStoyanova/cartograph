@@ -30,10 +30,11 @@
 - `docs/specs/ci-01-ci-python.md` et `docs/plans/ci-01-ci-python.md` créés (CI-01). Décisions d'Antoaneta : CI sur les PR vers `develop` et `main` seulement (pas de push `feature/**`, `inv finish` lance déjà `inv ci`) ; ruleset sur `develop` et `main` (PR obligatoire, check `ci` requis, merge commit seul, ni force-push ni suppression) avec contournement admin pour le push de `inv release` ; nouvelle tâche `inv finish` (feature → `inv ci`, `inv okflint`, push, PR vers `develop`) ; `inv release` ouvre la PR `develop` → `main` avec la section du changelog. Autres décisions : pas de filtres de chemins (check requis), actionlint et zizmor au commit dans `cartograph`, ruleset versionné dans `.github/rulesets/`.
 - Plan ci-01-ci-python — Étape 1 : Workflow CI (branche `feature/ci-01`). Spec passée à `en cours`. `.github/workflows/ci.yml` (PR vers `develop` et `main`, `workflow_dispatch`, `permissions: {}`, `concurrency` par PR avec annulation, job `ci` : checkout et setup-uv épinglés comme `collect.yml`, `actions/cache` v6.1.0 sur `~/.cache/pre-commit`, `uv sync --locked`, `uv run inv ci`). `.pre-commit-config.yaml` : actionlint v1.7.12 et zizmor v1.31.1 `--persona=pedantic`. Un workflow invalide est refusé par les deux hooks (essai puis fichier retiré). Constat : `workflow_dispatch` ne marche qu'une fois le workflow sur `main` ; vérification sur GitHub déplacée à la PR de l'étape 4 (plan et spec mis à jour). `uv run inv ci` vert (177 tests), okflint vert.
 - Plan ci-01-ci-python — Étape 2 : `inv finish`. `tasks/__init__.py` : tâche `finish` (refus hors `feature/…` et avec un arbre non propre ; `lint`, `typecheck`, `test`, `okflint` ; `git push -u origin HEAD` ; lien de la PR existante par `gh pr view`, sinon `gh pr create --base develop --fill`) ; `_current_branch` et `_require_clean` extraites de `release` et partagées. `tests/test_tasks_finish.py` (6 tests, `MockContext`). `uv run inv ci` vert (183 tests), okflint vert.
+- Plan ci-01-ci-python — Étape 3 : PR `develop` → `main` dans `inv release`. `tasks/__init__.py` : `_open_release_pr` après `git push --follow-tags` (version par `uv version --short`, PR ouverte cherchée par `gh pr list --base main --head develop --state open`, sinon `gh pr create` titre `Release vX.Y.Z`, corps = section de la version dans `CHANGELOG.md` par un fichier temporaire) ; `_changelog_section(text, tag)` (`Exit` si la version manque). `tests/test_tasks_release.py` : CHANGELOG de test dans `tmp_path`, PR ouverte ou existante, `--dry-run` sans `gh`, 4 tests de `_changelog_section`. Essai sur le vrai `CHANGELOG.md` (section v0.2.1) correct. `uv run inv ci` vert (188 tests), okflint vert.
 
 ### Reste à faire
 
-- Exécuter docs/plans/ci-01-ci-python.md — Étape 3 : PR `develop` → `main` dans `inv release`. Étape 2 à commiter sur `feature/ci-01`.
+- Exécuter docs/plans/ci-01-ci-python.md — Étape 4 : Protection des branches (premier `inv finish` réel, puis ruleset appliqué par Antoaneta). Étape 3 à commiter sur `feature/ci-01`.
 - Avant la porte 1 : relire dans un navigateur les conditions de Cardmarket et de TCGplayer (veille).
 - Rapport de novembre à régénérer en fin de mois (`inv suivi --mois 2026-11 --force`, commentaire gardé), puis `statut: fait` ; mettre à jour les chiffres de `docs/gouvernance/green-it.md`. Chaque début de mois : `inv ci` puis `inv suivi`, commentaire.
 - optimisation-collecte : l'exécution `42687236424` (9 novembre au soir, `catalogue=oui`, 2 h 04) peut cocher l'exécution manuelle attendue ; reste la PR et la release si pas encore faites (code déjà sur `main`).
@@ -48,7 +49,7 @@
 
 ### Références
 
-- [../docs/specs/ci-01-ci-python.md](../docs/specs/ci-01-ci-python.md), [../docs/plans/ci-01-ci-python.md](../docs/plans/ci-01-ci-python.md), [../.github/workflows/ci.yml](../.github/workflows/ci.yml), `.pre-commit-config.yaml`, `tasks/__init__.py`, `tests/test_tasks_finish.py`
+- [../docs/specs/ci-01-ci-python.md](../docs/specs/ci-01-ci-python.md), [../docs/plans/ci-01-ci-python.md](../docs/plans/ci-01-ci-python.md), [../.github/workflows/ci.yml](../.github/workflows/ci.yml), `.pre-commit-config.yaml`, `tasks/__init__.py`, `tests/test_tasks_finish.py`, `tests/test_tasks_release.py`
 
 ## [2026-11-15] — STO-01 documenté, T5 passé, STO-03 clos, DOC-01 presque clos, SCN-T7 passé, COL-T2 passé, EMB-T9 passé, porte 0 franchie, GOV-04 fait, GOV-05 fait
 
