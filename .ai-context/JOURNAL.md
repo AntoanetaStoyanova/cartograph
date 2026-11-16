@@ -20,7 +20,7 @@
 
 ---
 
-## [2026-11-16] — CI-01 et FND-02 livrés
+## [2026-11-16] — CI-01, FND-02 et STO-02 livrés, DBT-01 planifié
 
 ### Fait
 
@@ -44,9 +44,20 @@
 - PR #17 `feature/fnd-02` → `develop` ouverte par `inv finish` ; check `ci` vert en 1 min 0 s (exécution `43858947200`), `CLEAN`. dbt tourne dans « Contrôles » (`Running with dbt=1.12.7`, « Nothing to do ») en 2 s ; le reste de l'écart avec 21 s vient du cache uv à refaire (`uv.lock` changé par dbt). Étape 3 terminée.
 - Plan fnd-02-squelette-dbt — Étape 4 : Documentation et clôture. `CONTRIBUTING.md` : `inv ci` avec dbt, arborescence `dbt/` (couches, préfixes, matérialisations), `inv dbt` et `--args`, base `data/cartograph.duckdb` et `CARTOGRAPH_DUCKDB`, `target/` et `logs/`. Roadmap : FND-02 coché, décrit tel que livré. Plan et spec passés à `fait`.
 
+- PR #17 `feature/fnd-02` fusionnée dans `develop` (merge `1b04d76`).
+- `docs/specs/sto-02-reconstruction-base.md` et `docs/plans/sto-02-reconstruction-base.md` créés (STO-02). Décisions : seuls les `*.parquet` (Release `catalogue` de `cartograph-data`, Releases `data-*` de `cartograph-prices`) rapatriés dans `data/snapshots/`, sans le brut ; téléchargement d'un fichier absent ou dont le SHA-256 diffère du `digest` de GitHub (collecte relancée le même jour), empreinte recontrôlée après téléchargement ; fichiers locaux absents des Releases gardés et signalés (sauvegarde) ; accès par `gh` ; `dbt build` dans `data/cartograph.rebuild.duckdb`, remplacée vers `data/cartograph.duckdb` seulement en succès ; `inv rebuild --skip-download` ; `config.PRICES_REPO`. Base de la CI et échantillon laissés à DBT-01 et CI-02.
+- Plan sto-02-reconstruction-base — Étape 1 : Inventaire et choix des fichiers (branche `feature/sto-02`, journal commité). Spec passée à `en cours`. `config.PRICES_REPO` ; `src/cartograph/bin/rebuild.py` : `Asset`, `list_assets(repo, tag_prefix)` (`gh release list` puis `gh release view --json assets`, seuls les `*.parquet`, `digest` sans `sha256:`, `RuntimeError` qui nomme le dépôt), `plan_downloads` (absent ou SHA-256 différent), `orphans`, `file_sha256`. `tests/test_rebuild.py` (6 tests). Typage par `beartype_this_package`, sans décorateur. Essai en lecture sur les vraies Releases : 24 Parquet, 56 Mio, 24 à télécharger, aucun orphelin. `uv run inv ci` vert (197 tests), okflint vert.
+- Plan sto-02-reconstruction-base — Étape 2 : Téléchargement et contrôle. `src/cartograph/bin/rebuild.py` : `download` (`gh release download --clobber`, SHA-256 recontrôlé, `RuntimeError` avec le nom du fichier), `sync` (deux dépôts de `SOURCES`, orphelins en `warning`, nombres et durée dans le log), CLI `python -m cartograph.bin.rebuild [--snapshot-dir]` (0 ou 1). `tests/test_rebuild.py` (12 tests). Constat : lancé par `-m`, `__name__` vaut `__main__` et les logs du module se perdaient (fichier de log vide) ; logger nommé en dur `cartograph.bin.rebuild`. Même défaut dans `cartograph.bin.collect.run` (ses propres messages, comme « Collecte terminée », ne sortent pas), non corrigé ici. Essai réel : dossier vide → 24 fichiers (57 Mio) en 51 s ; second passage 0 en 6 s ; fichier corrompu et fichier absent retéléchargés, Parquet local non publié signalé et gardé. `uv run inv ci` vert (203 tests), okflint vert.
+- Plan sto-02-reconstruction-base — Étape 3 : Tâche `inv rebuild`. `tasks/__init__.py` : section « Collecte » renommée « Données » ; `rebuild(c, skip_download=False)` (`python -m cartograph.bin.rebuild` sauf `--skip-download`, base temporaire `data/cartograph.rebuild.duckdb` supprimée puis créée vide, `dbt build` avec `CARTOGRAPH_DUCKDB`, `replace` vers `data/cartograph.duckdb` et retrait de l'ancien `.wal` en succès, temporaire supprimée et `Exit` en échec, durée affichée) ; `_dbt_command` partagé avec `dbt`. Constat : dbt sans modèle ne crée pas le fichier DuckDB, d'où la base vide créée avant dbt. `tests/test_tasks_rebuild.py` (5 tests). Essai réel : 49,7 s, 42,2 s avec `--skip-download` ; modèle faux → base intacte (même MD5). `uv run inv ci` vert (208 tests).
+- Plan sto-02-reconstruction-base — Étape 4 : Documentation et clôture. `CONTRIBUTING.md` : `inv rebuild` et `--skip-download`, fichiers rapatriés, accès `gh` au dépôt privé, SHA-256, orphelins gardés, base temporaire remplacée seulement en succès. Roadmap : STO-02 coché, décrit tel que livré. Critère « sans accès au dépôt privé » vérifié par test (`RuntimeError` qui nomme le dépôt), pas par un essai réel. Plan et spec passés à `fait`.
+- `docs/specs/dbt-01-staging-catalogue.md` et `docs/plans/dbt-01-staging-catalogue.md` créés (DBT-01). Décisions d'Antoaneta : toutes les cartes vues gardées dans leur dernière version (`last_seen_on`, `is_current`) ; date de sortie des sets reportée à un nouveau lot COL-04 (les snapshots n'en contiennent pas, seul le modèle A s'en sert). Autres décisions : source `tcgdex.cards` par `external_location` et variable `snapshot_dir` ; `stg_tcgdex__sets` tiré de `raw_json->'set'` ; `category` normalisée, rareté brute (DBT-03) ; échantillon de deux catalogues dans `dbt/sample/snapshots/` ; `inv dbt --sample` dans `data/cartograph.sample.duckdb`, utilisé par `inv ci`.
+
 ### Reste à faire
 
-- Antoaneta : commit de la doc, push (`uv run inv finish` met la PR #17 à jour), fusion de la PR #17 une fois `ci` vert. Ensuite `/workspace-plan STO-02` (`inv rebuild`).
+- Antoaneta : commit de la doc, `uv run inv finish` (PR `feature/sto-02` → `develop`), fusion une fois `ci` vert ; puis branche `feature/dbt-01` depuis `develop`.
+- Exécuter docs/plans/dbt-01-staging-catalogue.md — Étape 1 : Échantillon et source.
+- Corriger le logger de `cartograph.bin.collect.run` (`__name__` vaut `__main__` sous `-m`) : petit `fix` à part.
+- `inv release` sur `develop` quand STO-02 est fusionné (v0.4.0 : FND-02 contient un `feat`), puis PR `develop` → `main`.
 - Avant la porte 1 : relire dans un navigateur les conditions de Cardmarket et de TCGplayer (veille).
 - Rapport de novembre à régénérer en fin de mois (`inv suivi --mois 2026-11 --force`, commentaire gardé), puis `statut: fait` ; mettre à jour les chiffres de `docs/gouvernance/green-it.md`. Chaque début de mois : `inv ci` puis `inv suivi`, commentaire.
 - optimisation-collecte : l'exécution `42687236424` (9 novembre au soir, `catalogue=oui`, 2 h 04) peut cocher l'exécution manuelle attendue ; reste la PR et la release si pas encore faites (code déjà sur `main`).
@@ -61,6 +72,10 @@
 
 ### Références
 
+- [../docs/specs/dbt-01-staging-catalogue.md](../docs/specs/dbt-01-staging-catalogue.md)
+- [../docs/plans/dbt-01-staging-catalogue.md](../docs/plans/dbt-01-staging-catalogue.md)
+- [../docs/specs/sto-02-reconstruction-base.md](../docs/specs/sto-02-reconstruction-base.md)
+- [../docs/plans/sto-02-reconstruction-base.md](../docs/plans/sto-02-reconstruction-base.md), `src/cartograph/bin/rebuild.py`, `tests/test_rebuild.py`, `tasks/__init__.py`, `tests/test_tasks_rebuild.py`, `CONTRIBUTING.md`, [../docs/plans/roadmap-lots.md](../docs/plans/roadmap-lots.md), `src/cartograph/config/__init__.py`
 - [../docs/specs/fnd-02-squelette-dbt.md](../docs/specs/fnd-02-squelette-dbt.md), [../docs/plans/fnd-02-squelette-dbt.md](../docs/plans/fnd-02-squelette-dbt.md), `dbt/`, `tests/test_tasks_dbt.py`
 - [../docs/specs/ci-01-ci-python.md](../docs/specs/ci-01-ci-python.md), [../docs/plans/ci-01-ci-python.md](../docs/plans/ci-01-ci-python.md), [../.github/workflows/ci.yml](../.github/workflows/ci.yml), `.pre-commit-config.yaml`, `tasks/__init__.py`, `tests/test_tasks_finish.py`, `tests/test_tasks_release.py`, `.github/rulesets/develop-main.json`, `CONTRIBUTING.md`, `README.md`
 

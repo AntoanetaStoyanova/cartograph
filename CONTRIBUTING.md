@@ -162,6 +162,15 @@ uv run inv dbt --args debug       # autre commande dbt (debug, docs generate…)
 
 La base est `data/cartograph.duckdb` (jamais versionnée, reconstruite à la demande) ; la variable `CARTOGRAPH_DUCKDB` en désigne une autre. `dbt/target/` et `dbt/logs/` sont recréés à chaque commande et ignorés par Git.
 
+Pour reconstruire la base depuis les données collectées :
+
+```bash
+uv run inv rebuild                  # snapshots des Releases, puis dbt build
+uv run inv rebuild --skip-download  # dbt build sur les snapshots déjà présents
+```
+
+`inv rebuild` rapatrie dans `data/snapshots/` les `*.parquet` de la Release `catalogue` de `cartograph-data` et des Releases `data-AAAA-MM` de `cartograph-prices` (dépôt privé : la session `gh auth` doit y avoir accès). Les JSON bruts ne sont pas téléchargés. Un fichier n'est téléchargé que s'il manque ou si son SHA-256 diffère de celui de GitHub (collecte relancée le même jour), et son empreinte est recontrôlée après téléchargement ; une erreur arrête la commande avant dbt. Un Parquet local absent des Releases est gardé (sauvegarde) et signalé. dbt construit une base temporaire, `data/cartograph.rebuild.duckdb`, qui ne remplace `data/cartograph.duckdb` qu'en cas de succès : un échec laisse l'ancienne base intacte.
+
 ---
 
 ## Git
