@@ -1,0 +1,11 @@
+version: 2
+
+macros:
+  - name: snapshot_date
+    description: >
+      Date d'un snapshot du catalogue tirée du nom de son fichier
+      (`cards-AAAA-MM-JJ.parquet`), la date de référence de STO-01.
+    arguments:
+      - name: filename
+        type: string
+        description: Colonne ou expression SQL qui contient le chemin du fichier (`filename` de `read_parquet`).

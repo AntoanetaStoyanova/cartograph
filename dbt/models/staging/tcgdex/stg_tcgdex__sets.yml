@@ -2,6 +2,9 @@ version: 2
 
 models:
   - name: stg_tcgdex__sets
+    config:
+      contract:
+        enforced: true
     description: >
       Une ligne par set et par langue, tirée des fiches de cartes (`raw_json -> 'set'`)
       du dernier snapshot où le set figure ; sans date de sortie (lot COL-04).
@@ -11,10 +14,12 @@ models:
             column_name: "set_id || '|' || language"
     columns:
       - name: set_id
+        data_type: varchar
         description: Identifiant TCGdex du set, commun aux langues.
         data_tests:
           - not_null
       - name: language
+        data_type: varchar
         description: Langue du set.
         data_tests:
           - not_null
@@ -22,16 +27,60 @@ models:
               arguments:
                 values: [fr, en, ja]
       - name: set_name
+        data_type: varchar
         description: Nom du set dans sa langue.
       - name: card_count_official
+        data_type: integer
         description: Nombre de cartes annoncé (numérotation officielle, hors cartes secrètes).
       - name: card_count_total
+        data_type: integer
         description: Nombre total de cartes du set, cartes secrètes comprises.
       - name: symbol_url
+        data_type: varchar
         description: URL de base du symbole du set.
       - name: logo_url
+        data_type: varchar
         description: URL de base du logo, absente pour certains sets.
       - name: last_seen_on
+        data_type: date
         description: Date du dernier snapshot où le set figure.
       - name: is_current
+        data_type: boolean
         description: Présent dans le dernier snapshot.
+
+unit_tests:
+  - name: stg_tcgdex__sets_keeps_latest_version
+    description: >
+      Un set est rendu une fois par langue, avec ses informations du dernier snapshot
+      où il figure ; un set absent du dernier snapshot a is_current à faux.
+    model: stg_tcgdex__sets
+    given:
+      - input: source('tcgdex', 'cards')
+        format: sql
+        rows: |
+          select * from (values
+              ('ja', 'M6-001', '001', 'a', 'M6', 'old', null, 'Pokemon', null, null, null::bigint, null::timestamptz, null::timestamptz, '{"set": {"cardCount": {"official": 80, "total": 80}}}', 'snapshots/cards-2026-11-09.parquet'),
+              ('ja', 'M6-001', '001', 'a', 'M6', 'new', null, 'Pokemon', null, null, null, null, null, '{"set": {"cardCount": {"official": 80, "total": 113}}}', 'snapshots/cards-2026-11-16.parquet'),
+              ('ja', 'M6-002', '002', 'b', 'M6', 'new', null, 'Pokemon', null, null, null, null, null, '{"set": {"cardCount": {"official": 80, "total": 113}}}', 'snapshots/cards-2026-11-16.parquet'),
+              ('en', 'old-1', '1', 'c', 'old', 'gone', null, 'Pokemon', null, null, null, null, null, '{"set": {"cardCount": {"official": 1, "total": 1}}}', 'snapshots/cards-2026-11-09.parquet')
+          ) as t (language, card_id, local_id, name, set_id, set_name, rarity, category, illustrator, image, id_product, updated, fetched_at, raw_json, filename)
+    expect:
+      rows:
+        - {
+            set_id: M6,
+            language: ja,
+            set_name: new,
+            card_count_official: 80,
+            card_count_total: 113,
+            last_seen_on: 2026-11-16,
+            is_current: true,
+          }
+        - {
+            set_id: old,
+            language: en,
+            set_name: gone,
+            card_count_official: 1,
+            card_count_total: 1,
+            last_seen_on: 2026-11-09,
+            is_current: false,
+          }

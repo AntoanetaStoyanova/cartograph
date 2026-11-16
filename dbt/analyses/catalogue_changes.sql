@@ -6,7 +6,7 @@ source as (
         language,
         card_id,
         json_merge_patch(raw_json, '{"updated": null}') as card_json,
-        regexp_extract(filename, 'cards-(\d{4}-\d{2}-\d{2})', 1)::date as snapshot_date
+        {{ snapshot_date('filename') }} as snapshot_date
     from {{ source('tcgdex', 'cards') }}
 
 ),
