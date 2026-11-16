@@ -1,3 +1,20 @@
+## v0.3.1 (2026-11-16)
+
+### Corrections
+
+- variable TCGDEX_USER_AGENT passée aux contrôles de la CI
+
+### Documentation
+
+- CI, inv finish et protection des branches dans CONTRIBUTING et le README
+
+### Maintenance
+
+- ruleset de protection de develop et main
+- inv release ouvre la pull request develop vers main avec le changelog
+- tâche inv finish, contrôles, push et pull request vers develop
+- workflow CI sur les pull requests, actionlint et zizmor au commit
+
 ## v0.3.0 (2026-11-15)
 
 ### Nouveautés
