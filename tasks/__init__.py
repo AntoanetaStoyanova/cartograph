@@ -46,9 +46,16 @@ def test(c: Context) -> None:
     c.run("uv run pytest")
 
 
-@task(pre=[check, test])  # type: ignore[misc]
+@task
+def dbt(c: Context, args: str = "build") -> None:
+    """Lance dbt (build par défaut, --args pour une autre commande) sur dbt/."""
+    Path("data").mkdir(exist_ok=True)
+    c.run(f"uv run dbt {args} --project-dir dbt --profiles-dir dbt")
+
+
+@task(pre=[check, test, dbt])  # type: ignore[misc]
 def ci(c: Context) -> None:
-    """Lance la suite complète CI : lint, typecheck, tests."""
+    """Lance la suite complète CI : lint, typecheck, tests, dbt."""
 
 
 # ---------------------------------------------------------------------------
@@ -136,6 +143,7 @@ def release(c: Context, dry_run: bool = False) -> None:
     lint(c)
     typecheck(c)
     test(c)
+    dbt(c)
     _bump(c, "uv run cz bump --yes")
     docs(c)
     c.run("git push --follow-tags")
@@ -152,6 +160,7 @@ def finish(c: Context) -> None:
     lint(c)
     typecheck(c)
     test(c)
+    dbt(c)
     okflint(c)
     c.run("git push -u origin HEAD")
     existing = c.run("gh pr view --json url --jq .url", hide=True, warn=True)
