@@ -13,9 +13,9 @@ renamed as (
 
     select
         card_id,
-        language,
+        language as language_code,
         local_id,
-        name,
+        name as card_name,
         set_id,
         case lower(category)
             when 'pokemon' then 'pokemon'
@@ -27,9 +27,9 @@ renamed as (
             else lower(category)
         end as category,
         rarity,
-        from_json(raw_json -> 'types', '["VARCHAR"]') as types,
+        from_json(raw_json -> 'types', '["VARCHAR"]') as pokemon_types,
         (raw_json ->> 'hp')::integer as hp,
-        raw_json ->> 'stage' as stage,
+        raw_json ->> 'stage' as evolution_stage,
         from_json(raw_json -> 'dexId', '["INTEGER"]') as dex_ids,
         illustrator,
         raw_json ->> 'regulationMark' as regulation_mark,

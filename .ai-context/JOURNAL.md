@@ -20,7 +20,7 @@
 
 ---
 
-## [2026-11-16] — CI-01, FND-02, STO-02 et DBT-01 livrés
+## [2026-11-16] — DBT-01 fusionné, CI-02 planifié
 
 ### Fait
 
@@ -60,12 +60,16 @@
 - Revue `/cr` de `feature/dbt-01` puis corrections avant la PR : tests unitaires dbt `stg_tcgdex__cards_keeps_latest_version` et `stg_tcgdex__sets_keeps_latest_version` (données en `format: sql` : en `dict`, dbt-duckdb cherche les colonnes de la source externe et échoue) ; un tri inversé fait bien échouer le test. `not_null` sur `category`. Macro `dbt/macros/snapshot_date.sql` (et `.yml`) remplace la regex copiée trois fois. À la demande d'Antoaneta, `data_type` sur chaque colonne de chaque `.yml` (source, deux modèles, analyse) et contrat imposé sur les deux modèles (un type faux sur `hp` fait échouer `dbt build`). Vérifié : pas de clé `pricing` dans l'échantillon public (seulement les identifiants de produit de `variants_detailed`). `CONTRIBUTING.md` et spec mis à jour. `inv ci` vert (210 tests, dbt 16/16), `inv rebuild --skip-download` 45,6 s, okflint vert.
 - `ci` rouge sur la PR : `IO Error: No files found ... dbt/sample/snapshots/cards-*.parquet`. Cause : la règle `*.parquet` du `.gitignore` excluait l'échantillon, jamais commité (vert en local car présent sur le disque). Exception `!/dbt/sample/snapshots/*.parquet` ajoutée ; `data/snapshots/` reste ignoré.
 
+- DBT-01 clos : PR #19 fusionnée dans `develop` (check `ci` vert) ; dernière case du plan et premier critère de la spec cochés, plan et spec à `fait`.
+- `docs/specs/ci-02-standard-sql.md` et `docs/plans/ci-02-standard-sql.md` créés (branche `feature/ci-02`). Essai sqlfluff 4.5.0 : 11 écarts sur les 3 fichiers SQL, mêmes résultats avec les lecteurs `jinja` et `dbt`. Décisions d'Antoaneta : lecteur `jinja` ; colonnes renommées pour ne pas utiliser de mots-clés SQL (`language_code`, `card_name`, `pokemon_types`, `evolution_stage`) ; ST06 (ordre des colonnes) désactivée. Autres décisions : style dbt Labs, 88 caractères, `group by` par noms, `sqlfluff fix` par `inv fmt` seulement, `sources.yml` gardé.
+
+- Plan ci-02-standard-sql — Étape 1 : Renommer les colonnes qui sont des mots-clés SQL. Spec passée à `en cours`. `stg_tcgdex__cards` : `language_code`, `card_name`, `pokemon_types`, `evolution_stage` ; `stg_tcgdex__sets` et `catalogue_changes` : `language_code` ; `.yml` (colonnes, tests `unique`, attendus des tests unitaires) à jour ; données d'entrée des tests unitaires inchangées (colonnes de la source). `inv ci` vert (16/16 dbt), `inv rebuild --skip-download` 49,4 s, mêmes nombres de lignes.
+
 ### Reste à faire
 
-- Antoaneta : commit, `uv run inv finish` (PR `feature/dbt-01` → `develop`) ; quand `ci` est vert sur GitHub, cocher la dernière case du plan et le premier critère de la spec DBT-01, passer les deux à `fait`, fusionner, supprimer la branche.
-- `/workspace-plan CI-02` (standard SQL, sqlfluff) sur une branche `feature/ci-02` depuis `develop`.
+- Exécuter docs/plans/ci-02-standard-sql.md — Étape 2 : sqlfluff au commit.
+- Supprimer la branche `feature/dbt-01` (locale et `origin`) si ce n'est pas fait.
 - Décision d'Antoaneta : collecte complète du catalogue gardée le lundi (corrections de fiches, ex. 36 raretés provisoires de M6 corrigées par TCGdex le 12/11) et contrôle quotidien des nouvelles cartes dans COL-04 (3 listes `/<langue>/cards` comparées au dernier catalogue, seules les fiches nouvelles téléchargées, prix dès le jour même). Ordre proposé : DBT-01 → CI-02 → COL-04 → DBT-02 ; à vérifier dans la spec COL-04 : l'API ne donne-t-elle que le prix du jour (premiers jours d'un set irrattrapables) ?
-- CI-02 (planification) : choisir les règles (style dbt Labs, templater, longueur de ligne, mots-clés comme noms de colonnes, ordre des colonnes, nom du fichier des sources : `sources.yml` ou `_tcgdex__sources.yml`).
 - Corriger le logger de `cartograph.bin.collect.run` (`__name__` vaut `__main__` sous `-m`) : petit `fix` à part.
 - `inv release` sur `develop` quand STO-02 est fusionné (v0.4.0 : FND-02 contient un `feat`), puis PR `develop` → `main`.
 - Avant la porte 1 : relire dans un navigateur les conditions de Cardmarket et de TCGplayer (veille).
@@ -82,6 +86,8 @@
 
 ### Références
 
+- [../docs/specs/ci-02-standard-sql.md](../docs/specs/ci-02-standard-sql.md)
+- [../docs/plans/ci-02-standard-sql.md](../docs/plans/ci-02-standard-sql.md)
 - [../docs/specs/dbt-01-staging-catalogue.md](../docs/specs/dbt-01-staging-catalogue.md)
 - [../docs/plans/dbt-01-staging-catalogue.md](../docs/plans/dbt-01-staging-catalogue.md), `dbt/sample/`, `dbt/models/staging/tcgdex/sources.yml`, `dbt/dbt_project.yml`, `tasks/__init__.py`, `tests/test_tasks_dbt.py`, `dbt/models/staging/tcgdex/stg_tcgdex__cards.sql`, `stg_tcgdex__sets.sql`, `dbt/analyses/catalogue_changes.sql`
 - [../docs/specs/sto-02-reconstruction-base.md](../docs/specs/sto-02-reconstruction-base.md)

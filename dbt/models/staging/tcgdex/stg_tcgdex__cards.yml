@@ -11,14 +11,14 @@ models:
     data_tests:
       - unique:
           arguments:
-            column_name: "card_id || '|' || language"
+            column_name: "card_id || '|' || language_code"
     columns:
       - name: card_id
         data_type: varchar
         description: Identifiant TCGdex de la carte, commun aux langues.
         data_tests:
           - not_null
-      - name: language
+      - name: language_code
         data_type: varchar
         description: Langue de la fiche.
         data_tests:
@@ -29,7 +29,7 @@ models:
       - name: local_id
         data_type: varchar
         description: Numéro dans le set, pas toujours numérique (`33b`, `THREE`).
-      - name: name
+      - name: card_name
         data_type: varchar
         description: Nom dans la langue de la fiche.
         data_tests:
@@ -50,13 +50,13 @@ models:
       - name: rarity
         data_type: varchar
         description: Rareté brute, propre à chaque langue, parfois vide (normalisée par DBT-03).
-      - name: types
+      - name: pokemon_types
         data_type: varchar[]
         description: Types d'énergie du Pokémon, dans la langue de la fiche.
       - name: hp
         data_type: integer
         description: Points de vie, vide hors Pokémon.
-      - name: stage
+      - name: evolution_stage
         data_type: varchar
         description: Stade d'évolution, dans la langue de la fiche.
       - name: dex_ids
@@ -110,7 +110,7 @@ unit_tests:
       rows:
         - {
             card_id: M6-077,
-            language: ja,
+            language_code: ja,
             category: pokemon,
             rarity: Illustration rare,
             last_seen_on: 2026-11-16,
@@ -118,7 +118,7 @@ unit_tests:
           }
         - {
             card_id: tk-xy-su-26,
-            language: en,
+            language_code: en,
             category: trainer,
             rarity: Common,
             last_seen_on: 2026-11-09,
@@ -126,7 +126,7 @@ unit_tests:
           }
         - {
             card_id: hgss3-1,
-            language: fr,
+            language_code: fr,
             category: trainer,
             rarity: Rare,
             last_seen_on: 2026-11-16,

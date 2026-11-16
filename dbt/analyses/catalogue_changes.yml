@@ -14,7 +14,7 @@ analyses:
       - name: previous_date
         data_type: date
         description: Date du snapshot précédent.
-      - name: language
+      - name: language_code
         data_type: varchar
         description: Langue.
       - name: added

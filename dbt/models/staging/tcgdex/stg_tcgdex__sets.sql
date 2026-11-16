@@ -13,7 +13,7 @@ renamed as (
 
     select
         set_id,
-        language,
+        language as language_code,
         set_name,
         (raw_json -> 'set' -> 'cardCount' ->> 'official')::integer as card_count_official,
         (raw_json -> 'set' -> 'cardCount' ->> 'total')::integer as card_count_total,
