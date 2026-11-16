@@ -20,7 +20,7 @@
 
 ---
 
-## [2026-11-16] — CI-01 : CI sur les PR, inv finish, protection active
+## [2026-11-16] — CI-01 livré, FND-02 planifié
 
 ### Fait
 
@@ -35,10 +35,13 @@
 - Premier `inv finish` réel par Antoaneta : PR #14 `feature/ci-01` → `develop` ouverte. Check `ci` rouge (exécution `43846946595`, 45 s) : `TCGDEX_USER_AGENT` absente, `cartograph.config` l'exige à l'import (la variable n'existe que dans `cartograph-data`). Décision d'Antoaneta : variable GitHub Actions dans `cartograph` aussi ; `ci.yml` la passe à l'étape `Contrôles` par `vars.TCGDEX_USER_AGENT` (décision ajoutée à la spec). Ruleset pas encore appliqué.
 - Variable `TCGDEX_USER_AGENT` créée par Antoaneta dans `cartograph` (Settings → Variables) ; PR #14 : check `ci` vert (59 s, `43848454147`). Ruleset appliqué par Antoaneta (id `27365054`). Vérification : PR de test #15 (test faux) rouge → `BLOCKED`, PR #14 → `CLEAN` ; PR #15 fermée et branche supprimée. Limite notée dans la spec : le contournement admin `always` couvre toutes les règles (case « bypass rules » sur une PR rouge, force-push possible pour l'admin). Étape 4 terminée.
 - Plan ci-01-ci-python — Étape 5 : Documentation et clôture (3 tâches sur 5). `CONTRIBUTING.md` : workflows dans le tableau des contrôles (actionlint, zizmor), `inv finish` avant une PR, workflow `CI` et variable `TCGDEX_USER_AGENT`, cycle Git avec `inv finish` et la PR `develop` → `main` de `inv release`, protection et contournement admin (« ne jamais cocher bypass rules »). `README.md` : badge CI (`develop`). Roadmap : CI-01 coché et décrit tel que livré, « protection de `main` » retirée de CI-03. `uv run inv ci` vert (188 tests), okflint vert.
+- Antoaneta : PR #14 fusionnée (check `ci` 21 s avec cache, contre 59 s à froid), puis `uv run inv release` sur `develop` : bump `v0.3.1` poussé par contournement admin, tag créé. PR vers `main` non ouverte : `inv` avait chargé `tasks/__init__.py` avant son `git pull` (ancienne version) ; effet du premier lancement seulement. PR #16 `develop` → `main` ouverte par `_open_release_pr` (titre `Release v0.3.1`, section du changelog), check `ci` vert (55 s), `CLEAN`. Plan et spec CI-01 passés à `fait`.
+- PR #16 `develop` → `main` fusionnée (v0.3.1 en production). Branche `feature/ci-01` supprimée (locale et `origin`) : PR #14 fusionnée, aucun commit en avance.
+- `docs/specs/fnd-02-squelette-dbt.md` et `docs/plans/fnd-02-squelette-dbt.md` créés (FND-02). Décision d'Antoaneta : `inv ci` lance `inv dbt` dès FND-02 (un modèle cassé bloque la PR). Autres décisions : projet dans `dbt/`, `profiles.yml` versionné (`--profiles-dir dbt`), base `data/cartograph.duckdb` remplaçable par `CARTOGRAPH_DUCKDB`, `dbt-core` et `dbt-duckdb` en dépendances principales, staging et intermediate en `view`, marts en `table`, `inv dbt --args <commande>`, statistiques d'usage coupées ; retrait de `cp .env.example .env` resté dans `ci.yml`.
 
 ### Reste à faire
 
-- Clore docs/plans/ci-01-ci-python.md — Étape 5 : Antoaneta commite l'étape 5 et lance `uv run inv finish` (met à jour la PR #14) ; relever la durée du check `ci` avec cache ; fusion de la PR #14 (merge commit, sans « bypass rules »), puis `uv run inv release` sur `develop` : push du bump accepté, PR `develop` → `main` ouverte avec le changelog. Puis cocher les derniers critères et passer plan et spec à `fait`.
+- Exécuter docs/plans/fnd-02-squelette-dbt.md — Étape 1 : Projet dbt (branche `feature/fnd-02` ; y commiter d'abord le journal du 16 novembre, modifié sur `develop`).
 - Avant la porte 1 : relire dans un navigateur les conditions de Cardmarket et de TCGplayer (veille).
 - Rapport de novembre à régénérer en fin de mois (`inv suivi --mois 2026-11 --force`, commentaire gardé), puis `statut: fait` ; mettre à jour les chiffres de `docs/gouvernance/green-it.md`. Chaque début de mois : `inv ci` puis `inv suivi`, commentaire.
 - optimisation-collecte : l'exécution `42687236424` (9 novembre au soir, `catalogue=oui`, 2 h 04) peut cocher l'exécution manuelle attendue ; reste la PR et la release si pas encore faites (code déjà sur `main`).
@@ -53,6 +56,7 @@
 
 ### Références
 
+- [../docs/specs/fnd-02-squelette-dbt.md](../docs/specs/fnd-02-squelette-dbt.md), [../docs/plans/fnd-02-squelette-dbt.md](../docs/plans/fnd-02-squelette-dbt.md)
 - [../docs/specs/ci-01-ci-python.md](../docs/specs/ci-01-ci-python.md), [../docs/plans/ci-01-ci-python.md](../docs/plans/ci-01-ci-python.md), [../.github/workflows/ci.yml](../.github/workflows/ci.yml), `.pre-commit-config.yaml`, `tasks/__init__.py`, `tests/test_tasks_finish.py`, `tests/test_tasks_release.py`, `.github/rulesets/develop-main.json`, `CONTRIBUTING.md`, `README.md`
 
 ## [2026-11-15] — STO-01 documenté, T5 passé, STO-03 clos, DOC-01 presque clos, SCN-T7 passé, COL-T2 passé, EMB-T9 passé, porte 0 franchie, GOV-04 fait, GOV-05 fait
