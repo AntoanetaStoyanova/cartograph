@@ -20,6 +20,35 @@
 
 ---
 
+## [2026-11-16] — Branches nettoyées, CI-01 planifié
+
+### Fait
+
+- Session ouverte (`/workspace-init`).
+- Branche `feature/gov-05` supprimée (locale et `origin`) : PR #12 fusionnée dans `develop`, aucun commit en avance.
+- Branches vérifiées : seules `develop` et `main` restent, en local et sur `origin` (`feature/gov-04` déjà supprimée).
+- `docs/specs/ci-01-ci-python.md` et `docs/plans/ci-01-ci-python.md` créés (CI-01). Décisions d'Antoaneta : CI sur les PR vers `develop` et `main` seulement (pas de push `feature/**`, `inv finish` lance déjà `inv ci`) ; ruleset sur `develop` et `main` (PR obligatoire, check `ci` requis, merge commit seul, ni force-push ni suppression) avec contournement admin pour le push de `inv release` ; nouvelle tâche `inv finish` (feature → `inv ci`, `inv okflint`, push, PR vers `develop`) ; `inv release` ouvre la PR `develop` → `main` avec la section du changelog. Autres décisions : pas de filtres de chemins (check requis), actionlint et zizmor au commit dans `cartograph`, ruleset versionné dans `.github/rulesets/`.
+- Plan ci-01-ci-python — Étape 1 : Workflow CI (branche `feature/ci-01`). Spec passée à `en cours`. `.github/workflows/ci.yml` (PR vers `develop` et `main`, `workflow_dispatch`, `permissions: {}`, `concurrency` par PR avec annulation, job `ci` : checkout et setup-uv épinglés comme `collect.yml`, `actions/cache` v6.1.0 sur `~/.cache/pre-commit`, `uv sync --locked`, `uv run inv ci`). `.pre-commit-config.yaml` : actionlint v1.7.12 et zizmor v1.31.1 `--persona=pedantic`. Un workflow invalide est refusé par les deux hooks (essai puis fichier retiré). Constat : `workflow_dispatch` ne marche qu'une fois le workflow sur `main` ; vérification sur GitHub déplacée à la PR de l'étape 4 (plan et spec mis à jour). `uv run inv ci` vert (177 tests), okflint vert.
+
+### Reste à faire
+
+- Exécuter docs/plans/ci-01-ci-python.md — Étape 2 : `inv finish`. Étape 1 à commiter sur `feature/ci-01` (non commitée).
+- Avant la porte 1 : relire dans un navigateur les conditions de Cardmarket et de TCGplayer (veille).
+- Rapport de novembre à régénérer en fin de mois (`inv suivi --mois 2026-11 --force`, commentaire gardé), puis `statut: fait` ; mettre à jour les chiffres de `docs/gouvernance/green-it.md`. Chaque début de mois : `inv ci` puis `inv suivi`, commentaire.
+- optimisation-collecte : l'exécution `42687236424` (9 novembre au soir, `catalogue=oui`, 2 h 04) peut cocher l'exécution manuelle attendue ; reste la PR et la release si pas encore faites (code déjà sur `main`).
+- Antoaneta : `inv release` sur `develop` (sans effet sur la version : seulement `docs` et `chore`, rien à taguer ; PR directe `develop` → `main` possible), PR `develop` → `main`. Puis vérifier `gh repo view AntoanetaStoyanova/cartograph --json licenseInfo` = MIT, cocher la dernière case de docs/plans/lot-doc-01-readme-licence.md et passer plan et spec à `fait`.
+- Antoaneta : commit de la doc, PR `feature/collecte-rapide` vers `develop`, `inv release`, PR vers `main` ; commit et `git envoyer` du README de `cartograph-data`.
+- Antoaneta : exécution manuelle `catalogue=oui` avant le lundi 16 novembre ; relever la durée de « Collecter », vérifier catalogue publié, prix dans `data-2026-11`, manifeste ; comparer le SHA-256 du catalogue au manifeste (STO-01). Puis cocher les dernières cases de docs/plans/optimisation-collecte.md et passer plan et spec à `fait`.
+- Antoaneta : rattrapage du 9 novembre, relance prix seuls (`-f catalogue=non`, environ 1 h 20), à confirmer.
+- Clore docs/plans/lot-sto-01-manifeste.md : après l'exécution `catalogue=oui`, comparer le SHA-256 du catalogue (`gh release download catalogue`) au manifeste, cocher le dernier critère de la spec, passer plan et spec à `fait`.
+- Porte 0 franchie le 15 novembre 2026 (P0-DEC) : neuf tests tranchés dans la spec maîtresse.
+- Antoaneta : avant PRO-02, demander aux testeurs leur logiciel de caisse et un fichier d'import exemple.
+- `cadrage-flux.md` : flux d'export pro (FX7 et FX8, écrans) à ajouter quand PRO-01 et PRO-02 seront planifiés.
+
+### Références
+
+- [../docs/specs/ci-01-ci-python.md](../docs/specs/ci-01-ci-python.md), [../docs/plans/ci-01-ci-python.md](../docs/plans/ci-01-ci-python.md), [../.github/workflows/ci.yml](../.github/workflows/ci.yml), `.pre-commit-config.yaml`
+
 ## [2026-11-15] — STO-01 documenté, T5 passé, STO-03 clos, DOC-01 presque clos, SCN-T7 passé, COL-T2 passé, EMB-T9 passé, porte 0 franchie, GOV-04 fait, GOV-05 fait
 
 ### Fait
