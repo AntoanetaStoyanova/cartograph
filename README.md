@@ -1,5 +1,7 @@
 # cartograph
 
+[![CI](https://github.com/AntoanetaStoyanova/cartograph/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/AntoanetaStoyanova/cartograph/actions/workflows/ci.yml)
+
 Une plateforme de données qui suit les prix des cartes Pokémon, identifie une carte à partir d’une photo et estime sa valeur.
 
 ## Auteur

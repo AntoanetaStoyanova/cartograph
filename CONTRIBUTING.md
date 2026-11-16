@@ -96,18 +96,27 @@ uv run inv hooks       # installe le hook pre-commit
 | Python | `ruff check`, `ruff format` |
 | Markdown | markdownlint (`.markdownlint-cli2.yaml`) |
 | YAML, JSON, TOML | validité ; prettier formate le YAML et le JSON |
+| Workflows (`.github/workflows/`) | actionlint, zizmor (`--persona=pedantic`) |
 
 - Si un contrôle corrige un fichier, le commit est refusé : relire la correction, `git add`, recommencer le commit.
 - « Stashing unstaged files » : les modifications hors du commit sont mises de côté pendant les contrôles, puis remises.
 - `git commit --no-verify` saute les contrôles pour un commit de travail ; ils restent dus avant la pull request.
 - `tests/fixtures/` (réponses enregistrées de l'API) n'est jamais modifié.
 
-Avant une pull request :
+Avant une pull request, depuis la branche `feature/…` :
+
+```bash
+uv run inv finish      # inv ci et inv okflint, push, puis pull request vers develop
+```
+
+`inv finish` refuse une autre branche qu'une `feature/…` et un arbre de travail non propre ; si la pull request existe déjà, il affiche son lien. Les contrôles se lancent aussi seuls :
 
 ```bash
 uv run inv ci          # pre-commit sur tous les fichiers, mypy, pytest
 uv run inv okflint     # en-tête et liens des specs et plans locaux de docs/
 ```
+
+Sur GitHub, le workflow `CI` (`.github/workflows/ci.yml`) lance `uv run inv ci` sur chaque pull request vers `develop` et `main` (environ une minute) ; un nouveau push sur la branche annule l'exécution en cours. La variable GitHub Actions `TCGDEX_USER_AGENT` du dépôt doit exister : `cartograph.config` l'exige à l'import.
 
 Les specs et plans de `docs/` (locaux, non suivis par Git) commencent par un en-tête vérifié par okflint (`okf-base.yaml`) :
 
@@ -140,9 +149,10 @@ src/cartograph/
 
 - Branches : `feature/<sujet>` (développement, créée depuis `develop`), `develop` (qualité), `main` (production, jamais modifiée en local)
 - Cycle :
-  1. `feature/…` se pousse librement et rejoint `develop` par une pull request ;
-  2. sur `develop` : `uv run inv release --dry-run` (version suivante et changelog, sans rien modifier), puis `uv run inv release` (pull, contrôles, `cz bump`, documentation, push avec le tag) ;
-  3. `develop` rejoint `main` par une pull request.
+  1. `feature/…` se pousse librement et rejoint `develop` par une pull request, ouverte par `uv run inv finish` ;
+  2. sur `develop` : `uv run inv release --dry-run` (version suivante et changelog, sans rien modifier), puis `uv run inv release` (pull, contrôles, `cz bump`, documentation, push avec le tag, puis pull request `develop` → `main` titrée `Release vX.Y.Z`, avec la section de la version dans `CHANGELOG.md`) ;
+  3. la pull request `develop` → `main` est fusionnée une fois le check `ci` vert.
+- Protection (ruleset `.github/rulesets/develop-main.json`, appliqué par `gh api --method POST repos/AntoanetaStoyanova/cartograph/rulesets --input …`) : sur `develop` et `main`, pull request obligatoire, check `ci` vert requis, merge commit seul, ni force-push ni suppression. Le rôle admin peut passer outre : c'est ce qui laisse `inv release` pousser sur `develop`. Ne jamais cocher « bypass rules » pour fusionner une pull request rouge.
 - Pull requests fusionnées en **merge commit** uniquement : un squash réduirait le changelog à une ligne et, comme un rebase, laisserait le commit tagué hors de `main`
 - Mettre une branche feature à jour après une release : `git fetch origin && git merge origin/develop`
 - Les specs et plans de `docs/` ne sont pas suivis par Git : `git clean -fdx` les effacerait, il est interdit

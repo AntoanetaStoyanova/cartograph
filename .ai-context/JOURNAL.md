@@ -20,7 +20,7 @@
 
 ---
 
-## [2026-11-16] — Branches nettoyées, CI-01 planifié
+## [2026-11-16] — CI-01 : CI sur les PR, inv finish, protection active
 
 ### Fait
 
@@ -33,10 +33,12 @@
 - Plan ci-01-ci-python — Étape 3 : PR `develop` → `main` dans `inv release`. `tasks/__init__.py` : `_open_release_pr` après `git push --follow-tags` (version par `uv version --short`, PR ouverte cherchée par `gh pr list --base main --head develop --state open`, sinon `gh pr create` titre `Release vX.Y.Z`, corps = section de la version dans `CHANGELOG.md` par un fichier temporaire) ; `_changelog_section(text, tag)` (`Exit` si la version manque). `tests/test_tasks_release.py` : CHANGELOG de test dans `tmp_path`, PR ouverte ou existante, `--dry-run` sans `gh`, 4 tests de `_changelog_section`. Essai sur le vrai `CHANGELOG.md` (section v0.2.1) correct. `uv run inv ci` vert (188 tests), okflint vert.
 - Plan ci-01-ci-python — Étape 4 : Protection des branches (1 tâche sur 4). `.github/rulesets/develop-main.json` : `develop` et `main`, suppression et force-push interdits, PR obligatoire (0 approbation, merge commit seul), check `ci` requis et limité à GitHub Actions (`integration_id` 15368, vérifié par `gh api apps/github-actions`), contournement admin `always`. JSON et prettier verts.
 - Premier `inv finish` réel par Antoaneta : PR #14 `feature/ci-01` → `develop` ouverte. Check `ci` rouge (exécution `43846946595`, 45 s) : `TCGDEX_USER_AGENT` absente, `cartograph.config` l'exige à l'import (la variable n'existe que dans `cartograph-data`). Décision d'Antoaneta : variable GitHub Actions dans `cartograph` aussi ; `ci.yml` la passe à l'étape `Contrôles` par `vars.TCGDEX_USER_AGENT` (décision ajoutée à la spec). Ruleset pas encore appliqué.
+- Variable `TCGDEX_USER_AGENT` créée par Antoaneta dans `cartograph` (Settings → Variables) ; PR #14 : check `ci` vert (59 s, `43848454147`). Ruleset appliqué par Antoaneta (id `27365054`). Vérification : PR de test #15 (test faux) rouge → `BLOCKED`, PR #14 → `CLEAN` ; PR #15 fermée et branche supprimée. Limite notée dans la spec : le contournement admin `always` couvre toutes les règles (case « bypass rules » sur une PR rouge, force-push possible pour l'admin). Étape 4 terminée.
+- Plan ci-01-ci-python — Étape 5 : Documentation et clôture (3 tâches sur 5). `CONTRIBUTING.md` : workflows dans le tableau des contrôles (actionlint, zizmor), `inv finish` avant une PR, workflow `CI` et variable `TCGDEX_USER_AGENT`, cycle Git avec `inv finish` et la PR `develop` → `main` de `inv release`, protection et contournement admin (« ne jamais cocher bypass rules »). `README.md` : badge CI (`develop`). Roadmap : CI-01 coché et décrit tel que livré, « protection de `main` » retirée de CI-03. `uv run inv ci` vert (188 tests), okflint vert.
 
 ### Reste à faire
 
-- Exécuter docs/plans/ci-01-ci-python.md — Étape 4 : Protection des branches, à partir de « PR `feature/ci-01` → `develop` ouverte par `uv run inv finish` ». Antoaneta : `gh variable set TCGDEX_USER_AGENT` dans `cartograph`, commiter `ci.yml`, `uv run inv finish` (pousse sur la PR #14), check `ci` vert et durée relevée, puis appliquer le ruleset (`gh api`).
+- Clore docs/plans/ci-01-ci-python.md — Étape 5 : Antoaneta commite l'étape 5 et lance `uv run inv finish` (met à jour la PR #14) ; relever la durée du check `ci` avec cache ; fusion de la PR #14 (merge commit, sans « bypass rules »), puis `uv run inv release` sur `develop` : push du bump accepté, PR `develop` → `main` ouverte avec le changelog. Puis cocher les derniers critères et passer plan et spec à `fait`.
 - Avant la porte 1 : relire dans un navigateur les conditions de Cardmarket et de TCGplayer (veille).
 - Rapport de novembre à régénérer en fin de mois (`inv suivi --mois 2026-11 --force`, commentaire gardé), puis `statut: fait` ; mettre à jour les chiffres de `docs/gouvernance/green-it.md`. Chaque début de mois : `inv ci` puis `inv suivi`, commentaire.
 - optimisation-collecte : l'exécution `42687236424` (9 novembre au soir, `catalogue=oui`, 2 h 04) peut cocher l'exécution manuelle attendue ; reste la PR et la release si pas encore faites (code déjà sur `main`).
@@ -51,7 +53,7 @@
 
 ### Références
 
-- [../docs/specs/ci-01-ci-python.md](../docs/specs/ci-01-ci-python.md), [../docs/plans/ci-01-ci-python.md](../docs/plans/ci-01-ci-python.md), [../.github/workflows/ci.yml](../.github/workflows/ci.yml), `.pre-commit-config.yaml`, `tasks/__init__.py`, `tests/test_tasks_finish.py`, `tests/test_tasks_release.py`, `.github/rulesets/develop-main.json`
+- [../docs/specs/ci-01-ci-python.md](../docs/specs/ci-01-ci-python.md), [../docs/plans/ci-01-ci-python.md](../docs/plans/ci-01-ci-python.md), [../.github/workflows/ci.yml](../.github/workflows/ci.yml), `.pre-commit-config.yaml`, `tasks/__init__.py`, `tests/test_tasks_finish.py`, `tests/test_tasks_release.py`, `.github/rulesets/develop-main.json`, `CONTRIBUTING.md`, `README.md`
 
 ## [2026-11-15] — STO-01 documenté, T5 passé, STO-03 clos, DOC-01 presque clos, SCN-T7 passé, COL-T2 passé, EMB-T9 passé, porte 0 franchie, GOV-04 fait, GOV-05 fait
 
