@@ -2,8 +2,10 @@
 
 import shlex
 import tempfile
+import time
 from pathlib import Path
 
+import duckdb
 from invoke import Context, Exit, task
 
 # ---------------------------------------------------------------------------
@@ -46,11 +48,20 @@ def test(c: Context) -> None:
     c.run("uv run pytest")
 
 
+DATABASE = Path("data/cartograph.duckdb")
+REBUILD_DATABASE = Path("data/cartograph.rebuild.duckdb")
+
+
 @task
 def dbt(c: Context, args: str = "build") -> None:
     """Lance dbt (build par défaut, --args pour une autre commande) sur dbt/."""
     Path("data").mkdir(exist_ok=True)
-    c.run(f"uv run dbt {args} --project-dir dbt --profiles-dir dbt")
+    c.run(_dbt_command(args))
+
+
+def _dbt_command(args: str) -> str:
+    """Commande dbt sur le projet et le profil de dbt/."""
+    return f"uv run dbt {args} --project-dir dbt --profiles-dir dbt"
 
 
 @task(pre=[check, test, dbt])  # type: ignore[misc]
@@ -59,7 +70,7 @@ def ci(c: Context) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Collecte
+# Données
 # ---------------------------------------------------------------------------
 
 
@@ -82,6 +93,39 @@ def collect(
     if data_dir:
         args.append(f"--data-dir {shlex.quote(data_dir)}")
     c.run(" ".join(args))
+
+
+@task
+def rebuild(c: Context, skip_download: bool = False) -> None:
+    """Rapatrie les snapshots des Releases et reconstruit data/cartograph.duckdb."""
+    start = time.monotonic()
+    if not skip_download:
+        c.run("uv run python -m cartograph.bin.rebuild")
+    DATABASE.parent.mkdir(exist_ok=True)
+    _remove_database(REBUILD_DATABASE)
+    duckdb.connect(REBUILD_DATABASE).close()
+    result = c.run(
+        _dbt_command("build"),
+        env={"CARTOGRAPH_DUCKDB": str(REBUILD_DATABASE)},
+        warn=True,
+    )
+    if not result.ok:
+        _remove_database(REBUILD_DATABASE)
+        raise Exit(f"dbt build a échoué : {DATABASE} inchangée.")
+    _wal(DATABASE).unlink(missing_ok=True)
+    REBUILD_DATABASE.replace(DATABASE)
+    print(f"{DATABASE} reconstruite en {time.monotonic() - start:.1f} s.")
+
+
+def _remove_database(path: Path) -> None:
+    """Supprime une base DuckDB et son journal .wal s'ils existent."""
+    path.unlink(missing_ok=True)
+    _wal(path).unlink(missing_ok=True)
+
+
+def _wal(path: Path) -> Path:
+    """Journal DuckDB d'une base, à retirer avec elle."""
+    return path.with_name(path.name + ".wal")
 
 
 # ---------------------------------------------------------------------------
