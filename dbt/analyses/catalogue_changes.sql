@@ -16,7 +16,7 @@ snapshots as (
     select
         snapshot_date,
         lag(snapshot_date) over (order by snapshot_date) as previous_date
-    from (select distinct snapshot_date from source)
+    from (select distinct snapshot_date from source) as snapshot_dates
 
 ),
 
@@ -52,9 +52,10 @@ compared as (
         prev.card_json <> curr.card_json as is_modified
     from current_cards as curr
     full outer join previous_cards as prev
-        on curr.snapshot_date = prev.next_date
-        and curr.card_id = prev.card_id
-        and curr.language_code = prev.language_code
+        on
+            curr.snapshot_date = prev.next_date
+            and curr.card_id = prev.card_id
+            and curr.language_code = prev.language_code
 
 )
 

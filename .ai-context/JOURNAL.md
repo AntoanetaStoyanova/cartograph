@@ -65,9 +65,11 @@
 
 - Plan ci-02-standard-sql — Étape 1 : Renommer les colonnes qui sont des mots-clés SQL. Spec passée à `en cours`. `stg_tcgdex__cards` : `language_code`, `card_name`, `pokemon_types`, `evolution_stage` ; `stg_tcgdex__sets` et `catalogue_changes` : `language_code` ; `.yml` (colonnes, tests `unique`, attendus des tests unitaires) à jour ; données d'entrée des tests unitaires inchangées (colonnes de la source). `inv ci` vert (16/16 dbt), `inv rebuild --skip-download` 49,4 s, mêmes nombres de lignes.
 
+- Plan ci-02-standard-sql — Étape 2 : sqlfluff au commit. `.sqlfluff` (duckdb, lecteur `jinja`, 88 caractères, ST06 exclue, minuscules, alias explicites, `group by` par noms), `.sqlfluffignore`, hooks `sqlfluff-lint` et `sqlfluff-fix` (manuel) 4.5.0 dans `.pre-commit-config.yaml`. Mise au standard de `stg_tcgdex__sets.sql` et `catalogue_changes.sql` (alias `snapshot_dates`). Décision d'Antoaneta : tâche séparée `inv sql-fmt` (`tasks/__init__.py`, `tests/test_tasks_sql_fmt.py`), `inv fmt` reste Ruff seul. Un modèle hors standard fait échouer le commit (essai puis retour arrière). `inv ci` vert (212 tests, sqlfluff passé, dbt 16/16).
+
 ### Reste à faire
 
-- Exécuter docs/plans/ci-02-standard-sql.md — Étape 2 : sqlfluff au commit.
+- Exécuter docs/plans/ci-02-standard-sql.md — Étape 3 : Documentation et clôture.
 - Supprimer la branche `feature/dbt-01` (locale et `origin`) si ce n'est pas fait.
 - Décision d'Antoaneta : collecte complète du catalogue gardée le lundi (corrections de fiches, ex. 36 raretés provisoires de M6 corrigées par TCGdex le 12/11) et contrôle quotidien des nouvelles cartes dans COL-04 (3 listes `/<langue>/cards` comparées au dernier catalogue, seules les fiches nouvelles téléchargées, prix dès le jour même). Ordre proposé : DBT-01 → CI-02 → COL-04 → DBT-02 ; à vérifier dans la spec COL-04 : l'API ne donne-t-elle que le prix du jour (premiers jours d'un set irrattrapables) ?
 - Corriger le logger de `cartograph.bin.collect.run` (`__name__` vaut `__main__` sous `-m`) : petit `fix` à part.
