@@ -1,0 +1,22 @@
+name: cartograph
+version: "1.0.0"
+profile: cartograph
+
+model-paths: [models]
+macro-paths: [macros]
+test-paths: [tests]
+seed-paths: [seeds]
+snapshot-paths: [snapshots]
+analysis-paths: [analyses]
+
+flags:
+  send_anonymous_usage_stats: false
+
+models:
+  cartograph:
+    staging:
+      +materialized: view
+    intermediate:
+      +materialized: view
+    marts:
+      +materialized: table

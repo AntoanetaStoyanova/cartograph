@@ -112,7 +112,7 @@ uv run inv finish      # inv ci et inv okflint, push, puis pull request vers dev
 `inv finish` refuse une autre branche qu'une `feature/…` et un arbre de travail non propre ; si la pull request existe déjà, il affiche son lien. Les contrôles se lancent aussi seuls :
 
 ```bash
-uv run inv ci          # pre-commit sur tous les fichiers, mypy, pytest
+uv run inv ci          # pre-commit sur tous les fichiers, mypy, pytest, dbt build
 uv run inv okflint     # en-tête et liens des specs et plans locaux de docs/
 ```
 
@@ -142,6 +142,25 @@ src/cartograph/
 ├── log/            # configuration des logs (jamais print() en production)
 └── notebook/       # utilitaires pour notebooks Jupyter
 ```
+
+Les transformations dbt (dbt-duckdb) vivent dans `dbt/`, hors du paquet Python :
+
+```text
+dbt/
+├── dbt_project.yml     # matérialisations par couche
+├── profiles.yml        # profil DuckDB versionné, sans secret
+└── models/
+    ├── staging/        # stg_<source>__<entité> : nettoyage des sources, en vue
+    ├── intermediate/   # int_ : jointures et règles métier, en vue
+    └── marts/          # fct_, dim_, mart_ : tables lues par l'application
+```
+
+```bash
+uv run inv dbt                    # dbt build
+uv run inv dbt --args debug       # autre commande dbt (debug, docs generate…)
+```
+
+La base est `data/cartograph.duckdb` (jamais versionnée, reconstruite à la demande) ; la variable `CARTOGRAPH_DUCKDB` en désigne une autre. `dbt/target/` et `dbt/logs/` sont recréés à chaque commande et ignorés par Git.
 
 ---
 

@@ -93,3 +93,8 @@ __marimo__/
 /docs/plans/*.md
 /docs/specs/*.md
 /docs/schemas/
+
+# dbt
+dbt/target/
+dbt/logs/
+dbt/dbt_packages/
