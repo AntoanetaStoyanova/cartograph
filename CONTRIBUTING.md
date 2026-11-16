@@ -97,6 +97,7 @@ uv run inv hooks       # installe le hook pre-commit
 | Markdown | markdownlint (`.markdownlint-cli2.yaml`) |
 | YAML, JSON, TOML | validité ; prettier formate le YAML et le JSON |
 | Workflows (`.github/workflows/`) | actionlint, zizmor (`--persona=pedantic`) |
+| SQL de `dbt/models/` et `dbt/analyses/` | sqlfluff (`.sqlfluff`, voir « Standard SQL ») |
 
 - Si un contrôle corrige un fichier, le commit est refusé : relire la correction, `git add`, recommencer le commit.
 - « Stashing unstaged files » : les modifications hors du commit sont mises de côté pendant les contrôles, puis remises.
@@ -159,6 +160,25 @@ dbt/
 ```
 
 Chaque modèle, analyse ou macro `<nom>.sql` a son fichier de propriétés `<nom>.yml` à côté (description, colonnes, tests) ; les sources sont déclarées dans `sources.yml`. Chaque colonne déclare son `data_type` ; les modèles ont un contrat (`contract: enforced: true`) : un type qui ne correspond plus fait échouer `dbt build`. Une règle de calcul (dernière version, `is_current`…) est couverte par un test unitaire dbt (`unit_tests:`, données en `format: sql`, car dbt-duckdb ne lit pas les colonnes d'une source externe). Les modèles de staging du catalogue (`staging/tcgdex/`) sont `stg_tcgdex__cards` (une ligne par carte et par langue, dernière version vue, `is_current` à faux pour une carte retirée de TCGdex) et `stg_tcgdex__sets` (une ligne par set et par langue).
+
+### Standard SQL
+
+Le SQL de `dbt/models/` et `dbt/analyses/` suit le style de dbt Labs, vérifié par sqlfluff (`.sqlfluff`, dialecte `duckdb`) à chaque commit, donc dans `inv ci` :
+
+- tout en minuscules (mots-clés, fonctions, types, noms) ; 4 espaces ; 88 caractères par ligne, comme Ruff ;
+- un modèle enchaîne des CTE (`source`, `renamed`…) et finit par `select * from <dernière CTE>` ;
+- alias toujours explicites avec `as`, y compris pour une sous-requête ; virgules en fin de ligne ;
+- `group by` et `order by` par noms de colonnes, jamais par numéros ; dans un `order by` à plusieurs colonnes, le sens (`asc`, `desc`) est donné pour toutes ou pour aucune ;
+- aucun nom de colonne n'est un mot-clé SQL (règle RF04) : `language_code`, `card_name`, `pokemon_types`, `evolution_stage` plutôt que `language`, `name`, `types`, `stage`. Les colonnes des Parquet gardent leur nom d'origine et sont renommées dans le staging ;
+- l'ordre des colonnes d'un `select` suit leur sens (identité, description, images, dates), le même que dans le `.yml` : la règle ST06 (colonnes simples avant les calculs) est désactivée.
+
+sqlfluff lit les balises `{{ }}` avec son lecteur `jinja` (fonctions de dbt simulées, macros chargées depuis `dbt/macros/`) : pas besoin de compiler le projet dbt, le contrôle prend une à deux secondes. Les macros ne sont pas contrôlées (`.sqlfluffignore`).
+
+```bash
+uv run inv sql-fmt     # corrige ce que sqlfluff sait corriger (mise en page, casse)
+```
+
+Le reste (alias manquant, `group by 1`, nom de colonne réservé) se corrige à la main ; relire les corrections avant `git add`.
 
 ```bash
 uv run inv dbt                    # dbt build sur data/snapshots/
