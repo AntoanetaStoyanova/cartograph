@@ -1,0 +1,37 @@
+version: 2
+
+models:
+  - name: stg_tcgdex__sets
+    description: >
+      Une ligne par set et par langue, tirée des fiches de cartes (`raw_json -> 'set'`)
+      du dernier snapshot où le set figure ; sans date de sortie (lot COL-04).
+    data_tests:
+      - unique:
+          arguments:
+            column_name: "set_id || '|' || language"
+    columns:
+      - name: set_id
+        description: Identifiant TCGdex du set, commun aux langues.
+        data_tests:
+          - not_null
+      - name: language
+        description: Langue du set.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [fr, en, ja]
+      - name: set_name
+        description: Nom du set dans sa langue.
+      - name: card_count_official
+        description: Nombre de cartes annoncé (numérotation officielle, hors cartes secrètes).
+      - name: card_count_total
+        description: Nombre total de cartes du set, cartes secrètes comprises.
+      - name: symbol_url
+        description: URL de base du symbole du set.
+      - name: logo_url
+        description: URL de base du logo, absente pour certains sets.
+      - name: last_seen_on
+        description: Date du dernier snapshot où le set figure.
+      - name: is_current
+        description: Présent dans le dernier snapshot.
