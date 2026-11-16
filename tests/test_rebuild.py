@@ -1,5 +1,6 @@
 import hashlib
 import json
+import logging
 import subprocess
 from pathlib import Path
 from typing import Any
@@ -103,3 +104,107 @@ def test_orphans_lists_local_parquet_absent_from_releases(tmp_path: Path) -> Non
 
 def test_orphans_missing_dir(tmp_path: Path) -> None:
     assert orphans([], tmp_path / "absent") == []
+
+
+def fake_download(
+    monkeypatch: pytest.MonkeyPatch, content: dict[str, bytes]
+) -> list[list[str]]:
+    calls: list[list[str]] = []
+
+    def run(args: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
+        calls.append(args)
+        name, folder = args[args.index("--pattern") + 1], args[args.index("--dir") + 1]
+        (Path(folder) / name).write_bytes(content[name])
+        return subprocess.CompletedProcess(args, 0, stdout="")
+
+    monkeypatch.setattr(rebuild.subprocess, "run", run)
+    return calls
+
+
+def test_download_fetches_with_clobber_and_checks_sha(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    calls = fake_download(monkeypatch, {"a.parquet": b"good"})
+    folder = tmp_path / "snapshots"
+    rebuild.download(asset("a.parquet", b"good"), folder)
+    assert calls == [
+        [
+            "gh", "release", "download", "data-2026-11",
+            "--pattern", "a.parquet", "--dir", str(folder), "--clobber",
+            "-R", REPO,
+        ]
+    ]  # fmt: skip
+    assert (folder / "a.parquet").read_bytes() == b"good"
+
+
+def test_download_rejects_wrong_sha(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    fake_download(monkeypatch, {"a.parquet": b"corrupt"})
+    with pytest.raises(RuntimeError, match=r"a\.parquet"):
+        rebuild.download(asset("a.parquet", b"good"), tmp_path)
+
+
+def stub_sync(monkeypatch: pytest.MonkeyPatch, assets: list[Asset]) -> list[str]:
+    downloaded: list[str] = []
+
+    def download(a: Asset, folder: Path) -> None:
+        downloaded.append(a.name)
+        (folder / a.name).write_bytes(b"new")
+
+    monkeypatch.setattr(rebuild, "list_assets", lambda repo, prefix: assets)
+    monkeypatch.setattr(rebuild, "download", download)
+    return downloaded
+
+
+def test_sync_downloads_only_missing_or_changed(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    (tmp_path / "same.parquet").write_bytes(b"new")
+    (tmp_path / "changed.parquet").write_bytes(b"old")
+    (tmp_path / "local.parquet").write_bytes(b"x")
+    assets = [
+        asset("same.parquet", b"new"),
+        asset("changed.parquet", b"new"),
+        asset("missing.parquet", b"new"),
+    ]
+    downloaded = stub_sync(monkeypatch, assets)
+    with caplog.at_level(logging.INFO, logger="cartograph"):
+        count = rebuild.sync(tmp_path, sources=[(REPO, "data-")])
+    assert downloaded == ["changed.parquet", "missing.parquet"]
+    assert count == 2
+    assert "local.parquet absent des Releases" in caplog.text
+    assert "3 fichiers publiés, 2 téléchargés" in caplog.text
+
+
+def test_sync_second_run_downloads_nothing(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    downloaded = stub_sync(monkeypatch, [asset("a.parquet", b"new")])
+    rebuild.sync(tmp_path, sources=[(REPO, "data-")])
+    assert rebuild.sync(tmp_path, sources=[(REPO, "data-")]) == 0
+    assert downloaded == ["a.parquet"]
+
+
+def test_main_returns_0_on_success(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(rebuild, "LOG_DIR", tmp_path / "logs")
+    monkeypatch.setattr(rebuild, "sync", lambda folder: 0)
+    assert rebuild.main(["--snapshot-dir", str(tmp_path)]) == 0
+
+
+def test_main_returns_1_and_logs_error(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    def fail(folder: Path) -> int:
+        raise RuntimeError("gh release list cartograph-prices : HTTP 404")
+
+    monkeypatch.setattr(rebuild, "LOG_DIR", tmp_path / "logs")
+    monkeypatch.setattr(rebuild, "sync", fail)
+    assert rebuild.main(["--snapshot-dir", str(tmp_path)]) == 1
+    assert "cartograph-prices : HTTP 404" in caplog.text
