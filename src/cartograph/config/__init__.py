@@ -40,6 +40,8 @@ DATA_REPO : str
     Dépôt GitHub de la collecte, lu par le tableau de suivi.
 COLLECT_WORKFLOW : str
     Fichier du workflow de collecte dans ``DATA_REPO``.
+PRICES_REPO : str
+    Dépôt privé des Releases mensuelles ``data-AAAA-MM`` (prix et brut).
 ACTIONS_USD_PER_MIN : float
     Prix d'une minute de runner Linux de 4 processeurs, équivalent payant du
     runner gratuit d'un dépôt public.
@@ -110,6 +112,7 @@ SNAPSHOT_COMPRESSION = "zstd"
 
 DATA_REPO = "AntoanetaStoyanova/cartograph-data"
 COLLECT_WORKFLOW = "collect.yml"
+PRICES_REPO = "AntoanetaStoyanova/cartograph-prices"
 # `linux_4_core`, 2026-11-15 :
 # docs.github.com/en/billing/reference/actions-runner-pricing
 ACTIONS_USD_PER_MIN = 0.012

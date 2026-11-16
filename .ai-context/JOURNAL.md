@@ -46,10 +46,11 @@
 
 - PR #17 `feature/fnd-02` fusionnée dans `develop` (merge `1b04d76`).
 - `docs/specs/sto-02-reconstruction-base.md` et `docs/plans/sto-02-reconstruction-base.md` créés (STO-02). Décisions : seuls les `*.parquet` (Release `catalogue` de `cartograph-data`, Releases `data-*` de `cartograph-prices`) rapatriés dans `data/snapshots/`, sans le brut ; téléchargement d'un fichier absent ou dont le SHA-256 diffère du `digest` de GitHub (collecte relancée le même jour), empreinte recontrôlée après téléchargement ; fichiers locaux absents des Releases gardés et signalés (sauvegarde) ; accès par `gh` ; `dbt build` dans `data/cartograph.rebuild.duckdb`, remplacée vers `data/cartograph.duckdb` seulement en succès ; `inv rebuild --skip-download` ; `config.PRICES_REPO`. Base de la CI et échantillon laissés à DBT-01 et CI-02.
+- Plan sto-02-reconstruction-base — Étape 1 : Inventaire et choix des fichiers (branche `feature/sto-02`, journal commité). Spec passée à `en cours`. `config.PRICES_REPO` ; `src/cartograph/bin/rebuild.py` : `Asset`, `list_assets(repo, tag_prefix)` (`gh release list` puis `gh release view --json assets`, seuls les `*.parquet`, `digest` sans `sha256:`, `RuntimeError` qui nomme le dépôt), `plan_downloads` (absent ou SHA-256 différent), `orphans`, `file_sha256`. `tests/test_rebuild.py` (6 tests). Typage par `beartype_this_package`, sans décorateur. Essai en lecture sur les vraies Releases : 24 Parquet, 56 Mio, 24 à télécharger, aucun orphelin. `uv run inv ci` vert (197 tests), okflint vert.
 
 ### Reste à faire
 
-- Antoaneta : supprimer `feature/fnd-02` (locale et `origin`), créer `feature/sto-02` depuis `develop` à jour et y commiter le journal. Puis exécuter docs/plans/sto-02-reconstruction-base.md — Étape 1 : Inventaire et choix des fichiers.
+- Exécuter docs/plans/sto-02-reconstruction-base.md — Étape 2 : Téléchargement et contrôle.
 - `inv release` sur `develop` quand STO-02 est fusionné (v0.4.0 : FND-02 contient un `feat`), puis PR `develop` → `main`.
 - Avant la porte 1 : relire dans un navigateur les conditions de Cardmarket et de TCGplayer (veille).
 - Rapport de novembre à régénérer en fin de mois (`inv suivi --mois 2026-11 --force`, commentaire gardé), puis `statut: fait` ; mettre à jour les chiffres de `docs/gouvernance/green-it.md`. Chaque début de mois : `inv ci` puis `inv suivi`, commentaire.
@@ -66,7 +67,7 @@
 ### Références
 
 - [../docs/specs/sto-02-reconstruction-base.md](../docs/specs/sto-02-reconstruction-base.md)
-- [../docs/plans/sto-02-reconstruction-base.md](../docs/plans/sto-02-reconstruction-base.md)
+- [../docs/plans/sto-02-reconstruction-base.md](../docs/plans/sto-02-reconstruction-base.md), `src/cartograph/bin/rebuild.py`, `tests/test_rebuild.py`, `src/cartograph/config/__init__.py`
 - [../docs/specs/fnd-02-squelette-dbt.md](../docs/specs/fnd-02-squelette-dbt.md), [../docs/plans/fnd-02-squelette-dbt.md](../docs/plans/fnd-02-squelette-dbt.md), `dbt/`, `tests/test_tasks_dbt.py`
 - [../docs/specs/ci-01-ci-python.md](../docs/specs/ci-01-ci-python.md), [../docs/plans/ci-01-ci-python.md](../docs/plans/ci-01-ci-python.md), [../.github/workflows/ci.yml](../.github/workflows/ci.yml), `.pre-commit-config.yaml`, `tasks/__init__.py`, `tests/test_tasks_finish.py`, `tests/test_tasks_release.py`, `.github/rulesets/develop-main.json`, `CONTRIBUTING.md`, `README.md`
 
