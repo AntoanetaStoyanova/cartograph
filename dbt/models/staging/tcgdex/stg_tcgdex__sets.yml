@@ -11,14 +11,14 @@ models:
     data_tests:
       - unique:
           arguments:
-            column_name: "set_id || '|' || language"
+            column_name: "set_id || '|' || language_code"
     columns:
       - name: set_id
         data_type: varchar
         description: Identifiant TCGdex du set, commun aux langues.
         data_tests:
           - not_null
-      - name: language
+      - name: language_code
         data_type: varchar
         description: Langue du set.
         data_tests:
@@ -68,7 +68,7 @@ unit_tests:
       rows:
         - {
             set_id: M6,
-            language: ja,
+            language_code: ja,
             set_name: new,
             card_count_official: 80,
             card_count_total: 113,
@@ -77,7 +77,7 @@ unit_tests:
           }
         - {
             set_id: old,
-            language: en,
+            language_code: en,
             set_name: gone,
             card_count_official: 1,
             card_count_total: 1,

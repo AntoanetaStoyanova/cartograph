@@ -32,6 +32,16 @@ def fmt(c: Context) -> None:
 
 
 @task
+def sql_fmt(c: Context) -> None:
+    """Corrige le SQL de dbt/models et dbt/analyses avec sqlfluff fix."""
+    # pre-commit sort en erreur dès qu'il modifie un fichier : le commit revérifie.
+    c.run(
+        "uv run pre-commit run sqlfluff-fix --all-files --hook-stage manual",
+        warn=True,
+    )
+
+
+@task
 def typecheck(c: Context) -> None:
     """Vérifie les types avec mypy."""
     c.run("uv run mypy src/cartograph")

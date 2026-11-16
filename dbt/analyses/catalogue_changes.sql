@@ -3,7 +3,7 @@ with
 source as (
 
     select
-        language,
+        language as language_code,
         card_id,
         json_merge_patch(raw_json, '{"updated": null}') as card_json,
         {{ snapshot_date('filename') }} as snapshot_date
@@ -16,7 +16,7 @@ snapshots as (
     select
         snapshot_date,
         lag(snapshot_date) over (order by snapshot_date) as previous_date
-    from (select distinct snapshot_date from source)
+    from (select distinct snapshot_date from source) as snapshot_dates
 
 ),
 
@@ -46,25 +46,26 @@ compared as (
     select
         coalesce(curr.snapshot_date, prev.next_date) as snapshot_date,
         coalesce(curr.previous_date, prev.snapshot_date) as previous_date,
-        coalesce(curr.language, prev.language) as language,
+        coalesce(curr.language_code, prev.language_code) as language_code,
         prev.card_id is null as is_added,
         curr.card_id is null as is_removed,
         prev.card_json <> curr.card_json as is_modified
     from current_cards as curr
     full outer join previous_cards as prev
-        on curr.snapshot_date = prev.next_date
-        and curr.card_id = prev.card_id
-        and curr.language = prev.language
+        on
+            curr.snapshot_date = prev.next_date
+            and curr.card_id = prev.card_id
+            and curr.language_code = prev.language_code
 
 )
 
 select
     snapshot_date,
     previous_date,
-    language,
+    language_code,
     count(*) filter (where is_added) as added,
     count(*) filter (where is_removed) as removed,
     count(*) filter (where is_modified) as modified
 from compared
-group by snapshot_date, previous_date, language
-order by snapshot_date, language
+group by snapshot_date, previous_date, language_code
+order by snapshot_date, language_code
