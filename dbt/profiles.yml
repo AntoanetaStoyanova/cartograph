@@ -1,0 +1,7 @@
+cartograph:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: "{{ env_var('CARTOGRAPH_DUCKDB', 'data/cartograph.duckdb') }}"
+      threads: 4

@@ -20,7 +20,7 @@
 
 ---
 
-## [2026-11-16] — CI-01 livré, FND-02 planifié
+## [2026-11-16] — CI-01 livré, FND-02 en cours
 
 ### Fait
 
@@ -38,10 +38,11 @@
 - Antoaneta : PR #14 fusionnée (check `ci` 21 s avec cache, contre 59 s à froid), puis `uv run inv release` sur `develop` : bump `v0.3.1` poussé par contournement admin, tag créé. PR vers `main` non ouverte : `inv` avait chargé `tasks/__init__.py` avant son `git pull` (ancienne version) ; effet du premier lancement seulement. PR #16 `develop` → `main` ouverte par `_open_release_pr` (titre `Release v0.3.1`, section du changelog), check `ci` vert (55 s), `CLEAN`. Plan et spec CI-01 passés à `fait`.
 - PR #16 `develop` → `main` fusionnée (v0.3.1 en production). Branche `feature/ci-01` supprimée (locale et `origin`) : PR #14 fusionnée, aucun commit en avance.
 - `docs/specs/fnd-02-squelette-dbt.md` et `docs/plans/fnd-02-squelette-dbt.md` créés (FND-02). Décision d'Antoaneta : `inv ci` lance `inv dbt` dès FND-02 (un modèle cassé bloque la PR). Autres décisions : projet dans `dbt/`, `profiles.yml` versionné (`--profiles-dir dbt`), base `data/cartograph.duckdb` remplaçable par `CARTOGRAPH_DUCKDB`, `dbt-core` et `dbt-duckdb` en dépendances principales, staging et intermediate en `view`, marts en `table`, `inv dbt --args <commande>`, statistiques d'usage coupées ; retrait de `cp .env.example .env` resté dans `ci.yml`.
+- Plan fnd-02-squelette-dbt — Étape 1 : Projet dbt (branche `feature/fnd-02`, journal commité). Spec passée à `en cours`. `uv add dbt-core dbt-duckdb` (1.12.7 et 1.11.1, Python 3.13). `dbt/dbt_project.yml` (statistiques d'usage coupées, staging et intermediate en `view`, marts en `table`), `dbt/profiles.yml` (DuckDB, `CARTOGRAPH_DUCKDB`, défaut `data/cartograph.duckdb`), `dbt/models/{staging,intermediate,marts}/.gitkeep`, `.gitignore` (`dbt/target/`, `dbt/logs/`, `dbt/dbt_packages/`). `dbt debug` : « All checks passed! » ; `dbt build` vide passe (avertissements attendus : chemins de configuration sans modèle, « Nothing to do »), 1 min 10 en local sous `/mnt/c` ; `data/cartograph.duckdb` créé, non suivi. dbt affiche « dbt v2 is available » : on reste sur dbt Core v1 (dbt-duckdb). `uv run inv ci` vert (188 tests).
 
 ### Reste à faire
 
-- Exécuter docs/plans/fnd-02-squelette-dbt.md — Étape 1 : Projet dbt (branche `feature/fnd-02` ; y commiter d'abord le journal du 16 novembre, modifié sur `develop`).
+- Exécuter docs/plans/fnd-02-squelette-dbt.md — Étape 2 : Tâche `inv dbt` dans `inv ci`.
 - Avant la porte 1 : relire dans un navigateur les conditions de Cardmarket et de TCGplayer (veille).
 - Rapport de novembre à régénérer en fin de mois (`inv suivi --mois 2026-11 --force`, commentaire gardé), puis `statut: fait` ; mettre à jour les chiffres de `docs/gouvernance/green-it.md`. Chaque début de mois : `inv ci` puis `inv suivi`, commentaire.
 - optimisation-collecte : l'exécution `42687236424` (9 novembre au soir, `catalogue=oui`, 2 h 04) peut cocher l'exécution manuelle attendue ; reste la PR et la release si pas encore faites (code déjà sur `main`).
