@@ -123,11 +123,10 @@ def okflint(c: Context) -> None:
 @task
 def release(c: Context, dry_run: bool = False) -> None:
     """Version suivante, changelog, tag et push ; sur develop seulement."""
-    branch = c.run("git branch --show-current", hide=True).stdout.strip()
+    branch = _current_branch(c)
     if branch != "develop":
         raise Exit(f"inv release se lance sur develop, pas sur {branch}.")
-    if c.run("git status --porcelain", hide=True).stdout.strip():
-        raise Exit("Arbre de travail non propre : commiter ou ranger d'abord.")
+    _require_clean(c)
     if dry_run:
         _bump(c, "uv run cz bump --dry-run --yes")
         return
@@ -138,6 +137,36 @@ def release(c: Context, dry_run: bool = False) -> None:
     _bump(c, "uv run cz bump --yes")
     docs(c)
     c.run("git push --follow-tags")
+
+
+@task
+def finish(c: Context) -> None:
+    """Contrôles, push et PR vers develop ; sur une branche feature/ seulement."""
+    branch = _current_branch(c)
+    if not branch.startswith("feature/"):
+        raise Exit(f"inv finish se lance sur une branche feature/, pas sur {branch}.")
+    _require_clean(c)
+    lint(c)
+    typecheck(c)
+    test(c)
+    okflint(c)
+    c.run("git push -u origin HEAD")
+    existing = c.run("gh pr view --json url --jq .url", hide=True, warn=True)
+    if existing.ok and existing.stdout.strip():
+        print(f"PR déjà ouverte : {existing.stdout.strip()}")
+        return
+    c.run("gh pr create --base develop --fill")
+
+
+def _current_branch(c: Context) -> str:
+    """Nom de la branche courante."""
+    return str(c.run("git branch --show-current", hide=True).stdout.strip())
+
+
+def _require_clean(c: Context) -> None:
+    """Arrête la tâche si l'arbre de travail a des modifications."""
+    if c.run("git status --porcelain", hide=True).stdout.strip():
+        raise Exit("Arbre de travail non propre : commiter ou ranger d'abord.")
 
 
 def _bump(c: Context, command: str) -> None:
