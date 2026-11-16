@@ -20,7 +20,7 @@
 
 ---
 
-## [2026-11-16] — CI-01 livré, FND-02 en cours
+## [2026-11-16] — CI-01 et FND-02 livrés
 
 ### Fait
 
@@ -41,10 +41,12 @@
 - Plan fnd-02-squelette-dbt — Étape 1 : Projet dbt (branche `feature/fnd-02`, journal commité). Spec passée à `en cours`. `uv add dbt-core dbt-duckdb` (1.12.7 et 1.11.1, Python 3.13). `dbt/dbt_project.yml` (statistiques d'usage coupées, staging et intermediate en `view`, marts en `table`), `dbt/profiles.yml` (DuckDB, `CARTOGRAPH_DUCKDB`, défaut `data/cartograph.duckdb`), `dbt/models/{staging,intermediate,marts}/.gitkeep`, `.gitignore` (`dbt/target/`, `dbt/logs/`, `dbt/dbt_packages/`). `dbt debug` : « All checks passed! » ; `dbt build` vide passe (avertissements attendus : chemins de configuration sans modèle, « Nothing to do »), 1 min 10 en local sous `/mnt/c` ; `data/cartograph.duckdb` créé, non suivi. dbt affiche « dbt v2 is available » : on reste sur dbt Core v1 (dbt-duckdb). `uv run inv ci` vert (188 tests).
 - Plan fnd-02-squelette-dbt — Étape 2 : Tâche `inv dbt` dans `inv ci`. `tasks/__init__.py` : tâche `dbt(c, args="build")` (crée `data/`, puis `uv run dbt <args> --project-dir dbt --profiles-dir dbt`), placée avant `ci` (dans son `pre`, après `check` et `test`) ; `finish` et `release` l'appellent après `test`. `tests/test_tasks_dbt.py` (3 tests) ; `tests/test_tasks_finish.py` (dossier courant dans `tmp_path`) et `tests/test_tasks_release.py` mis à jour. Modèle faux `stg_faux.sql` : `inv ci` échoue (« Catalog Error »), puis retiré. `uv run inv ci` vert (191 tests, dbt « Nothing to do »).
 - Plan fnd-02-squelette-dbt — Étape 3 : CI GitHub (1 tâche sur 2). `.github/workflows/ci.yml` : `cp .env.example .env` retiré de « Installer les dépendances » ; actionlint et zizmor verts. Reste la vérification sur la PR.
+- PR #17 `feature/fnd-02` → `develop` ouverte par `inv finish` ; check `ci` vert en 1 min 0 s (exécution `43858947200`), `CLEAN`. dbt tourne dans « Contrôles » (`Running with dbt=1.12.7`, « Nothing to do ») en 2 s ; le reste de l'écart avec 21 s vient du cache uv à refaire (`uv.lock` changé par dbt). Étape 3 terminée.
+- Plan fnd-02-squelette-dbt — Étape 4 : Documentation et clôture. `CONTRIBUTING.md` : `inv ci` avec dbt, arborescence `dbt/` (couches, préfixes, matérialisations), `inv dbt` et `--args`, base `data/cartograph.duckdb` et `CARTOGRAPH_DUCKDB`, `target/` et `logs/`. Roadmap : FND-02 coché, décrit tel que livré. Plan et spec passés à `fait`.
 
 ### Reste à faire
 
-- Antoaneta : commit de `ci.yml`, puis `uv run inv finish` (PR `feature/fnd-02` → `develop`) ; vérifier dans le journal du check `ci` que `dbt build` tourne, relever la durée (21 s avant dbt), cocher la dernière tâche de l'étape 3. Ensuite : Étape 4 : Documentation et clôture.
+- Antoaneta : commit de la doc, push (`uv run inv finish` met la PR #17 à jour), fusion de la PR #17 une fois `ci` vert. Ensuite `/workspace-plan STO-02` (`inv rebuild`).
 - Avant la porte 1 : relire dans un navigateur les conditions de Cardmarket et de TCGplayer (veille).
 - Rapport de novembre à régénérer en fin de mois (`inv suivi --mois 2026-11 --force`, commentaire gardé), puis `statut: fait` ; mettre à jour les chiffres de `docs/gouvernance/green-it.md`. Chaque début de mois : `inv ci` puis `inv suivi`, commentaire.
 - optimisation-collecte : l'exécution `42687236424` (9 novembre au soir, `catalogue=oui`, 2 h 04) peut cocher l'exécution manuelle attendue ; reste la PR et la release si pas encore faites (code déjà sur `main`).
@@ -59,7 +61,7 @@
 
 ### Références
 
-- [../docs/specs/fnd-02-squelette-dbt.md](../docs/specs/fnd-02-squelette-dbt.md), [../docs/plans/fnd-02-squelette-dbt.md](../docs/plans/fnd-02-squelette-dbt.md)
+- [../docs/specs/fnd-02-squelette-dbt.md](../docs/specs/fnd-02-squelette-dbt.md), [../docs/plans/fnd-02-squelette-dbt.md](../docs/plans/fnd-02-squelette-dbt.md), `dbt/`, `tests/test_tasks_dbt.py`
 - [../docs/specs/ci-01-ci-python.md](../docs/specs/ci-01-ci-python.md), [../docs/plans/ci-01-ci-python.md](../docs/plans/ci-01-ci-python.md), [../.github/workflows/ci.yml](../.github/workflows/ci.yml), `.pre-commit-config.yaml`, `tasks/__init__.py`, `tests/test_tasks_finish.py`, `tests/test_tasks_release.py`, `.github/rulesets/develop-main.json`, `CONTRIBUTING.md`, `README.md`
 
 ## [2026-11-15] — STO-01 documenté, T5 passé, STO-03 clos, DOC-01 presque clos, SCN-T7 passé, COL-T2 passé, EMB-T9 passé, porte 0 franchie, GOV-04 fait, GOV-05 fait
