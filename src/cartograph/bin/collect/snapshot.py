@@ -25,6 +25,7 @@ from cartograph.config import SNAPSHOT_COMPRESSION
 logger = logging.getLogger(__name__)
 
 SORT_BY = ("card_id", "language")
+SET_SORT_BY = ("set_id", "language")
 
 _CM_STATS = ("avg", "low", "trend", "avg1", "avg7", "avg30")
 _CM_PRICE_FIELDS = {
@@ -77,6 +78,30 @@ Schéma des snapshots du catalogue : une ligne par carte et par langue, sans pri
 le catalogue est un instantané, publié en entier ou pas du tout.
 """
 
+SET_SCHEMA = pa.schema(
+    [
+        ("language", pa.string()),
+        ("set_id", pa.string()),
+        ("name", pa.string()),
+        ("serie_id", pa.string()),
+        ("serie_name", pa.string()),
+        ("release_date", pa.date32()),
+        ("abbreviation_official", pa.string()),
+        ("abbreviation_localized", pa.string()),
+        ("card_count_total", pa.int64()),
+        ("card_count_official", pa.int64()),
+        ("logo", pa.string()),
+        ("symbol", pa.string()),
+        ("fetched_at", _UTC_TIMESTAMP),
+        ("raw_json", pa.string()),
+    ]
+)
+"""
+Schéma des snapshots des sets : une ligne par set et par langue, sans prix.
+
+``raw_json`` est la fiche sans la liste ``cards``, déjà dans le catalogue.
+"""
+
 
 @dataclass(frozen=True)
 class SnapshotPaths:
@@ -87,6 +112,8 @@ class SnapshotPaths:
     ----------
     cards : Path
         Catalogue sans prix (Parquet).
+    sets : Path
+        Sets avec date de sortie, sans prix (Parquet).
     prices : Path
         Prix Cardmarket et TCGplayer (Parquet).
     raw_cards : Path
@@ -98,6 +125,7 @@ class SnapshotPaths:
     """
 
     cards: Path
+    sets: Path
     prices: Path
     raw_cards: Path
     raw_prices: Path
@@ -128,6 +156,7 @@ def snapshot_paths(data_dir: Path, day: date) -> SnapshotPaths:
     stamp = day.isoformat()
     return SnapshotPaths(
         cards=data_dir / "snapshots" / f"cards-{stamp}.parquet",
+        sets=data_dir / "snapshots" / f"sets-{stamp}.parquet",
         prices=data_dir / "snapshots" / f"prices-{stamp}.parquet",
         raw_cards=data_dir / "raw" / f"cards-{stamp}.json.gz",
         raw_prices=data_dir / "raw" / f"prices-{stamp}.json.gz",
@@ -299,6 +328,65 @@ def catalogue_table(
         [CARD_SCHEMA.empty_table()]
         + [card_table(items, language, fetched_at) for language, items in cards.items()]
     )
+
+
+def set_table(
+    sets: Mapping[str, Sequence[dict[str, Any]]], fetched_at: datetime
+) -> pa.Table:
+    """
+    Assemble les fiches de sets de toutes les langues en une table.
+
+    Parameters
+    ----------
+    sets : Mapping[str, Sequence[dict[str, Any]]]
+        Fiches complètes de ``fetch_sets`` par langue.
+    fetched_at : datetime
+        Début de l'étape des sets, converti en UTC, commun à toutes les lignes.
+
+    Returns
+    -------
+    pa.Table
+        Table au schéma ``SET_SCHEMA``, langues dans l'ordre de ``sets`` ; les
+        valeurs absentes de l'API valent nul.
+
+    Examples
+    --------
+    >>> set_table({}, datetime(2026, 11, 16, tzinfo=UTC)).num_rows
+    0
+    """
+    fetched_at_utc = fetched_at.astimezone(UTC)
+    rows = []
+    for language, items in sets.items():
+        for item in items:
+            serie = item.get("serie") or {}
+            abbreviation = item.get("abbreviation") or {}
+            card_count = item.get("cardCount") or {}
+            release_date = item.get("releaseDate")
+            rows.append(
+                {
+                    "language": language,
+                    "set_id": item["id"],
+                    "name": item.get("name"),
+                    "serie_id": serie.get("id"),
+                    "serie_name": serie.get("name"),
+                    "release_date": None
+                    if release_date is None
+                    else date.fromisoformat(release_date),
+                    "abbreviation_official": abbreviation.get("official"),
+                    "abbreviation_localized": abbreviation.get("localized"),
+                    "card_count_total": card_count.get("total"),
+                    "card_count_official": card_count.get("official"),
+                    "logo": item.get("logo"),
+                    "symbol": item.get("symbol"),
+                    "fetched_at": fetched_at_utc,
+                    "raw_json": json.dumps(
+                        {key: value for key, value in item.items() if key != "cards"},
+                        ensure_ascii=False,
+                        sort_keys=True,
+                    ),
+                }
+            )
+    return pa.Table.from_pylist(rows, schema=SET_SCHEMA)
 
 
 def write_parquet(table: pa.Table, path: Path, sort_by: Sequence[str]) -> int:

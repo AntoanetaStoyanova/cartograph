@@ -1,0 +1,20 @@
+[
+  {
+    "id": "miscp",
+    "name": "Miscellaneous Promos",
+    "cardCount": {
+      "total": 1,
+      "official": 1
+    }
+  },
+  {
+    "id": "swsh3",
+    "name": "Darkness Ablaze",
+    "logo": "https://assets.tcgdex.net/en/swsh/swsh3/logo",
+    "symbol": "https://assets.tcgdex.net/univ/swsh/swsh3/symbol",
+    "cardCount": {
+      "total": 201,
+      "official": 189
+    }
+  }
+]

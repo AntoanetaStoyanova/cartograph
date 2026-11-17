@@ -51,12 +51,20 @@ def test_collect_with_catalogue_writes_all_files(
     summary = _collect(tcgdex_client, tmp_path)
 
     paths = snapshot_paths(tmp_path, DAY)
-    for path in [paths.cards, paths.prices, paths.raw_cards, paths.raw_prices]:
+    for path in [
+        paths.cards,
+        paths.sets,
+        paths.prices,
+        paths.raw_cards,
+        paths.raw_prices,
+    ]:
         assert path.exists()
     assert json.loads(paths.summary.read_text(encoding="utf-8")) == summary
     steps = _steps(summary)
     assert steps["catalogue"]["status"] == "ok"
     assert steps["catalogue"]["fetched"] == 9
+    assert steps["sets"]["status"] == "ok"
+    assert steps["sets"]["fetched"] == 6
     assert steps["prices"]["status"] == "ok"
     assert steps["prices"]["source"] == paths.cards.name
     assert steps["prices"]["skipped_without_id_product"] == 1
@@ -87,13 +95,14 @@ def test_collect_interrupted_prices_keep_catalogue_summary(
         paths.cards.name,
         paths.raw_cards.name,
     ]
+    assert [f["name"] for f in steps["sets"]["files"]] == [paths.sets.name]
     assert steps["prices"]["status"] == "failed"
     assert steps["prices"]["error"] == "étape interrompue avant la fin"
 
 
 @pytest.mark.parametrize(
     ("catalogue", "prices", "writes"),
-    [(True, True, 2), (True, False, 1), (False, True, 1)],
+    [(True, True, 3), (True, False, 2), (False, True, 1)],
 )
 def test_collect_writes_summary_after_each_step(
     tcgdex_client: TcgdexClient,
@@ -116,6 +125,88 @@ def test_collect_writes_summary_after_each_step(
     _collect(tcgdex_client, tmp_path, catalogue=catalogue, prices=prices)
 
     assert summaries == [snapshot_paths(tmp_path, DAY).summary] * writes
+
+
+def test_collect_sets_stored_with_release_date(
+    tcgdex_client: TcgdexClient, tmp_path: Path
+) -> None:
+    _collect(tcgdex_client, tmp_path, prices=False)
+
+    table = pq.read_table(snapshot_paths(tmp_path, DAY).sets)
+    assert table.num_rows == 6
+    assert table.column("set_id").to_pylist() == sorted(
+        table.column("set_id").to_pylist()
+    )
+    assert None not in table.column("release_date").to_pylist()
+
+
+def test_collect_interrupted_sets_keep_catalogue_summary(
+    tcgdex_client: TcgdexClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def interrupted(*args: Any, **kwargs: Any) -> Any:
+        raise RuntimeError("délai dépassé")
+
+    monkeypatch.setattr(run, "_collect_sets", interrupted)
+
+    with pytest.raises(RuntimeError):
+        _collect(tcgdex_client, tmp_path)
+
+    summary = json.loads(snapshot_paths(tmp_path, DAY).summary.read_text("utf-8"))
+    steps = _steps(summary)
+    assert steps["catalogue"]["status"] == "ok"
+    assert steps["sets"]["error"] == "étape interrompue avant la fin"
+    assert steps["prices"]["error"] == "étape interrompue avant la fin"
+
+
+def test_collect_failed_sets_keep_catalogue_and_prices(tmp_path: Path) -> None:
+    with mock_client(_down("/v2/ja/sets")) as client:
+        summary = _collect(client, tmp_path)
+
+    paths = snapshot_paths(tmp_path, DAY)
+    steps = _steps(summary)
+    assert steps["sets"]["status"] == "failed"
+    assert "500" in str(steps["sets"]["error"])
+    assert steps["sets"]["files"] == []
+    assert not paths.sets.exists()
+    assert steps["catalogue"]["status"] == "ok"
+    assert steps["prices"]["status"] == "ok"
+    assert paths.cards.exists()
+    assert paths.prices.exists()
+
+
+def test_collect_records_failed_sets_with_language(tmp_path: Path) -> None:
+    with mock_client(_down("/v2/fr/sets/swsh3")) as client:
+        summary = _collect(client, tmp_path, prices=False)
+
+    sets = _steps(summary)["sets"]
+    assert sets["status"] == "ok"
+    assert sets["failed"] == ["fr/swsh3"]
+    assert pq.read_table(snapshot_paths(tmp_path, DAY).sets).num_rows == 5
+
+
+def test_collect_bad_set_fails_sets_only(tmp_path: Path) -> None:
+    handler = _with_card("/v2/en/sets/swsh3", {"releaseDate": "14/08/2020"})
+
+    with mock_client(handler) as client:
+        summary = _collect(client, tmp_path)
+
+    steps = _steps(summary)
+    assert steps["sets"]["status"] == "failed"
+    assert "conversion" in str(steps["sets"]["error"])
+    assert not snapshot_paths(tmp_path, DAY).sets.exists()
+    assert steps["catalogue"]["status"] == "ok"
+    assert steps["prices"]["status"] == "ok"
+
+
+def test_collect_without_catalogue_skips_sets(
+    tcgdex_client: TcgdexClient, tmp_path: Path
+) -> None:
+    _collect(tcgdex_client, tmp_path, day=date(2026, 10, 25), prices=False)
+
+    summary = _collect(tcgdex_client, tmp_path, catalogue=False)
+
+    assert _steps(summary)["sets"]["status"] == "skipped"
+    assert not snapshot_paths(tmp_path, DAY).sets.exists()
 
 
 def test_collect_prices_uses_latest_catalogue(
@@ -217,7 +308,7 @@ def test_collect_with_catalogue_requests_each_card_once(
 
     paths = snapshot_paths(tmp_path, DAY)
     prices = _steps(summary)["prices"]
-    assert len(requested) == len(set(requested)) == 3 + 9
+    assert len(requested) == len(set(requested)) == 3 + 9 + 3 + 6
     assert prices["status"] == "ok"
     assert prices["source"] == paths.cards.name
     assert prices["fetched"] == 5

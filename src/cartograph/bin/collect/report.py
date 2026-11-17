@@ -16,7 +16,7 @@ from pathlib import Path
 from cartograph.bin.collect import CollectSummary, StepSummary
 
 MAX_FAILED = 20
-_STEP_NAMES = {"catalogue": "Catalogue", "prices": "Prix"}
+_STEP_NAMES = {"catalogue": "Catalogue", "sets": "Sets", "prices": "Prix"}
 _STATUSES = {"ok": "✅ ok", "failed": "❌ échec"}
 
 

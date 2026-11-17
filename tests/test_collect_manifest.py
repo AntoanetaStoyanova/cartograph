@@ -67,6 +67,19 @@ def test_catalogue_parquet_goes_to_public_release(tmp_path: Path) -> None:
     assert manifest["files"][0]["release"] == "cartograph-data/catalogue"
 
 
+def test_sets_parquet_goes_to_public_release(tmp_path: Path) -> None:
+    data_dir = _data_dir(tmp_path)
+    (data_dir / "snapshots" / f"sets-{DAY}.parquet").write_bytes(b"sets")
+    files = [{"name": f"sets-{DAY}.parquet", "rows": 6, "bytes": 4}]
+    summary = make_summary(sets=make_step(files=files, source=None))
+
+    manifest = build_manifest(summary, data_dir, DAY, 42, 120)
+
+    sets_file = next(f for f in manifest["files"] if f["name"].startswith("sets-"))
+    assert sets_file["release"] == "cartograph-data/catalogue"
+    assert sets_file["sha256"] == hashlib.sha256(b"sets").hexdigest()
+
+
 def test_skipped_step_keeps_its_status(tmp_path: Path) -> None:
     manifest = build_manifest(make_summary(), _data_dir(tmp_path), DAY, 42, 120)
 

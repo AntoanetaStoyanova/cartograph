@@ -1,8 +1,10 @@
 """Tâches d'automatisation — exécutées via `inv <commande>`."""
 
+import re
 import shlex
 import tempfile
 import time
+from datetime import date
 from pathlib import Path
 
 import duckdb
@@ -191,6 +193,15 @@ def okflint(c: Context) -> None:
 # Git
 # ---------------------------------------------------------------------------
 
+JOURNAL = Path(".ai-context/JOURNAL.md")
+LOG = Path(".ai-context/LOG.md")
+LOG_HEADER = (
+    "# Log — versions publiées\n\n"
+    "> Entrées de `JOURNAL.md` déplacées par `inv release`, une section par version.\n"
+)
+_JOURNAL_ENTRY = re.compile(r"^## \[\d{4}-\d{2}-\d{2}\]", re.MULTILINE)
+_LOG_VERSION = re.compile(r"^# v", re.MULTILINE)
+
 
 @task
 def release(c: Context, dry_run: bool = False) -> None:
@@ -207,6 +218,7 @@ def release(c: Context, dry_run: bool = False) -> None:
     typecheck(c)
     test(c)
     dbt(c, sample=True)
+    _archive_journal(c, _next_version(c))
     _bump(c, "uv run cz bump --yes")
     docs(c)
     c.run("git push --follow-tags")
@@ -288,3 +300,45 @@ def _bump(c: Context, command: str) -> None:
         raise Exit("Rien à publier : aucun feat, fix, refactor ou perf depuis le tag.")
     if result.exited:
         raise Exit(code=result.exited)
+
+
+def _next_version(c: Context) -> str:
+    """Version que cz bump va publier ; arrête la tâche s'il n'y a rien à publier."""
+    result = c.run("uv run cz bump --get-next", hide=True, warn=True)
+    if result.exited in (3, 21):
+        raise Exit("Rien à publier : aucun feat, fix, refactor ou perf depuis le tag.")
+    if result.exited:
+        raise Exit(code=result.exited)
+    return str(result.stdout.strip())
+
+
+def _journal_to_log(
+    journal: str, log: str, version: str, day: str
+) -> tuple[str, str] | None:
+    """Journal réduit à sa dernière entrée et log complété ; None si rien à déplacer."""
+    starts = [m.start() for m in _JOURNAL_ENTRY.finditer(journal)]
+    if len(starts) < 2:
+        return None
+    kept = journal[: starts[1]].rstrip() + "\n"
+    section = f"# v{version} — {day}\n\n{journal[starts[1] :].strip()}\n"
+    log = log or LOG_HEADER
+    first = _LOG_VERSION.search(log)
+    if first is None:
+        return kept, log.rstrip() + "\n\n" + section
+    return kept, log[: first.start()] + section + "\n" + log[first.start() :]
+
+
+def _archive_journal(c: Context, version: str) -> None:
+    """Déplace dans LOG.md les entrées du journal sauf la plus récente, puis commite."""
+    if not JOURNAL.exists():
+        return
+    log = LOG.read_text(encoding="utf-8") if LOG.exists() else ""
+    moved = _journal_to_log(
+        JOURNAL.read_text(encoding="utf-8"), log, version, date.today().isoformat()
+    )
+    if moved is None:
+        return
+    JOURNAL.write_text(moved[0], encoding="utf-8")
+    LOG.write_text(moved[1], encoding="utf-8")
+    c.run(f"git add {JOURNAL} {LOG}")
+    c.run(f"git commit -m 'chore(journal): archive avant v{version}'")

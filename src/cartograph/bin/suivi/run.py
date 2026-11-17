@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 
 ROADMAP = PROJECT_ROOT / "docs" / "plans" / "roadmap-lots.md"
 JOURNAL = PROJECT_ROOT / ".ai-context" / "JOURNAL.md"
+LOG = PROJECT_ROOT / ".ai-context" / "LOG.md"
 COVERAGE_DATA = PROJECT_ROOT / ".coverage"
 OUT_DIR = PROJECT_ROOT / "docs" / "gouvernance" / "suivi"
 _MONTH = re.compile(r"^\d{4}-(0[1-9]|1[0-2])$")
@@ -84,7 +85,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     generated = today()
     month = args.mois or generated.strftime("%Y-%m")
-    days = worked_days(JOURNAL, month)
+    days = worked_days([JOURNAL, LOG], month)
     runs = collect_runs(month)
     report = Report(
         month=month,

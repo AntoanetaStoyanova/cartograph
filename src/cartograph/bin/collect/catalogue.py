@@ -35,7 +35,7 @@ def list_card_ids(client: TcgdexClient, language: str) -> list[str]:
     TcgdexError
         Si l'API ne renvoie pas la liste.
     """
-    _check_language(language)
+    check_language(language)
     return [card["id"] for card in client.get_json(f"/{language}/cards")]
 
 
@@ -77,7 +77,7 @@ def fetch_catalogue(
     if card_ids is None:
         card_ids = list_card_ids(client, language)
     else:
-        _check_language(language)
+        check_language(language)
     return fetch_each(
         client,
         card_ids,
@@ -114,7 +114,19 @@ def card_path(language: str, card_id: str) -> str:
     return f"/{language}/cards/{quote(card_id, safe='')}"
 
 
-def _check_language(language: str) -> None:
-    """Lève ``ValueError`` si ``language`` n'appartient pas à ``LANGUAGES``."""
+def check_language(language: str) -> None:
+    """
+    Refuse une langue hors ``LANGUAGES``.
+
+    Parameters
+    ----------
+    language : str
+        Code de langue.
+
+    Raises
+    ------
+    ValueError
+        Si ``language`` n'appartient pas à ``LANGUAGES``.
+    """
     if language not in LANGUAGES:
         raise ValueError(f"Langue inconnue : {language!r}, attendu parmi {LANGUAGES}")

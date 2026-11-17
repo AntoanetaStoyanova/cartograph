@@ -1,15 +1,18 @@
 """
-Orchestration d'une collecte : catalogue, puis prix, avec un résumé après chacun.
+Orchestration d'une collecte : catalogue, sets, puis prix, avec un résumé après
+chacun.
 
 Ce module enchaîne les étapes, choisit le catalogue source des prix, décide
 de l'échec d'une étape et sert le CLI ; la récupération, la sélection des prix
-et la mise en forme des tables sont dans ``catalogue``, ``prices`` et
+et la mise en forme des tables sont dans ``catalogue``, ``sets``, ``prices`` et
 ``snapshot``.
 
 Le catalogue est tout ou rien : si une langue échoue, aucun
 ``cards-*.parquet`` n'est écrit. Les prix utilisent le catalogue du jour s'il
 vient d'être écrit, en lisant ses fiches sans nouvel appel à l'API ; sinon,
-ceux du plus récent du dossier, interrogés carte par carte.
+ceux du plus récent du dossier, interrogés carte par carte. Les sets sont
+collectés les jours du catalogue ; leur échec ne touche ni le catalogue ni les
+prix.
 
 Lancé par ``inv collect`` ou ``python -m cartograph.bin.collect.run`` ; code de
 sortie 0 si chaque étape demandée est ``ok``, 1 sinon.
@@ -40,12 +43,15 @@ from cartograph.bin.collect.prices import (
     price_targets_from_catalogue,
     prices_from_cards,
 )
+from cartograph.bin.collect.sets import fetch_sets
 from cartograph.bin.collect.snapshot import (
+    SET_SORT_BY,
     SORT_BY,
     SnapshotPaths,
     catalogue_table,
     latest_catalogue,
     price_table,
+    set_table,
     snapshot_paths,
     write_json,
     write_json_gz,
@@ -66,7 +72,7 @@ def collect(
     now: Callable[[], datetime] = lambda: datetime.now(UTC),
 ) -> CollectSummary:
     """
-    Collecte le catalogue et les prix, écrit les snapshots et le résumé.
+    Collecte le catalogue, les sets et les prix, écrit les snapshots et le résumé.
 
     Parameters
     ----------
@@ -75,7 +81,7 @@ def collect(
     data_dir : Path
         Dossier racine des sorties (voir ``snapshot_paths``).
     catalogue : bool
-        Collecter le catalogue.
+        Collecter le catalogue, puis les sets.
     prices : bool
         Collecter les prix.
     languages : Sequence[str]
@@ -91,31 +97,36 @@ def collect(
 
     Notes
     -----
-    Quand le catalogue et les prix sont demandés, le résumé est écrit une
-    première fois après le catalogue, avec les prix à ``failed``, puis
-    remplacé à la fin : une collecte coupée pendant les prix laisse un
-    catalogue publiable. Si le catalogue du jour est ``ok``, les prix sont
-    tirés de ses fiches sans nouvel appel à l'API ; sinon ils sont demandés
-    pour les produits du dernier catalogue du dossier.
+    Le résumé est écrit après chaque étape suivie d'une autre, les étapes
+    restantes à ``failed``, puis remplacé à la fin : une collecte coupée
+    pendant les sets ou les prix laisse un catalogue publiable. Si le
+    catalogue du jour est ``ok``, les prix sont tirés de ses fiches sans
+    nouvel appel à l'API ; sinon ils sont demandés pour les produits du
+    dernier catalogue du dossier.
     """
     started_at = now().astimezone(UTC)
     day = started_at.date()
     paths = snapshot_paths(data_dir, day)
-    catalogue_report = skipped_step()
+    steps = {name: skipped_step() for name in ("catalogue", "sets", "prices")}
+
+    def checkpoint(*pending: str) -> None:
+        for name in pending:
+            steps[name] = _interrupted_step()
+        _write_summary(paths, started_at, now, steps)
+
     cards: dict[str, list[dict[str, Any]]] = {}
     catalogue_at = now()
     if catalogue:
-        catalogue_report = _collect_catalogue(
+        steps["catalogue"] = _collect_catalogue(
             client, paths, languages, catalogue_at, cards
         )
-    prices_report = skipped_step()
+        checkpoint("sets", *(["prices"] if prices else []))
+        steps["sets"] = _collect_sets(client, paths, languages, now())
+        if prices:
+            checkpoint()
     if prices:
-        if catalogue:
-            _write_summary(
-                paths, started_at, now, catalogue_report, _interrupted_step()
-            )
-        if catalogue_report["status"] == "ok":
-            prices_report = _collect_prices(
+        if steps["catalogue"]["status"] == "ok":
+            steps["prices"] = _collect_prices(
                 paths,
                 paths.cards,
                 languages,
@@ -123,14 +134,14 @@ def collect(
                 "tirés du catalogue du jour",
             )
         else:
-            prices_report = _collect_prices(
+            steps["prices"] = _collect_prices(
                 paths,
                 latest_catalogue(paths.cards.parent),
                 languages,
                 lambda targets: fetch_prices(client, targets, now=now),
                 "à interroger",
             )
-    return _write_summary(paths, started_at, now, catalogue_report, prices_report)
+    return _write_summary(paths, started_at, now, steps)
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -231,8 +242,7 @@ def _write_summary(
     paths: SnapshotPaths,
     started_at: datetime,
     now: Callable[[], datetime],
-    catalogue_report: StepSummary,
-    prices_report: StepSummary,
+    steps: dict[str, StepSummary],
 ) -> CollectSummary:
     """
     Écrit le résumé de la collecte dans son état courant.
@@ -245,8 +255,8 @@ def _write_summary(
         Début de la collecte, en UTC.
     now : Callable[[], datetime]
         Horloge, pour ``finished_at``.
-    catalogue_report, prices_report : StepSummary
-        Bilans des deux étapes.
+    steps : dict[str, StepSummary]
+        Bilan de chaque étape, copié dans le résumé.
 
     Returns
     -------
@@ -257,7 +267,7 @@ def _write_summary(
         "date": started_at.date().isoformat(),
         "started_at": started_at.isoformat(),
         "finished_at": now().astimezone(UTC).isoformat(),
-        "steps": {"catalogue": catalogue_report, "prices": prices_report},
+        "steps": dict(steps),
     }
     write_json(summary, paths.summary)
     return summary
@@ -306,7 +316,51 @@ def _collect_catalogue(
     report["files"].append(
         _file(paths.raw_cards, report["fetched"], write_json_gz(cards, paths.raw_cards))
     )
-    _write_table(report, paths.cards, lambda: catalogue_table(cards, fetched_at))
+    _write_table(
+        report, paths.cards, lambda: catalogue_table(cards, fetched_at), SORT_BY
+    )
+    return report
+
+
+def _collect_sets(
+    client: TcgdexClient,
+    paths: SnapshotPaths,
+    languages: Sequence[str],
+    fetched_at: datetime,
+) -> StepSummary:
+    """
+    Collecte les sets de toutes les langues puis écrit leur table.
+
+    Parameters
+    ----------
+    client : TcgdexClient
+        Client de l'API.
+    paths : SnapshotPaths
+        Fichiers du jour.
+    languages : Sequence[str]
+        Langues collectées.
+    fetched_at : datetime
+        Début de l'étape, écrit dans la table.
+
+    Returns
+    -------
+    StepSummary
+        ``failed`` si une langue échoue ou si la conversion en table échoue ;
+        rien n'est alors écrit, les fiches de sets n'ayant pas de brut à part.
+    """
+    report = skipped_step()
+    sets: dict[str, list[dict[str, Any]]] = {}
+    try:
+        for language in languages:
+            result = fetch_sets(client, language)
+            sets[language] = result.items
+            report["fetched"] += len(result.items)
+            report["failed"] += result.failed
+    except TcgdexError as error:
+        report["status"] = "failed"
+        report["error"] = str(error)
+        return report
+    _write_table(report, paths.sets, lambda: set_table(sets, fetched_at), SET_SORT_BY)
     return report
 
 
@@ -383,15 +437,18 @@ def _collect_prices(
             write_json_gz(result.items, paths.raw_prices),
         )
     )
-    _write_table(report, paths.prices, lambda: price_table(result.items))
+    _write_table(report, paths.prices, lambda: price_table(result.items), SORT_BY)
     return report
 
 
 def _write_table(
-    report: StepSummary, path: Path, build: Callable[[], pa.Table]
+    report: StepSummary,
+    path: Path,
+    build: Callable[[], pa.Table],
+    sort_by: Sequence[str],
 ) -> None:
     """
-    Construit la table d'une étape et l'écrit, le brut étant déjà sauvegardé.
+    Construit la table d'une étape et l'écrit, le brut éventuel déjà sauvegardé.
 
     Une réponse de l'API de forme inattendue fait échouer l'étape sans perdre
     la collecte. Seul le type de l'erreur est noté : son message peut contenir
@@ -405,6 +462,8 @@ def _write_table(
         Snapshot Parquet à écrire.
     build : Callable[[], pa.Table]
         Construit la table depuis le brut.
+    sort_by : Sequence[str]
+        Colonnes de tri du Parquet.
     """
     try:
         table = build()
@@ -414,7 +473,7 @@ def _write_table(
         logger.error("%s : %s, brut conservé", path.name, report["error"])
         return
     report["files"].insert(
-        0, _file(path, table.num_rows, write_parquet(table, path, SORT_BY))
+        0, _file(path, table.num_rows, write_parquet(table, path, sort_by))
     )
     report["status"] = "ok"
 
