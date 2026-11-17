@@ -6,8 +6,8 @@ models:
       contract:
         enforced: true
     description: >
-      Une ligne par set et par langue, tirée des fiches de cartes (`raw_json -> 'set'`)
-      du dernier snapshot où le set figure ; sans date de sortie (lot COL-04).
+      Une ligne par set et par langue, tirée des fiches de sets (`sets-*.parquet`) du
+      dernier snapshot où le set figure, avec date de sortie et série.
     data_tests:
       - unique:
           arguments:
@@ -29,6 +29,18 @@ models:
       - name: set_name
         data_type: varchar
         description: Nom du set dans sa langue.
+      - name: serie_id
+        data_type: varchar
+        description: Identifiant TCGdex de la série (`swsh`, `SV`).
+      - name: serie_name
+        data_type: varchar
+        description: Nom de la série dans la langue du set.
+      - name: abbreviation_official
+        data_type: varchar
+        description: Sigle officiel (`DAA`), absent pour certains sets.
+      - name: abbreviation_localized
+        data_type: varchar
+        description: Sigle dans la langue du set (`TEM`), absent pour certains sets.
       - name: card_count_official
         data_type: integer
         description: Nombre de cartes annoncé (numérotation officielle, hors cartes secrètes).
@@ -41,12 +53,15 @@ models:
       - name: logo_url
         data_type: varchar
         description: URL de base du logo, absente pour certains sets.
+      - name: release_date
+        data_type: date
+        description: Date de sortie dans la langue du set.
       - name: last_seen_on
         data_type: date
         description: Date du dernier snapshot où le set figure.
       - name: is_current
         data_type: boolean
-        description: Présent dans le dernier snapshot.
+        description: Présent dans le dernier snapshot des sets.
 
 unit_tests:
   - name: stg_tcgdex__sets_keeps_latest_version
@@ -55,15 +70,14 @@ unit_tests:
       où il figure ; un set absent du dernier snapshot a is_current à faux.
     model: stg_tcgdex__sets
     given:
-      - input: source('tcgdex', 'cards')
+      - input: source('tcgdex', 'sets')
         format: sql
         rows: |
           select * from (values
-              ('ja', 'M6-001', '001', 'a', 'M6', 'old', null, 'Pokemon', null, null, null::bigint, null::timestamptz, null::timestamptz, '{"set": {"cardCount": {"official": 80, "total": 80}}}', 'snapshots/cards-2026-11-09.parquet'),
-              ('ja', 'M6-001', '001', 'a', 'M6', 'new', null, 'Pokemon', null, null, null, null, null, '{"set": {"cardCount": {"official": 80, "total": 113}}}', 'snapshots/cards-2026-11-16.parquet'),
-              ('ja', 'M6-002', '002', 'b', 'M6', 'new', null, 'Pokemon', null, null, null, null, null, '{"set": {"cardCount": {"official": 80, "total": 113}}}', 'snapshots/cards-2026-11-16.parquet'),
-              ('en', 'old-1', '1', 'c', 'old', 'gone', null, 'Pokemon', null, null, null, null, null, '{"set": {"cardCount": {"official": 1, "total": 1}}}', 'snapshots/cards-2026-11-09.parquet')
-          ) as t (language, card_id, local_id, name, set_id, set_name, rarity, category, illustrator, image, id_product, updated, fetched_at, raw_json, filename)
+              ('ja', 'M6', 'old', 'M', 'M', null::date, null, null, 80::bigint, 80::bigint, null, null, null::timestamptz, '{}', 'snapshots/sets-2026-11-16.parquet'),
+              ('ja', 'M6', 'new', 'M', 'M', '2026-07-31'::date, null, null, 113, 80, null, null, null, '{}', 'snapshots/sets-2026-11-17.parquet'),
+              ('en', 'old', 'gone', 'base', 'Base', '1999-01-09'::date, 'BS', null, 1, 1, null, null, null, '{}', 'snapshots/sets-2026-11-16.parquet')
+          ) as t (language, set_id, name, serie_id, serie_name, release_date, abbreviation_official, abbreviation_localized, card_count_total, card_count_official, logo, symbol, fetched_at, raw_json, filename)
     expect:
       rows:
         - {
@@ -72,7 +86,8 @@ unit_tests:
             set_name: new,
             card_count_official: 80,
             card_count_total: 113,
-            last_seen_on: 2026-11-16,
+            release_date: 2026-07-31,
+            last_seen_on: 2026-11-17,
             is_current: true,
           }
         - {
@@ -81,6 +96,7 @@ unit_tests:
             set_name: gone,
             card_count_official: 1,
             card_count_total: 1,
-            last_seen_on: 2026-11-09,
+            release_date: 1999-01-09,
+            last_seen_on: 2026-11-16,
             is_current: false,
           }

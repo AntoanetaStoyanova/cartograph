@@ -32,8 +32,8 @@ cp .env.example .env
 
 ## État du projet
 
-- **En service** : collecte quotidienne des prix et des nouvelles cartes, collecte hebdomadaire du catalogue et des sets depuis [TCGdex](https://tcgdex.dev), en français, anglais et japonais (voir « Collecte » et « Collecte automatique »).
-- **À venir** : base de données reconstruite en local avec dbt et DuckDB, identification d'une carte à partir d'une photo, modèle d'estimation du prix, application locale.
+- **En service** : collecte quotidienne des prix, des nouvelles cartes et des sets, collecte hebdomadaire du catalogue depuis [TCGdex](https://tcgdex.dev), en français, anglais et japonais (voir « Collecte » et « Collecte automatique ») ; base locale reconstruite avec dbt et DuckDB (voir « Base de données »).
+- **À venir** : prix dans la base, identification d'une carte à partir d'une photo, modèle d'estimation du prix, application locale.
 - **Pilotage** : calendrier, rapports de suivi mensuels (`inv suivi`) et bilan Green IT dans [`docs/gouvernance/`](docs/gouvernance/).
 
 ## Collecte
@@ -74,6 +74,19 @@ Surveillance :
 - cron-job.org envoie un e-mail quand son appel échoue ou que la tâche est désactivée.
 
 Relance manuelle : onglet *Actions* de `cartograph-data`, `Collecte`, *Run workflow* (options `catalogue` : `auto` le lundi, `oui` ou `non` pour forcer ; `prices`, `languages`, `code_ref`). Un lundi, `auto` relance aussi le catalogue : choisir `non` pour les prix seuls. Relancer le même jour remplace les fichiers du jour. Une exécution sans `catalogue` reprend le dernier catalogue publié.
+
+## Base de données
+
+```bash
+uv run inv rebuild    # fichiers des Releases, puis dbt build dans data/cartograph.duckdb
+```
+
+Les modèles de staging dbt (`dbt/models/staging/tcgdex/`) appliquent ces règles :
+
+- `stg_tcgdex__cards` : une ligne par carte et par langue, dans sa version la plus récente, celle du catalogue complet du lundi ou d'un `new-cards` plus récent. Une carte est **courante** (`is_current`) si elle figure dans le dernier catalogue complet ou dans un `new-cards` postérieur ; une carte retirée de TCGdex est gardée, non courante. La catégorie est normalisée (`pokemon`, `trainer`, `energy`) ; la rareté reste brute, propre à chaque langue.
+- `stg_tcgdex__sets` : une ligne par set et par langue, avec date de sortie, série et sigles, tirée des `sets-*.parquet` quotidiens ; un set est courant s'il figure dans le dernier.
+
+Le détail de chaque colonne et les tests sont dans le `.yml` de chaque modèle (`uv run inv dbt --args "docs generate"`), la construction de la base dans `CONTRIBUTING.md`, section dbt.
 
 ## Mettre à jour depuis le template
 

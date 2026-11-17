@@ -1,0 +1,11 @@
+version: 2
+
+macros:
+  - name: is_new_cards
+    description: >
+      Vrai si le fichier est un `new-cards-AAAA-MM-JJ.parquet` (cartes absentes du dernier
+      catalogue), faux pour un catalogue complet `cards-AAAA-MM-JJ.parquet`.
+    arguments:
+      - name: filename
+        type: string
+        description: Colonne ou expression SQL qui contient le chemin du fichier (`filename` de `read_parquet`).

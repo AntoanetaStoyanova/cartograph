@@ -4,7 +4,8 @@ source as (
 
     select
         *,
-        {{ snapshot_date('filename') }} as snapshot_date
+        {{ snapshot_date('filename') }} as snapshot_date,
+        {{ is_new_cards('filename') }} as is_new_cards
     from {{ source('tcgdex', 'cards') }}
 
 ),
@@ -39,10 +40,13 @@ renamed as (
         id_product as cardmarket_product_id,
         updated as updated_at,
         snapshot_date as last_seen_on,
-        snapshot_date = max(snapshot_date) over () as is_current
+        snapshot_date >= max(
+            case when not is_new_cards then snapshot_date end
+        ) over () as is_current
     from source
     qualify row_number() over (
-        partition by card_id, language order by snapshot_date desc
+        partition by card_id, language
+        order by snapshot_date desc, is_new_cards asc
     ) = 1
 
 )
