@@ -1,3 +1,13 @@
+## v0.6.0 (2026-11-17)
+
+### Nouveautés
+
+- staging dbt des sets datés et des nouvelles cartes
+
+### Documentation
+
+- regles métiers readme
+
 ## v0.5.0 (2026-11-17)
 
 ### Nouveautés
