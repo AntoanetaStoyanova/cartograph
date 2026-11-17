@@ -1,0 +1,41 @@
+{
+  "cardCount": {
+    "firstEd": 0,
+    "holo": 69,
+    "normal": 138,
+    "official": 189,
+    "reverse": 157,
+    "total": 201
+  },
+  "cards": [
+    {
+      "id": "swsh3-1",
+      "image": "https://assets.tcgdex.net/en/swsh/swsh3/1",
+      "localId": "1",
+      "name": "Butterfree V"
+    },
+    {
+      "id": "swsh3-2",
+      "image": "https://assets.tcgdex.net/en/swsh/swsh3/2",
+      "localId": "2",
+      "name": "Butterfree VMAX"
+    }
+  ],
+  "id": "swsh3",
+  "legal": {
+    "expanded": true,
+    "standard": false
+  },
+  "logo": "https://assets.tcgdex.net/en/swsh/swsh3/logo",
+  "name": "Darkness Ablaze",
+  "releaseDate": "2020-08-14",
+  "serie": {
+    "id": "swsh",
+    "name": "Sword & Shield"
+  },
+  "symbol": "https://assets.tcgdex.net/univ/swsh/swsh3/symbol",
+  "tcgOnline": "DAA",
+  "abbreviation": {
+    "official": "DAA"
+  }
+}

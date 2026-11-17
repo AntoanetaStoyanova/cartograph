@@ -13,7 +13,7 @@ def process(data: list[str], limit: int = 10) -> dict[str, int]: ...
 ```
 
 - `mypy --strict` doit passer sans erreur
-- Pas de `Any` sauf cas justifié par un commentaire
+- Pas de `Any`, sauf pour du JSON externe non typé (réponses d'API : `dict[str, Any]`) ; tout autre usage est justifié par un commentaire
 
 ---
 

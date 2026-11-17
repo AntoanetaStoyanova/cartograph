@@ -1,0 +1,35 @@
+{
+  "cardCount": {
+    "firstEd": 0,
+    "holo": 17,
+    "normal": 118,
+    "official": 102,
+    "reverse": 0,
+    "total": 135
+  },
+  "cards": [
+    {
+      "id": "SV7-001",
+      "image": "https://assets.tcgdex.net/ja/SV/SV7/001",
+      "localId": "001",
+      "name": "レディバ"
+    },
+    {
+      "id": "SV7-002",
+      "image": "https://assets.tcgdex.net/ja/SV/SV7/002",
+      "localId": "002",
+      "name": "レディアン"
+    }
+  ],
+  "id": "SV7",
+  "legal": {
+    "expanded": false,
+    "standard": false
+  },
+  "name": "ステラミラクル",
+  "releaseDate": "2024-07-19",
+  "serie": {
+    "id": "SV",
+    "name": "ポケモンカードゲーム スカーレット&バイオレット"
+  }
+}

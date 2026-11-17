@@ -32,34 +32,35 @@ cp .env.example .env
 
 ## État du projet
 
-- **En service** : collecte quotidienne des prix et collecte hebdomadaire du catalogue depuis [TCGdex](https://tcgdex.dev), en français, anglais et japonais (voir « Collecte » et « Collecte automatique »).
+- **En service** : collecte quotidienne des prix et des nouvelles cartes, collecte hebdomadaire du catalogue et des sets depuis [TCGdex](https://tcgdex.dev), en français, anglais et japonais (voir « Collecte » et « Collecte automatique »).
 - **À venir** : base de données reconstruite en local avec dbt et DuckDB, identification d'une carte à partir d'une photo, modèle d'estimation du prix, application locale.
 - **Pilotage** : calendrier, rapports de suivi mensuels (`inv suivi`) et bilan Green IT dans [`docs/gouvernance/`](docs/gouvernance/).
 
 ## Collecte
 
 ```bash
-uv run inv collect                            # prix du jour, avec le dernier catalogue
-uv run inv collect --catalogue                # catalogue puis prix
-uv run inv collect --catalogue --no-prices    # catalogue seul
+uv run inv collect                            # nouvelles cartes puis prix, avec le dernier catalogue
+uv run inv collect --catalogue                # catalogue, sets puis prix
+uv run inv collect --catalogue --no-prices    # catalogue et sets
 uv run inv collect --languages fr,ja --data-dir /tmp/cartograph
 ```
 
 Les sorties vont dans `data/` (ignoré par Git), un fichier par jour, remplacé si on relance le même jour :
 
-- `data/snapshots/` : `cards-AAAA-MM-JJ.parquet` (catalogue, sans aucun prix) et `prices-AAAA-MM-JJ.parquet` ;
+- `data/snapshots/` : `cards-AAAA-MM-JJ.parquet` (catalogue), `sets-AAAA-MM-JJ.parquet` (sets avec date de sortie), `new-cards-AAAA-MM-JJ.parquet` (cartes absentes du dernier catalogue, seulement s'il y en a), tous trois sans aucun prix, et `prices-AAAA-MM-JJ.parquet` (prix du catalogue et des nouvelles cartes) ;
 - `data/raw/` : réponses brutes de l'API en JSON gzip, **prix compris : jamais publiées** ;
 - `data/runs/` : résumé `collect-AAAA-MM-JJ.json` (statut, nombres, fichiers écrits, sans prix).
 
-Le code de sortie vaut 1 si une étape demandée échoue. Les logs vont dans `logs/`.
+Le code de sortie vaut 1 si une étape échoue. Un échec des sets ou des nouvelles cartes ne bloque ni le catalogue ni les prix. Les logs vont dans `logs/`.
 
 ## Collecte automatique
 
 Le workflow `Collecte` du dépôt public [`cartograph-data`](https://github.com/AntoanetaStoyanova/cartograph-data) installe ce dépôt depuis `main` et lance la collecte. Il est déclenché chaque jour à 03:17 UTC par [cron-job.org](https://cron-job.org), qui appelle l'API GitHub `workflow_dispatch` : le cron de GitHub Actions ne garantit pas ses déclenchements. À chaque exécution :
 
-- prix chaque jour (1 h à 1 h 30), avec le dernier catalogue publié ; le lundi (paramètre `catalogue` à `auto`), catalogue seul (2 h 30 à 3 h 15 selon les erreurs 503 de TCGdex), les prix étant lus dans ses fiches sans nouvel appel à l'API ;
-- résumé écrit après le catalogue puis à la fin : une exécution coupée pendant les prix publie quand même le catalogue ;
-- catalogue publié dans la Release `catalogue` de `cartograph-data` ;
+- prix chaque jour (1 h à 1 h 30), avec le dernier catalogue publié : avant les prix, les listes de cartes de chaque langue sont comparées à ce catalogue et seules les fiches des cartes absentes sont téléchargées (`new_cards`), leurs prix tirés de ces fiches ;
+- le lundi (paramètre `catalogue` à `auto`), catalogue (2 h 30 à 3 h 15 selon les erreurs 503 de TCGdex) puis sets (`/<langue>/sets`, avec date de sortie), les prix étant lus dans les fiches du catalogue sans nouvel appel à l'API ;
+- résumé écrit après chaque étape suivie d'une autre, puis à la fin : une exécution coupée pendant les sets ou les prix publie quand même ce qui est écrit ;
+- `cards-*`, `sets-*` et `new-cards-*.parquet` publiés dans la Release `catalogue` de `cartograph-data` ;
 - prix et brut envoyés dans la Release `data-AAAA-MM` du dépôt privé `cartograph-prices` (secret `PRICES_TOKEN`) ;
 - résumé et log gardés 7 jours en artefact, sans aucun prix ;
 - manifeste `manifest/AAAA/AAAA-MM-JJ.json` commité dans `cartograph-data`, même si la collecte échoue : statut des étapes, fichiers envoyés (Release, lignes, octets, SHA-256) et taille du dépôt, sans aucun prix. Il est calculé avant les envois et donne la Release de chaque fichier ; `sha256sum` d'un fichier téléchargé doit redonner son `sha256`.

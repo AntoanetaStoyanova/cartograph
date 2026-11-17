@@ -15,6 +15,7 @@ FIXTURES = Path(__file__).parent / "fixtures" / "suivi"
 def paths(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     monkeypatch.setattr(run, "ROADMAP", FIXTURES / "roadmap.md")
     monkeypatch.setattr(run, "JOURNAL", FIXTURES / "journal.md")
+    monkeypatch.setattr(run, "LOG", tmp_path / "LOG.md")
     monkeypatch.setattr(run, "COVERAGE_DATA", tmp_path / ".coverage")
     monkeypatch.setattr(run, "OUT_DIR", tmp_path / "suivi")
     monkeypatch.setattr(run, "collect_runs", lambda month: RunStats(2, 2, 0, 130, 0))

@@ -1,0 +1,40 @@
+{
+  "cardCount": {
+    "firstEd": 103,
+    "holo": 64,
+    "normal": 351,
+    "official": 102,
+    "reverse": 0,
+    "total": 102
+  },
+  "cards": [
+    {
+      "id": "base1-1",
+      "image": "https://assets.tcgdex.net/fr/base/base1/1",
+      "localId": "1",
+      "name": "Alakazam"
+    },
+    {
+      "id": "base1-2",
+      "image": "https://assets.tcgdex.net/fr/base/base1/2",
+      "localId": "2",
+      "name": "Tortank"
+    }
+  ],
+  "id": "base1",
+  "legal": {
+    "expanded": false,
+    "standard": false
+  },
+  "name": "Set de Base",
+  "releaseDate": "1999-01-09",
+  "serie": {
+    "id": "base",
+    "name": "Base"
+  },
+  "tcgOnline": "BS",
+  "abbreviation": {
+    "official": "BS",
+    "localized": "BAS"
+  }
+}
