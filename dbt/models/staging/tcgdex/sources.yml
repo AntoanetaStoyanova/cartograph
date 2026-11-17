@@ -2,12 +2,18 @@ version: 2
 
 sources:
   - name: tcgdex
-    description: Snapshots hebdomadaires du catalogue TCGdex (`cards-AAAA-MM-JJ.parquet`), dans le dossier de la variable `snapshot_dir`.
+    description: >
+      Snapshots publics de TCGdex, dans le dossier de la variable `snapshot_dir`, un fichier
+      `<préfixe>AAAA-MM-JJ.parquet` par jour : catalogue complet (`cards-`, le lundi),
+      nouvelles cartes (`new-cards-`, les autres jours s'il y en a), sets (`sets-`, chaque jour).
     tables:
       - name: cards
-        description: Une ligne par carte, langue et snapshot ; la date du snapshot est dans le nom du fichier (`filename`).
+        description: >
+          Une ligne par carte, langue et fichier, catalogue complet (`cards-*`) ou nouvelles
+          cartes (`new-cards-*`) ; type et date du fichier tirés de son nom (`filename`).
+          Un seul motif pour les deux : un motif sans fichier fait échouer `read_parquet`.
         meta:
-          external_location: "read_parquet('{{ var('snapshot_dir') }}/cards-*.parquet', filename = true)"
+          external_location: "read_parquet('{{ var('snapshot_dir') }}/*cards-*.parquet', filename = true)"
         columns:
           - name: language
             data_type: varchar
@@ -51,6 +57,56 @@ sources:
           - name: raw_json
             data_type: varchar
             description: Fiche complète renvoyée par l'API.
+          - name: filename
+            data_type: varchar
+            description: Chemin du fichier lu, ajouté par `read_parquet`.
+      - name: sets
+        description: Une ligne par set, langue et snapshot (`sets-AAAA-MM-JJ.parquet`), avec date de sortie et série.
+        meta:
+          external_location: "read_parquet('{{ var('snapshot_dir') }}/sets-*.parquet', filename = true)"
+        columns:
+          - name: language
+            data_type: varchar
+            description: Langue de la fiche (`fr`, `en`, `ja`).
+          - name: set_id
+            data_type: varchar
+            description: Identifiant TCGdex du set, commun aux langues.
+          - name: name
+            data_type: varchar
+            description: Nom du set dans la langue de la fiche.
+          - name: serie_id
+            data_type: varchar
+            description: Identifiant TCGdex de la série.
+          - name: serie_name
+            data_type: varchar
+            description: Nom de la série dans la langue de la fiche.
+          - name: release_date
+            data_type: date
+            description: Date de sortie dans la langue de la fiche.
+          - name: abbreviation_official
+            data_type: varchar
+            description: Sigle officiel (`DAA`), absent pour certains sets.
+          - name: abbreviation_localized
+            data_type: varchar
+            description: Sigle dans la langue de la fiche (`TEM`), absent pour certains sets.
+          - name: card_count_total
+            data_type: bigint
+            description: Nombre total de cartes, cartes secrètes comprises.
+          - name: card_count_official
+            data_type: bigint
+            description: Nombre de cartes annoncé.
+          - name: logo
+            data_type: varchar
+            description: URL de base du logo.
+          - name: symbol
+            data_type: varchar
+            description: URL de base du symbole.
+          - name: fetched_at
+            data_type: timestamp with time zone
+            description: Heure de la collecte.
+          - name: raw_json
+            data_type: varchar
+            description: Fiche du set renvoyée par l'API, sans la liste `cards`.
           - name: filename
             data_type: varchar
             description: Chemin du fichier lu, ajouté par `read_parquet`.

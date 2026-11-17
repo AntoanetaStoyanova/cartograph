@@ -3,7 +3,7 @@ version: 2
 analyses:
   - name: catalogue_changes
     description: >
-      Par snapshot du catalogue et par langue, cartes ajoutées, retirées et modifiées
+      Par catalogue complet (`cards-*`, les `new-cards-*` exclus) et par langue, cartes ajoutées, retirées et modifiées
       par rapport au snapshot précédent (fiche complète comparée sans le champ `updated`).
       Sert à choisir le rythme de collecte du catalogue ; lancer avec
       `uv run inv dbt --args "show --select catalogue_changes --limit 100"`.

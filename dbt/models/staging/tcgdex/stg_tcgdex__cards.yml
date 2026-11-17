@@ -6,8 +6,9 @@ models:
       contract:
         enforced: true
     description: >
-      Une ligne par carte et par langue, dans sa version du dernier snapshot où elle
-      figure ; une carte retirée de l'API est gardée avec `is_current = false`.
+      Une ligne par carte et par langue, dans sa version du dernier fichier où elle
+      figure, catalogue complet ou nouvelles cartes ; une carte retirée de l'API est
+      gardée avec `is_current = false`.
     data_tests:
       - unique:
           arguments:
@@ -85,10 +86,11 @@ models:
         description: Dernière mise à jour de la fiche chez TCGdex.
       - name: last_seen_on
         data_type: date
-        description: Date du dernier snapshot où la carte figure.
+        description: Date du dernier fichier (`cards-` ou `new-cards-`) où la carte figure.
       - name: is_current
         data_type: boolean
-        description: Présente dans le dernier snapshot.
+        description: >
+          Présente dans le dernier catalogue complet ou dans un `new-cards` postérieur.
 
 unit_tests:
   - name: stg_tcgdex__cards_keeps_latest_version
@@ -131,4 +133,53 @@ unit_tests:
             rarity: Rare,
             last_seen_on: 2026-11-16,
             is_current: true,
+          }
+
+  - name: stg_tcgdex__cards_counts_new_cards
+    description: >
+      Une carte d'un `new-cards` postérieur au dernier catalogue est courante, y compris
+      une carte retirée puis revenue ; une carte d'un `new-cards` antérieur est rendue
+      dans sa version du catalogue suivant, ou n'est plus courante si elle en est absente.
+    model: stg_tcgdex__cards
+    given:
+      - input: source('tcgdex', 'cards')
+        format: sql
+        rows: |
+          select * from (values
+              ('ja', 'M7-001', '001', 'a', 'M7', 'M7', 'Common', 'Pokemon', null, null, null::bigint, null::timestamptz, null::timestamptz, '{}', 'snapshots/new-cards-2026-11-17.parquet'),
+              ('en', 'tk-xy-su-26', '26', 'b', 'tk-xy-su', 'tk', 'Common', 'Pokemon', null, null, null, null, null, '{}', 'snapshots/cards-2026-11-09.parquet'),
+              ('en', 'tk-xy-su-26', '26', 'b', 'tk-xy-su', 'tk', 'Common', 'Pokemon', null, null, null, null, null, '{}', 'snapshots/new-cards-2026-11-17.parquet'),
+              ('fr', 'sv10-001', '001', 'c', 'sv10', 'sv10', null, 'Pokémon', null, null, null, null, null, '{}', 'snapshots/new-cards-2026-11-12.parquet'),
+              ('fr', 'sv10-001', '001', 'c', 'sv10', 'sv10', 'Commune', 'Pokémon', null, null, null, null, null, '{}', 'snapshots/cards-2026-11-16.parquet'),
+              ('fr', 'sv10-099', '099', 'd', 'sv10', 'sv10', null, 'Pokémon', null, null, null, null, null, '{}', 'snapshots/new-cards-2026-11-12.parquet')
+          ) as t (language, card_id, local_id, name, set_id, set_name, rarity, category, illustrator, image, id_product, updated, fetched_at, raw_json, filename)
+    expect:
+      rows:
+        - {
+            card_id: M7-001,
+            language_code: ja,
+            rarity: Common,
+            last_seen_on: 2026-11-17,
+            is_current: true,
+          }
+        - {
+            card_id: tk-xy-su-26,
+            language_code: en,
+            rarity: Common,
+            last_seen_on: 2026-11-17,
+            is_current: true,
+          }
+        - {
+            card_id: sv10-001,
+            language_code: fr,
+            rarity: Commune,
+            last_seen_on: 2026-11-16,
+            is_current: true,
+          }
+        - {
+            card_id: sv10-099,
+            language_code: fr,
+            rarity: null,
+            last_seen_on: 2026-11-12,
+            is_current: false,
           }

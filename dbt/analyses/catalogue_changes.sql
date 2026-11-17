@@ -8,6 +8,7 @@ source as (
         json_merge_patch(raw_json, '{"updated": null}') as card_json,
         {{ snapshot_date('filename') }} as snapshot_date
     from {{ source('tcgdex', 'cards') }}
+    where not {{ is_new_cards('filename') }}
 
 ),
 
