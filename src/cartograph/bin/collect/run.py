@@ -11,9 +11,9 @@ Le catalogue est tout ou rien : si une langue échoue, aucun
 ``cards-*.parquet`` n'est écrit. Les prix utilisent le catalogue du jour s'il
 vient d'être écrit, en lisant ses fiches sans nouvel appel à l'API ; sinon,
 ceux du plus récent du dossier, interrogés carte par carte. Les sets sont
-collectés les jours du catalogue ; leur échec ne touche ni le catalogue ni les
-prix.
-Les autres jours, les cartes absentes du dernier catalogue sont téléchargées
+collectés à chaque exécution, après le catalogue ; leur échec ne touche ni le
+catalogue, ni les nouvelles cartes, ni les prix.
+Les jours sans catalogue, les cartes absentes du dernier catalogue sont téléchargées
 (``new_cards``) et leurs prix ajoutés à ceux du jour ; leur échec ne touche
 pas les prix du catalogue.
 
@@ -85,7 +85,7 @@ def collect(
     data_dir : Path
         Dossier racine des sorties (voir ``snapshot_paths``).
     catalogue : bool
-        Collecter le catalogue, puis les sets.
+        Collecter le catalogue, avant les sets.
     prices : bool
         Collecter les prix.
     languages : Sequence[str]
@@ -103,7 +103,8 @@ def collect(
     -----
     Le résumé est écrit après chaque étape suivie d'une autre, les étapes
     restantes à ``failed``, puis remplacé à la fin : une collecte coupée
-    pendant les sets ou les prix laisse un catalogue publiable. Si le
+    pendant les sets, les nouvelles cartes ou les prix laisse publiables les
+    fichiers déjà écrits. Les sets sont collectés à chaque exécution. Si le
     catalogue du jour est ``ok``, les prix sont tirés de ses fiches sans
     nouvel appel à l'API ; sinon ils sont demandés pour les produits du
     dernier catalogue du dossier, et ceux des nouvelles cartes tirés de leurs
@@ -128,9 +129,9 @@ def collect(
             client, paths, languages, catalogue_at, cards
         )
         checkpoint("sets", *(["prices"] if prices else []))
-        steps["sets"] = _collect_sets(client, paths, languages, now())
-        if prices:
-            checkpoint()
+    steps["sets"] = _collect_sets(client, paths, languages, now())
+    if prices:
+        checkpoint("prices")
     if prices:
         if steps["catalogue"]["status"] == "ok":
             steps["prices"] = _collect_prices(
