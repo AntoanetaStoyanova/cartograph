@@ -102,7 +102,7 @@ def test_collect_interrupted_prices_keep_catalogue_summary(
 
 @pytest.mark.parametrize(
     ("catalogue", "prices", "writes"),
-    [(True, True, 3), (True, False, 2), (False, True, 2)],
+    [(True, True, 3), (True, False, 2), (False, True, 3)],
 )
 def test_collect_writes_summary_after_each_step(
     tcgdex_client: TcgdexClient,
@@ -198,15 +198,59 @@ def test_collect_bad_set_fails_sets_only(tmp_path: Path) -> None:
     assert steps["prices"]["status"] == "ok"
 
 
-def test_collect_without_catalogue_skips_sets(
-    tcgdex_client: TcgdexClient, tmp_path: Path
-) -> None:
-    _collect(tcgdex_client, tmp_path, day=date(2026, 10, 25), prices=False)
+def test_collect_without_catalogue_collects_sets_first(tmp_path: Path) -> None:
+    _old_catalogue(tmp_path, "SV7-065")
+    requested: list[str] = []
 
-    summary = _collect(tcgdex_client, tmp_path, catalogue=False)
+    def recording(request: httpx.Request) -> httpx.Response:
+        requested.append(request.url.path)
+        return fixture_route(request)
 
-    assert _steps(summary)["sets"]["status"] == "skipped"
+    with mock_client(recording) as client:
+        summary = _collect(client, tmp_path, catalogue=False)
+
+    steps = _steps(summary)
+    assert steps["sets"]["status"] == "ok"
+    assert steps["sets"]["fetched"] == 6
+    assert pq.read_table(snapshot_paths(tmp_path, DAY).sets).num_rows == 6
+    last_set = max(i for i, path in enumerate(requested) if "/sets" in path)
+    assert last_set < requested.index("/v2/fr/cards")
+    assert steps["new_cards"]["status"] == "ok"
+    assert steps["prices"]["status"] == "ok"
+
+
+def test_collect_failed_sets_keep_new_cards_and_prices(tmp_path: Path) -> None:
+    _old_catalogue(tmp_path, "SV7-065")
+
+    with mock_client(_down("/v2/ja/sets")) as client:
+        summary = _collect(client, tmp_path, catalogue=False)
+
+    steps = _steps(summary)
+    assert steps["sets"]["status"] == "failed"
     assert not snapshot_paths(tmp_path, DAY).sets.exists()
+    assert steps["new_cards"]["status"] == "ok"
+    assert steps["new_cards"]["fetched"] == 1
+    assert steps["prices"]["status"] == "ok"
+
+
+def test_collect_interrupted_prices_keep_sets_summary(
+    tcgdex_client: TcgdexClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _old_catalogue(tmp_path, "SV7-065")
+
+    def interrupted(*args: Any, **kwargs: Any) -> Any:
+        raise RuntimeError("délai dépassé")
+
+    monkeypatch.setattr(run, "_collect_prices", interrupted)
+
+    with pytest.raises(RuntimeError):
+        _collect(tcgdex_client, tmp_path, catalogue=False)
+
+    paths = snapshot_paths(tmp_path, DAY)
+    steps = _steps(json.loads(paths.summary.read_text(encoding="utf-8")))
+    assert [f["name"] for f in steps["sets"]["files"]] == [paths.sets.name]
+    assert steps["new_cards"]["status"] == "ok"
+    assert steps["prices"]["error"] == "étape interrompue avant la fin"
 
 
 def _without(*card_ids: str) -> Callable[[httpx.Request], httpx.Response]:
