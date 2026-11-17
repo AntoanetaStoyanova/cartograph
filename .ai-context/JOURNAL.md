@@ -20,7 +20,7 @@
 
 ---
 
-## [2026-11-17] — Archive du journal, COL-04 étapes sets et new_cards
+## [2026-11-17] — Archive du journal, COL-04 collecte
 
 ### Fait
 
@@ -30,11 +30,13 @@
 - Entrées existantes déplacées dans `LOG.md` par version (v0.1.0, v0.2.1, v0.3.0, v0.3.1) ; à reporter dans `python-project-template` en fin de projet.
 - Plan col-04-nouvelles-cartes-sets — Étape 1 : Étape `sets` de la collecte. `bin/collect/sets.py` (`list_set_ids`, `fetch_sets`, `set_path`), `snapshot.py` (`SET_SCHEMA`, `set_table`, `SnapshotPaths.sets`, `SET_SORT_BY`), `run.py` (`_collect_sets` après le catalogue, résumé écrit après chaque étape suivie d'une autre, `_write_table` prend le tri), `manifest.py` et `report.py` ; `catalogue.check_language` rendu public. Fixtures `tests/fixtures/tcgdex/*_sets*.json` enregistrées (listes et `cards` réduites à 2, `SM1+` pour l'encodage) ; `conftest.fixture_route` sert aussi `/sets`. Tests : `test_collect_sets.py`, `test_collect_run.py`, `test_collect_manifest.py`, `test_collect_report.py`. Décisions (colonnes, résumé intermédiaire) dans la spec, passée à `en cours`.
 - Plan col-04-nouvelles-cartes-sets — Étape 2 : Étape `new_cards` de la collecte. `catalogue.new_card_ids`, `prices.new_card_targets`, `SnapshotPaths.new_cards` et `raw_new_cards`, `run._collect_new_cards` (prix des nouvelles fiches ajoutés à ceux du catalogue dans un seul `prices-*.parquet`, `_write_table` renvoie la table), `manifest.py` (`new-cards-*.parquet` public, brut privé), `report.py`. Tests : `test_collect_new_cards.py`, `test_collect_run.py` (nouvelle carte et prix, produit non doublé, sans nouveauté, liste en échec, conversion en échec, code de sortie 1, T8), manifeste, résumé. Décisions dans la spec : `new_cards` aussi quand le catalogue du jour échoue, langue absente du dernier catalogue ignorée.
+- Plan col-04-nouvelles-cartes-sets — Étape 3 : Publication et validation sur GitHub (partie code et doc). `../cartograph-data/.github/workflows/collect.yml` : « Publier le catalogue » sans condition sur l'étape catalogue (sortie `catalogue` de « Lire le résumé » retirée), notes de la Release `catalogue` réécrites à chaque publication (`gh release edit`) pour `cards-`, `sets-`, `new-cards-` ; actionlint et zizmor verts. README de `cartograph` (« Collecte », « Collecte automatique ») et de `cartograph-data` (« Ce qui est publié », `steps` du manifeste) ; `docs/specs/cadrage-flux.md` (vue d'ensemble, FX1, FX2, séquence quotidienne).
 - Ligne trop longue de `tasks/__init__.py` (docstring de l'archive du journal) raccourcie pour `inv ci`.
 
 ### Reste à faire
 
-- Exécuter docs/plans/col-04-nouvelles-cartes-sets.md — Étape 3 : Publication et validation sur GitHub.
+- Antoaneta : relire puis commiter `collect.yml` et le README de `cartograph-data` et `git envoyer` (dernière partie de la 1re case de l'étape 3, à cocher ensuite). L'envoi doit suivre la publication de `cartograph` sur `main` : avant, le workflow installe un `main` sans sets ni new-cards (sans dommage, la publication ne fait que lire le manifeste).
+- docs/plans/col-04-nouvelles-cartes-sets.md — Étape 3, Antoaneta : PR `feature/col-04` → `develop` (`inv finish`), CI verte, `inv release`, PR vers `main` ; puis exécution manuelle `catalogue=oui` et exécution sans catalogue, manifestes vérifiés. Ensuite Étape 4 : Staging dbt (branche `feature/col-04-dbt`).
 - Ensuite : DBT-02 au standard SQL.
 - Supprimer la branche `feature/ci-02` (locale et `origin`) si ce n'est pas fait.
 - Supprimer la branche `feature/dbt-01` (locale et `origin`) si ce n'est pas fait.
