@@ -114,10 +114,14 @@ class SnapshotPaths:
         Catalogue sans prix (Parquet).
     sets : Path
         Sets avec date de sortie, sans prix (Parquet).
+    new_cards : Path
+        Cartes absentes du dernier catalogue, sans prix (Parquet).
     prices : Path
         Prix Cardmarket et TCGplayer (Parquet).
     raw_cards : Path
         Réponses brutes du catalogue, prix compris (JSON gzip).
+    raw_new_cards : Path
+        Réponses brutes des nouvelles cartes, prix compris (JSON gzip).
     raw_prices : Path
         Réponses brutes des prix (JSON gzip).
     summary : Path
@@ -126,8 +130,10 @@ class SnapshotPaths:
 
     cards: Path
     sets: Path
+    new_cards: Path
     prices: Path
     raw_cards: Path
+    raw_new_cards: Path
     raw_prices: Path
     summary: Path
 
@@ -157,8 +163,10 @@ def snapshot_paths(data_dir: Path, day: date) -> SnapshotPaths:
     return SnapshotPaths(
         cards=data_dir / "snapshots" / f"cards-{stamp}.parquet",
         sets=data_dir / "snapshots" / f"sets-{stamp}.parquet",
+        new_cards=data_dir / "snapshots" / f"new-cards-{stamp}.parquet",
         prices=data_dir / "snapshots" / f"prices-{stamp}.parquet",
         raw_cards=data_dir / "raw" / f"cards-{stamp}.json.gz",
+        raw_new_cards=data_dir / "raw" / f"new-cards-{stamp}.json.gz",
         raw_prices=data_dir / "raw" / f"prices-{stamp}.json.gz",
         summary=data_dir / "runs" / f"collect-{stamp}.json",
     )
@@ -176,7 +184,8 @@ def latest_catalogue(snapshots_dir: Path) -> Path | None:
     Returns
     -------
     Path | None
-        Dernier ``cards-AAAA-MM-JJ.parquet``, ``None`` s'il n'y en a aucun.
+        Dernier ``cards-AAAA-MM-JJ.parquet``, ``None`` s'il n'y en a aucun ;
+        les ``new-cards-*`` ne sont pas des catalogues complets.
     """
     return max(snapshots_dir.glob("cards-*.parquet"), default=None)
 

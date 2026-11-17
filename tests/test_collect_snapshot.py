@@ -42,6 +42,8 @@ def test_snapshot_paths_are_dated(tmp_path: Path) -> None:
     assert paths.cards == tmp_path / "snapshots" / "cards-2026-10-28.parquet"
     assert paths.prices == tmp_path / "snapshots" / "prices-2026-10-28.parquet"
     assert paths.sets == tmp_path / "snapshots" / "sets-2026-10-28.parquet"
+    assert paths.new_cards == tmp_path / "snapshots" / "new-cards-2026-10-28.parquet"
+    assert paths.raw_new_cards == tmp_path / "raw" / "new-cards-2026-10-28.json.gz"
     assert paths.raw_cards == tmp_path / "raw" / "cards-2026-10-28.json.gz"
     assert paths.raw_prices == tmp_path / "raw" / "prices-2026-10-28.json.gz"
     assert paths.summary == tmp_path / "runs" / "collect-2026-10-28.json"

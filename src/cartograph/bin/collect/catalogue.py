@@ -1,10 +1,13 @@
 """
-Catalogue d'une langue : liste des identifiants (par exemple ``/fr/cards``)
-et fiches complètes.
+Catalogue d'une langue : liste des identifiants (par exemple ``/fr/cards``),
+fiches complètes et cartes absentes du dernier catalogue.
 """
 
 from collections.abc import Sequence
+from pathlib import Path
 from urllib.parse import quote
+
+import pyarrow.parquet as pq
 
 from cartograph.bin.collect import FetchResult
 from cartograph.bin.collect.batch import fetch_each
@@ -86,6 +89,56 @@ def fetch_catalogue(
         card_id=lambda card_id: f"{language}/{card_id}",
         label=f"catalogue {language}",
     )
+
+
+def new_card_ids(
+    client: TcgdexClient, languages: Sequence[str], catalogue: Path
+) -> dict[str, list[str]]:
+    """
+    Renvoie les cartes listées par l'API et absentes d'un catalogue.
+
+    Parameters
+    ----------
+    client : TcgdexClient
+        Client de l'API.
+    languages : Sequence[str]
+        Langues comparées, parmi ``LANGUAGES``.
+    catalogue : Path
+        Snapshot ``cards-AAAA-MM-JJ.parquet`` de référence.
+
+    Returns
+    -------
+    dict[str, list[str]]
+        Nouveaux identifiants par langue, dans l'ordre de l'API ; liste vide,
+        sans appel, pour une langue absente du catalogue (toutes ses cartes
+        seraient nouvelles).
+
+    Raises
+    ------
+    ValueError
+        Si une langue n'appartient pas à ``LANGUAGES``.
+    TcgdexError
+        Si une liste ne peut pas être récupérée.
+    """
+    table = pq.read_table(catalogue, columns=["language", "card_id"])
+    known: dict[str, set[str]] = {}
+    for language, card_id in zip(
+        table.column("language").to_pylist(),
+        table.column("card_id").to_pylist(),
+        strict=True,
+    ):
+        known.setdefault(language, set()).add(card_id)
+    new: dict[str, list[str]] = {}
+    for language in languages:
+        check_language(language)
+        if language not in known:
+            new[language] = []
+            continue
+        listed = list_card_ids(client, language)
+        new[language] = [
+            card_id for card_id in listed if card_id not in known[language]
+        ]
+    return new
 
 
 def card_path(language: str, card_id: str) -> str:

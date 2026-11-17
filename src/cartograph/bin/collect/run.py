@@ -1,6 +1,6 @@
 """
-Orchestration d'une collecte : catalogue, sets, puis prix, avec un résumé après
-chacun.
+Orchestration d'une collecte : catalogue, sets, nouvelles cartes, puis prix,
+avec un résumé après chacun.
 
 Ce module enchaîne les étapes, choisit le catalogue source des prix, décide
 de l'échec d'une étape et sert le CLI ; la récupération, la sélection des prix
@@ -13,6 +13,9 @@ vient d'être écrit, en lisant ses fiches sans nouvel appel à l'API ; sinon,
 ceux du plus récent du dossier, interrogés carte par carte. Les sets sont
 collectés les jours du catalogue ; leur échec ne touche ni le catalogue ni les
 prix.
+Les autres jours, les cartes absentes du dernier catalogue sont téléchargées
+(``new_cards``) et leurs prix ajoutés à ceux du jour ; leur échec ne touche
+pas les prix du catalogue.
 
 Lancé par ``inv collect`` ou ``python -m cartograph.bin.collect.run`` ; code de
 sortie 0 si chaque étape demandée est ``ok``, 1 sinon.
@@ -35,11 +38,12 @@ from cartograph.bin.collect import (
     StepSummary,
     skipped_step,
 )
-from cartograph.bin.collect.catalogue import fetch_catalogue
+from cartograph.bin.collect.catalogue import fetch_catalogue, new_card_ids
 from cartograph.bin.collect.client import TcgdexClient, TcgdexError
 from cartograph.bin.collect.prices import (
     PriceTarget,
     fetch_prices,
+    new_card_targets,
     price_targets_from_catalogue,
     prices_from_cards,
 )
@@ -102,12 +106,15 @@ def collect(
     pendant les sets ou les prix laisse un catalogue publiable. Si le
     catalogue du jour est ``ok``, les prix sont tirés de ses fiches sans
     nouvel appel à l'API ; sinon ils sont demandés pour les produits du
-    dernier catalogue du dossier.
+    dernier catalogue du dossier, et ceux des nouvelles cartes tirés de leurs
+    fiches.
     """
     started_at = now().astimezone(UTC)
     day = started_at.date()
     paths = snapshot_paths(data_dir, day)
-    steps = {name: skipped_step() for name in ("catalogue", "sets", "prices")}
+    steps = {
+        name: skipped_step() for name in ("catalogue", "sets", "new_cards", "prices")
+    }
 
     def checkpoint(*pending: str) -> None:
         for name in pending:
@@ -134,12 +141,29 @@ def collect(
                 "tirés du catalogue du jour",
             )
         else:
+            source = latest_catalogue(paths.cards.parent)
+            new_cards: dict[str, list[dict[str, Any]]] = {}
+            new_table: pa.Table | None = None
+            new_at = now()
+            if source is not None:
+                steps["new_cards"], new_table = _collect_new_cards(
+                    client, paths, languages, source, new_at, new_cards
+                )
+                checkpoint("prices")
+
+            def fetch(targets: Sequence[PriceTarget]) -> FetchResult:
+                result = fetch_prices(client, targets, now=now)
+                if new_table is None:
+                    return result
+                new_targets = new_card_targets(new_table, targets)
+                logger.info("prix : %d produits de nouvelles cartes", len(new_targets))
+                extra = prices_from_cards(new_cards, new_targets, new_at)
+                return FetchResult(
+                    result.items + extra.items, result.failed + extra.failed
+                )
+
             steps["prices"] = _collect_prices(
-                paths,
-                latest_catalogue(paths.cards.parent),
-                languages,
-                lambda targets: fetch_prices(client, targets, now=now),
-                "à interroger",
+                paths, source, languages, fetch, "à interroger"
             )
     return _write_summary(paths, started_at, now, steps)
 
@@ -364,6 +388,72 @@ def _collect_sets(
     return report
 
 
+def _collect_new_cards(
+    client: TcgdexClient,
+    paths: SnapshotPaths,
+    languages: Sequence[str],
+    source: Path,
+    fetched_at: datetime,
+    cards: dict[str, list[dict[str, Any]]],
+) -> tuple[StepSummary, pa.Table | None]:
+    """
+    Télécharge les cartes absentes du catalogue ``source`` et les écrit.
+
+    Parameters
+    ----------
+    client : TcgdexClient
+        Client de l'API.
+    paths : SnapshotPaths
+        Fichiers du jour.
+    languages : Sequence[str]
+        Langues comparées.
+    source : Path
+        Dernier catalogue complet.
+    fetched_at : datetime
+        Début de l'étape, écrit dans la table.
+    cards : dict[str, list[dict[str, Any]]]
+        Rempli avec les nouvelles fiches par langue, pour en tirer les prix.
+
+    Returns
+    -------
+    tuple[StepSummary, pa.Table | None]
+        Bilan, ``ok`` sans fichier s'il n'y a aucune nouvelle carte ;
+        ``failed`` si une liste ou la collecte échoue (rien n'est écrit) ou
+        si la conversion en table échoue (le brut est conservé). Table écrite,
+        ``None`` sinon.
+    """
+    report = skipped_step()
+    report["source"] = source.name
+    try:
+        for language, card_ids in new_card_ids(client, languages, source).items():
+            if card_ids:
+                result = fetch_catalogue(client, language, card_ids)
+                cards[language] = result.items
+                report["fetched"] += len(result.items)
+                report["failed"] += result.failed
+    except TcgdexError as error:
+        report["status"] = "failed"
+        report["error"] = str(error)
+        return report, None
+    logger.info("nouvelles cartes : %d depuis %s", report["fetched"], source.name)
+    if not report["fetched"]:
+        report["status"] = "ok"
+        return report, None
+    report["files"].append(
+        _file(
+            paths.raw_new_cards,
+            report["fetched"],
+            write_json_gz(cards, paths.raw_new_cards),
+        )
+    )
+    table = _write_table(
+        report, paths.new_cards, lambda: catalogue_table(cards, fetched_at), SORT_BY
+    )
+    if table is not None:
+        report["skipped_without_id_product"] = table.column("id_product").null_count
+    return report, table
+
+
 def _collect_prices(
     paths: SnapshotPaths,
     source: Path | None,
@@ -446,7 +536,7 @@ def _write_table(
     path: Path,
     build: Callable[[], pa.Table],
     sort_by: Sequence[str],
-) -> None:
+) -> pa.Table | None:
     """
     Construit la table d'une étape et l'écrit, le brut éventuel déjà sauvegardé.
 
@@ -464,6 +554,11 @@ def _write_table(
         Construit la table depuis le brut.
     sort_by : Sequence[str]
         Colonnes de tri du Parquet.
+
+    Returns
+    -------
+    pa.Table | None
+        Table écrite, ``None`` si la conversion a échoué.
     """
     try:
         table = build()
@@ -471,11 +566,12 @@ def _write_table(
         report["status"] = "failed"
         report["error"] = f"conversion en table impossible ({type(error).__name__})"
         logger.error("%s : %s, brut conservé", path.name, report["error"])
-        return
+        return None
     report["files"].insert(
         0, _file(path, table.num_rows, write_parquet(table, path, sort_by))
     )
     report["status"] = "ok"
+    return table
 
 
 def _file(path: Path, rows: int, size: int) -> FileSummary:

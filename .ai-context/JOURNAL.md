@@ -20,7 +20,7 @@
 
 ---
 
-## [2026-11-17] — Archive du journal, COL-04 étape sets
+## [2026-11-17] — Archive du journal, COL-04 étapes sets et new_cards
 
 ### Fait
 
@@ -29,11 +29,12 @@
 - `inv suivi` compte les jours travaillés dans `JOURNAL.md` et `LOG.md` (`worked_days` prend une liste de fichiers, un fichier absent est ignoré).
 - Entrées existantes déplacées dans `LOG.md` par version (v0.1.0, v0.2.1, v0.3.0, v0.3.1) ; à reporter dans `python-project-template` en fin de projet.
 - Plan col-04-nouvelles-cartes-sets — Étape 1 : Étape `sets` de la collecte. `bin/collect/sets.py` (`list_set_ids`, `fetch_sets`, `set_path`), `snapshot.py` (`SET_SCHEMA`, `set_table`, `SnapshotPaths.sets`, `SET_SORT_BY`), `run.py` (`_collect_sets` après le catalogue, résumé écrit après chaque étape suivie d'une autre, `_write_table` prend le tri), `manifest.py` et `report.py` ; `catalogue.check_language` rendu public. Fixtures `tests/fixtures/tcgdex/*_sets*.json` enregistrées (listes et `cards` réduites à 2, `SM1+` pour l'encodage) ; `conftest.fixture_route` sert aussi `/sets`. Tests : `test_collect_sets.py`, `test_collect_run.py`, `test_collect_manifest.py`, `test_collect_report.py`. Décisions (colonnes, résumé intermédiaire) dans la spec, passée à `en cours`.
+- Plan col-04-nouvelles-cartes-sets — Étape 2 : Étape `new_cards` de la collecte. `catalogue.new_card_ids`, `prices.new_card_targets`, `SnapshotPaths.new_cards` et `raw_new_cards`, `run._collect_new_cards` (prix des nouvelles fiches ajoutés à ceux du catalogue dans un seul `prices-*.parquet`, `_write_table` renvoie la table), `manifest.py` (`new-cards-*.parquet` public, brut privé), `report.py`. Tests : `test_collect_new_cards.py`, `test_collect_run.py` (nouvelle carte et prix, produit non doublé, sans nouveauté, liste en échec, conversion en échec, code de sortie 1, T8), manifeste, résumé. Décisions dans la spec : `new_cards` aussi quand le catalogue du jour échoue, langue absente du dernier catalogue ignorée.
 - Ligne trop longue de `tasks/__init__.py` (docstring de l'archive du journal) raccourcie pour `inv ci`.
 
 ### Reste à faire
 
-- Exécuter docs/plans/col-04-nouvelles-cartes-sets.md — Étape 2 : Étape `new_cards` de la collecte.
+- Exécuter docs/plans/col-04-nouvelles-cartes-sets.md — Étape 3 : Publication et validation sur GitHub.
 - Ensuite : DBT-02 au standard SQL.
 - Supprimer la branche `feature/ci-02` (locale et `origin`) si ce n'est pas fait.
 - Supprimer la branche `feature/dbt-01` (locale et `origin`) si ce n'est pas fait.
@@ -55,4 +56,4 @@
 ### Références
 
 - docs/plans/col-04-nouvelles-cartes-sets.md, docs/specs/col-04-nouvelles-cartes-sets.md
-- src/cartograph/bin/collect/sets.py, snapshot.py, run.py, manifest.py, report.py
+- src/cartograph/bin/collect/sets.py, catalogue.py, prices.py, snapshot.py, run.py, manifest.py, report.py

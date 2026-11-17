@@ -148,3 +148,17 @@ def test_main_withoutmake_summary(
 
     assert main([*argv, "--repo-kib", "120"]) == 0
     assert json.loads(capsys.readouterr().out)["summary"] is False
+
+
+def test_new_cards_parquet_is_public_and_raw_is_private(tmp_path: Path) -> None:
+    files = [
+        {"name": f"new-cards-{DAY}.parquet", "rows": 1, "bytes": 4},
+        {"name": f"new-cards-{DAY}.json.gz", "rows": 1, "bytes": 3},
+    ]
+    summary = make_summary(new_cards=make_step(files=files, source=None))
+
+    manifest = build_manifest(summary, _data_dir(tmp_path), DAY, 42, 120)
+
+    releases = {f["name"]: f["release"] for f in manifest["files"]}
+    assert releases[f"new-cards-{DAY}.parquet"] == "cartograph-data/catalogue"
+    assert releases[f"new-cards-{DAY}.json.gz"] == "cartograph-prices/data-2026-10"

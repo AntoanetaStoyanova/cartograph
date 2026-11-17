@@ -73,3 +73,11 @@ def test_sets_step_is_named() -> None:
     markdown = render_markdown(make_summary(sets=sets))
 
     assert "| Sets | ✅ ok | 628 | 0 | 0 |" in markdown
+
+
+def test_new_cards_step_is_named() -> None:
+    new_cards = make_step(fetched=12, skipped_without_id_product=3)
+
+    markdown = render_markdown(make_summary(new_cards=new_cards))
+
+    assert "| Nouvelles cartes | ✅ ok | 12 | 0 | 3 |" in markdown
