@@ -39,7 +39,7 @@ cp .env.example .env
 ## Collecte
 
 ```bash
-uv run inv collect                            # nouvelles cartes puis prix, avec le dernier catalogue
+uv run inv collect                            # sets, nouvelles cartes puis prix, avec le dernier catalogue
 uv run inv collect --catalogue                # catalogue, sets puis prix
 uv run inv collect --catalogue --no-prices    # catalogue et sets
 uv run inv collect --languages fr,ja --data-dir /tmp/cartograph
@@ -57,9 +57,10 @@ Le code de sortie vaut 1 si une étape échoue. Un échec des sets ou des nouvel
 
 Le workflow `Collecte` du dépôt public [`cartograph-data`](https://github.com/AntoanetaStoyanova/cartograph-data) installe ce dépôt depuis `main` et lance la collecte. Il est déclenché chaque jour à 03:17 UTC par [cron-job.org](https://cron-job.org), qui appelle l'API GitHub `workflow_dispatch` : le cron de GitHub Actions ne garantit pas ses déclenchements. À chaque exécution :
 
+- sets chaque jour (`/<langue>/sets`, avec date de sortie, quelques minutes), après le catalogue s'il est collecté : un set sorti en semaine est daté le jour même ;
 - prix chaque jour (1 h à 1 h 30), avec le dernier catalogue publié : avant les prix, les listes de cartes de chaque langue sont comparées à ce catalogue et seules les fiches des cartes absentes sont téléchargées (`new_cards`), leurs prix tirés de ces fiches ;
-- le lundi (paramètre `catalogue` à `auto`), catalogue (2 h 30 à 3 h 15 selon les erreurs 503 de TCGdex) puis sets (`/<langue>/sets`, avec date de sortie), les prix étant lus dans les fiches du catalogue sans nouvel appel à l'API ;
-- résumé écrit après chaque étape suivie d'une autre, puis à la fin : une exécution coupée pendant les sets ou les prix publie quand même ce qui est écrit ;
+- le lundi (paramètre `catalogue` à `auto`), catalogue (2 h 30 à 3 h 15 selon les erreurs 503 de TCGdex), les prix étant lus dans les fiches du catalogue sans nouvel appel à l'API ;
+- résumé écrit après chaque étape suivie d'une autre, puis à la fin : une exécution coupée pendant les sets, les nouvelles cartes ou les prix publie quand même ce qui est écrit ;
 - `cards-*`, `sets-*` et `new-cards-*.parquet` publiés dans la Release `catalogue` de `cartograph-data` ;
 - prix et brut envoyés dans la Release `data-AAAA-MM` du dépôt privé `cartograph-prices` (secret `PRICES_TOKEN`) ;
 - résumé et log gardés 7 jours en artefact, sans aucun prix ;

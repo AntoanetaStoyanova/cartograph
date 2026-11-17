@@ -1,3 +1,9 @@
+## v0.5.0 (2026-11-17)
+
+### Nouveautés
+
+- sets collectés à chaque exécution
+
 ## v0.4.0 (2026-11-17)
 
 ### Nouveautés

@@ -19,7 +19,7 @@ batch
 snapshot
     Chemins datés, tables typées sans prix dans le catalogue, écriture atomique.
 run
-    Enchaînement catalogue, sets puis prix, résumé d'exécution.
+    Enchaînement catalogue, sets, nouvelles cartes puis prix, résumé d'exécution.
 report
     Résumé Markdown pour la page d'exécution GitHub.
 manifest
@@ -115,8 +115,8 @@ class CollectSummary(TypedDict):
     started_at, finished_at : str
         Début et fin, ISO 8601 en UTC.
     steps : dict[str, StepSummary]
-        Bilan par étape : ``catalogue``, ``sets`` (absent des résumés
-        antérieurs à COL-04), ``prices``.
+        Bilan par étape : ``catalogue``, ``sets``, ``new_cards`` (absents des
+        résumés antérieurs à COL-04), ``prices``.
     """
 
     date: str
