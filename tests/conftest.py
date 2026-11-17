@@ -13,7 +13,7 @@ FIXTURES_DIR = Path(__file__).parent / "fixtures" / "tcgdex"
 REAL_SUMMARY = Path(__file__).parent / "fixtures" / "collect-summary.json"
 PRICE_MARKERS = ("cm_", "avg", "trend", "low", "€")
 SUMMARY_DAY = "2026-10-28"
-_ROUTE = re.compile(r"^/v2/(?P<language>[^/]+)/cards(?:/(?P<card_id>.+))?$")
+_ROUTE = re.compile(r"^/v2/(?P<language>[^/]+)/(?P<kind>cards|sets)(?:/(?P<id>.+))?$")
 
 
 def load_fixture(name: str) -> Any:
@@ -24,8 +24,13 @@ def fixture_route(request: httpx.Request) -> httpx.Response:
     match = _ROUTE.match(request.url.path)
     if match is None:
         return httpx.Response(404)
-    language, card_id = match["language"], match["card_id"]
-    name = f"{language}_cards" if card_id is None else f"{language}_{card_id}"
+    language, kind, item_id = match["language"], match["kind"], match["id"]
+    if item_id is None:
+        name = f"{language}_{kind}"
+    elif kind == "sets":
+        name = f"{language}_sets_{item_id}"
+    else:
+        name = f"{language}_{item_id}"
     if not (FIXTURES_DIR / f"{name}.json").exists():
         return httpx.Response(404)
     return httpx.Response(200, json=load_fixture(name))

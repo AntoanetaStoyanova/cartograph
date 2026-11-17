@@ -53,3 +53,12 @@ repos:
     rev: v4.19.3
     hooks:
       - id: commitizen
+
+  - repo: https://github.com/sqlfluff/sqlfluff
+    rev: 4.5.0
+    hooks:
+      - id: sqlfluff-lint
+        files: ^dbt/(models|analyses)/
+      - id: sqlfluff-fix
+        files: ^dbt/(models|analyses)/
+        stages: [manual]

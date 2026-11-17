@@ -1,11 +1,13 @@
 [project]
 name = "cartograph"
-version = "0.3.1"
+version = "0.4.0"
 description = "Une plateforme de données qui suit les prix des cartes Pokémon, identifie une carte à partir d’une photo et estime sa valeur."
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "beartype>=0.23.1",
+    "dbt-core>=1.12.7",
+    "dbt-duckdb>=1.11.1",
     "httpx>=0.28.1",
     "pyarrow>=26.0.0",
     "python-dotenv>=1.2.4",

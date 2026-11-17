@@ -1,10 +1,14 @@
 """Tâches d'automatisation — exécutées via `inv <commande>`."""
 
+import re
 import shlex
 import tempfile
+import time
+from datetime import date
 from pathlib import Path
 
-from invoke import Context, Exit, task
+import duckdb
+from invoke import Context, Exit, call, task
 
 # ---------------------------------------------------------------------------
 # Qualité du code
@@ -30,6 +34,16 @@ def fmt(c: Context) -> None:
 
 
 @task
+def sql_fmt(c: Context) -> None:
+    """Corrige le SQL de dbt/models et dbt/analyses avec sqlfluff fix."""
+    # pre-commit sort en erreur dès qu'il modifie un fichier : le commit revérifie.
+    c.run(
+        "uv run pre-commit run sqlfluff-fix --all-files --hook-stage manual",
+        warn=True,
+    )
+
+
+@task
 def typecheck(c: Context) -> None:
     """Vérifie les types avec mypy."""
     c.run("uv run mypy src/cartograph")
@@ -46,13 +60,38 @@ def test(c: Context) -> None:
     c.run("uv run pytest")
 
 
-@task(pre=[check, test])  # type: ignore[misc]
+DATABASE = Path("data/cartograph.duckdb")
+REBUILD_DATABASE = Path("data/cartograph.rebuild.duckdb")
+SAMPLE_DIR = Path("dbt/sample/snapshots")
+SAMPLE_DATABASE = Path("data/cartograph.sample.duckdb")
+
+
+@task
+def dbt(c: Context, args: str = "build", sample: bool = False) -> None:
+    """Lance dbt (build par défaut) ; --sample : échantillon et base d'échantillon."""
+    Path("data").mkdir(exist_ok=True)
+    if not sample:
+        c.run(_dbt_command(args))
+        return
+    variables = shlex.quote(f"{{snapshot_dir: {SAMPLE_DIR.as_posix()}}}")
+    c.run(
+        _dbt_command(f"{args} --vars {variables}"),
+        env={"CARTOGRAPH_DUCKDB": str(SAMPLE_DATABASE)},
+    )
+
+
+def _dbt_command(args: str) -> str:
+    """Commande dbt sur le projet et le profil de dbt/."""
+    return f"uv run dbt {args} --project-dir dbt --profiles-dir dbt"
+
+
+@task(pre=[check, test, call(dbt, sample=True)])  # type: ignore[misc]
 def ci(c: Context) -> None:
-    """Lance la suite complète CI : lint, typecheck, tests."""
+    """Lance la suite complète CI : lint, typecheck, tests, dbt sur l'échantillon."""
 
 
 # ---------------------------------------------------------------------------
-# Collecte
+# Données
 # ---------------------------------------------------------------------------
 
 
@@ -75,6 +114,39 @@ def collect(
     if data_dir:
         args.append(f"--data-dir {shlex.quote(data_dir)}")
     c.run(" ".join(args))
+
+
+@task
+def rebuild(c: Context, skip_download: bool = False) -> None:
+    """Rapatrie les snapshots des Releases et reconstruit data/cartograph.duckdb."""
+    start = time.monotonic()
+    if not skip_download:
+        c.run("uv run python -m cartograph.bin.rebuild")
+    DATABASE.parent.mkdir(exist_ok=True)
+    _remove_database(REBUILD_DATABASE)
+    duckdb.connect(REBUILD_DATABASE).close()
+    result = c.run(
+        _dbt_command("build"),
+        env={"CARTOGRAPH_DUCKDB": str(REBUILD_DATABASE)},
+        warn=True,
+    )
+    if not result.ok:
+        _remove_database(REBUILD_DATABASE)
+        raise Exit(f"dbt build a échoué : {DATABASE} inchangée.")
+    _wal(DATABASE).unlink(missing_ok=True)
+    REBUILD_DATABASE.replace(DATABASE)
+    print(f"{DATABASE} reconstruite en {time.monotonic() - start:.1f} s.")
+
+
+def _remove_database(path: Path) -> None:
+    """Supprime une base DuckDB et son journal .wal s'ils existent."""
+    path.unlink(missing_ok=True)
+    _wal(path).unlink(missing_ok=True)
+
+
+def _wal(path: Path) -> Path:
+    """Journal DuckDB d'une base, à retirer avec elle."""
+    return path.with_name(path.name + ".wal")
 
 
 # ---------------------------------------------------------------------------
@@ -121,6 +193,15 @@ def okflint(c: Context) -> None:
 # Git
 # ---------------------------------------------------------------------------
 
+JOURNAL = Path(".ai-context/JOURNAL.md")
+LOG = Path(".ai-context/LOG.md")
+LOG_HEADER = (
+    "# Log — versions publiées\n\n"
+    "> Entrées de `JOURNAL.md` déplacées par `inv release`, une section par version.\n"
+)
+_JOURNAL_ENTRY = re.compile(r"^## \[\d{4}-\d{2}-\d{2}\]", re.MULTILINE)
+_LOG_VERSION = re.compile(r"^# v", re.MULTILINE)
+
 
 @task
 def release(c: Context, dry_run: bool = False) -> None:
@@ -136,6 +217,8 @@ def release(c: Context, dry_run: bool = False) -> None:
     lint(c)
     typecheck(c)
     test(c)
+    dbt(c, sample=True)
+    _archive_journal(c, _next_version(c))
     _bump(c, "uv run cz bump --yes")
     docs(c)
     c.run("git push --follow-tags")
@@ -152,6 +235,7 @@ def finish(c: Context) -> None:
     lint(c)
     typecheck(c)
     test(c)
+    dbt(c, sample=True)
     okflint(c)
     c.run("git push -u origin HEAD")
     existing = c.run("gh pr view --json url --jq .url", hide=True, warn=True)
@@ -216,3 +300,45 @@ def _bump(c: Context, command: str) -> None:
         raise Exit("Rien à publier : aucun feat, fix, refactor ou perf depuis le tag.")
     if result.exited:
         raise Exit(code=result.exited)
+
+
+def _next_version(c: Context) -> str:
+    """Version que cz bump va publier ; arrête la tâche s'il n'y a rien à publier."""
+    result = c.run("uv run cz bump --get-next", hide=True, warn=True)
+    if result.exited in (3, 21):
+        raise Exit("Rien à publier : aucun feat, fix, refactor ou perf depuis le tag.")
+    if result.exited:
+        raise Exit(code=result.exited)
+    return str(result.stdout.strip())
+
+
+def _journal_to_log(
+    journal: str, log: str, version: str, day: str
+) -> tuple[str, str] | None:
+    """Journal réduit à sa dernière entrée et log complété ; None si rien à déplacer."""
+    starts = [m.start() for m in _JOURNAL_ENTRY.finditer(journal)]
+    if len(starts) < 2:
+        return None
+    kept = journal[: starts[1]].rstrip() + "\n"
+    section = f"# v{version} — {day}\n\n{journal[starts[1] :].strip()}\n"
+    log = log or LOG_HEADER
+    first = _LOG_VERSION.search(log)
+    if first is None:
+        return kept, log.rstrip() + "\n\n" + section
+    return kept, log[: first.start()] + section + "\n" + log[first.start() :]
+
+
+def _archive_journal(c: Context, version: str) -> None:
+    """Déplace dans LOG.md les entrées du journal sauf la plus récente, puis commite."""
+    if not JOURNAL.exists():
+        return
+    log = LOG.read_text(encoding="utf-8") if LOG.exists() else ""
+    moved = _journal_to_log(
+        JOURNAL.read_text(encoding="utf-8"), log, version, date.today().isoformat()
+    )
+    if moved is None:
+        return
+    JOURNAL.write_text(moved[0], encoding="utf-8")
+    LOG.write_text(moved[1], encoding="utf-8")
+    c.run(f"git add {JOURNAL} {LOG}")
+    c.run(f"git commit -m 'chore(journal): archive avant v{version}'")

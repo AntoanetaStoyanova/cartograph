@@ -34,7 +34,7 @@ jobs:
           key: pre-commit-${{ runner.os }}-${{ hashFiles('.pre-commit-config.yaml') }}
 
       - name: Installer les dépendances
-        run: uv sync --locked && cp .env.example .env
+        run: uv sync --locked
 
       - name: Contrôles
         env:

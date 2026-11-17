@@ -10,6 +10,8 @@ client
     Appels HTTP, pause, nouvelles tentatives et erreurs typées.
 catalogue
     Liste des identifiants et fiches complètes d'une langue.
+sets
+    Liste et fiches des sets d'une langue, avec date de sortie.
 prices
     Une carte par produit Cardmarket et récupération de ses prix.
 batch
@@ -17,7 +19,7 @@ batch
 snapshot
     Chemins datés, tables typées sans prix dans le catalogue, écriture atomique.
 run
-    Enchaînement catalogue puis prix, résumé d'exécution.
+    Enchaînement catalogue, sets puis prix, résumé d'exécution.
 report
     Résumé Markdown pour la page d'exécution GitHub.
 manifest
@@ -113,7 +115,8 @@ class CollectSummary(TypedDict):
     started_at, finished_at : str
         Début et fin, ISO 8601 en UTC.
     steps : dict[str, StepSummary]
-        Bilan par étape : ``catalogue``, ``prices``.
+        Bilan par étape : ``catalogue``, ``sets`` (absent des résumés
+        antérieurs à COL-04), ``prices``.
     """
 
     date: str

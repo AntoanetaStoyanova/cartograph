@@ -1,0 +1,28 @@
+version: 2
+
+analyses:
+  - name: catalogue_changes
+    description: >
+      Par snapshot du catalogue et par langue, cartes ajoutées, retirées et modifiées
+      par rapport au snapshot précédent (fiche complète comparée sans le champ `updated`).
+      Sert à choisir le rythme de collecte du catalogue ; lancer avec
+      `uv run inv dbt --args "show --select catalogue_changes --limit 100"`.
+    columns:
+      - name: snapshot_date
+        data_type: date
+        description: Date du snapshot comparé.
+      - name: previous_date
+        data_type: date
+        description: Date du snapshot précédent.
+      - name: language_code
+        data_type: varchar
+        description: Langue.
+      - name: added
+        data_type: bigint
+        description: Cartes présentes dans ce snapshot, absentes du précédent.
+      - name: removed
+        data_type: bigint
+        description: Cartes du précédent absentes de ce snapshot.
+      - name: modified
+        data_type: bigint
+        description: Cartes présentes dans les deux, fiche différente hors `updated`.

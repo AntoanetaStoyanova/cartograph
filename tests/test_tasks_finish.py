@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 from invoke import Exit, MockContext, Result
 
@@ -7,12 +9,19 @@ CHECKS = [
     "uv run pre-commit run --all-files",
     "uv run mypy src/cartograph",
     "uv run pytest",
+    "uv run dbt build --vars '{snapshot_dir: dbt/sample/snapshots}'"
+    " --project-dir dbt --profiles-dir dbt",
     "uv run okflint validate --manifest okf-base.yaml",
 ]
 PUSH = "git push -u origin HEAD"
 PR_VIEW = "gh pr view --json url --jq .url"
 PR_CREATE = "gh pr create --base develop --fill"
 PR_URL = "https://github.com/AntoanetaStoyanova/cartograph/pull/13"
+
+
+@pytest.fixture(autouse=True)
+def _cwd(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.chdir(tmp_path)
 
 
 def _context(

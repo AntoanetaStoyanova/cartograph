@@ -1,0 +1,20 @@
+[
+  {
+    "id": "base1",
+    "name": "Set de Base",
+    "cardCount": {
+      "total": 102,
+      "official": 102
+    }
+  },
+  {
+    "id": "swsh3",
+    "name": "Ténèbres Embrasées",
+    "logo": "https://assets.tcgdex.net/fr/swsh/swsh3/logo",
+    "symbol": "https://assets.tcgdex.net/univ/swsh/swsh3/symbol",
+    "cardCount": {
+      "total": 201,
+      "official": 189
+    }
+  }
+]

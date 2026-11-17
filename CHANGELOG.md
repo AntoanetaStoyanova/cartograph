@@ -1,3 +1,49 @@
+## v0.4.0 (2026-11-17)
+
+### Nouveautés
+
+- publier sets et nouvelles cartes dans la Release catalogue
+- fiche et prix des nouvelles cartes le jour même
+- **collect**: snapshot des sets avec date de sortie les jours du catalogue
+- modèle stg_tcgdex__sets et analyse des changements du catalogue
+- modèle stg_tcgdex__cards, une ligne par carte et par langue
+- source dbt du catalogue et échantillon versionné pour inv ci
+- tâche inv rebuild, base reconstruite depuis les Releases sans écraser l'ancienne en cas d'échec
+- téléchargement des snapshots des Releases avec contrôle SHA-256
+- inventaire des snapshots Parquet des Releases à rapatrier
+- tâche inv dbt, lancée par inv ci, inv finish et inv release
+
+### Corrections
+
+- versionner l'échantillon Parquet lu par inv ci
+- CI sans copie de .env.example, la variable GitHub suffit
+
+### Réécritures
+
+- renommer les colonnes de staging qui sont des mots-clés SQL
+
+### Documentation
+
+- Any toléré pour le JSON d'API non typé
+- staging dbt et échantillon dans CONTRIBUTING, DBT-01 livré
+- échantillon dbt, fiches corrigées par TCGdex
+- spec et plan DBT-01, staging du catalogue
+- inv rebuild dans CONTRIBUTING, STO-02 livré
+- plan STO-02, reconstruction de la base
+- projet dbt et inv dbt dans CONTRIBUTING
+- journal du 16 novembre, CI-01 livré et FND-02 planifié
+
+### Tests
+
+- tests unitaires et contrats dbt sur le staging du catalogue
+
+### Maintenance
+
+- standard SQL vérifié par sqlfluff au commit, inv sql-fmt
+- standard SQL vérifié par sqlfluff au commit, inv sql-fmt
+- ignorer l'aperçu local des snapshots
+- squelette dbt-duckdb (projet, profil DuckDB, couches)
+
 ## v0.3.1 (2026-11-16)
 
 ### Corrections

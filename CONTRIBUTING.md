@@ -13,7 +13,7 @@ def process(data: list[str], limit: int = 10) -> dict[str, int]: ...
 ```
 
 - `mypy --strict` doit passer sans erreur
-- Pas de `Any` sauf cas justifié par un commentaire
+- Pas de `Any`, sauf pour du JSON externe non typé (réponses d'API : `dict[str, Any]`) ; tout autre usage est justifié par un commentaire
 
 ---
 
@@ -97,6 +97,7 @@ uv run inv hooks       # installe le hook pre-commit
 | Markdown | markdownlint (`.markdownlint-cli2.yaml`) |
 | YAML, JSON, TOML | validité ; prettier formate le YAML et le JSON |
 | Workflows (`.github/workflows/`) | actionlint, zizmor (`--persona=pedantic`) |
+| SQL de `dbt/models/` et `dbt/analyses/` | sqlfluff (`.sqlfluff`, voir « Standard SQL ») |
 
 - Si un contrôle corrige un fichier, le commit est refusé : relire la correction, `git add`, recommencer le commit.
 - « Stashing unstaged files » : les modifications hors du commit sont mises de côté pendant les contrôles, puis remises.
@@ -112,7 +113,7 @@ uv run inv finish      # inv ci et inv okflint, push, puis pull request vers dev
 `inv finish` refuse une autre branche qu'une `feature/…` et un arbre de travail non propre ; si la pull request existe déjà, il affiche son lien. Les contrôles se lancent aussi seuls :
 
 ```bash
-uv run inv ci          # pre-commit sur tous les fichiers, mypy, pytest
+uv run inv ci          # pre-commit sur tous les fichiers, mypy, pytest, dbt build sur l'échantillon
 uv run inv okflint     # en-tête et liens des specs et plans locaux de docs/
 ```
 
@@ -142,6 +143,62 @@ src/cartograph/
 ├── log/            # configuration des logs (jamais print() en production)
 └── notebook/       # utilitaires pour notebooks Jupyter
 ```
+
+Les transformations dbt (dbt-duckdb) vivent dans `dbt/`, hors du paquet Python :
+
+```text
+dbt/
+├── dbt_project.yml     # matérialisations par couche, variable snapshot_dir
+├── profiles.yml        # profil DuckDB versionné, sans secret
+├── sample/snapshots/   # échantillon du catalogue pour la CI (recette dans sample/README.md)
+├── analyses/           # requêtes lancées à la demande, sans table créée
+├── macros/             # fonctions Jinja partagées (snapshot_date)
+└── models/
+    ├── staging/        # stg_<source>__<entité> : nettoyage des sources, en vue
+    ├── intermediate/   # int_ : jointures et règles métier, en vue
+    └── marts/          # fct_, dim_, mart_ : tables lues par l'application
+```
+
+Chaque modèle, analyse ou macro `<nom>.sql` a son fichier de propriétés `<nom>.yml` à côté (description, colonnes, tests) ; les sources sont déclarées dans `sources.yml`. Chaque colonne déclare son `data_type` ; les modèles ont un contrat (`contract: enforced: true`) : un type qui ne correspond plus fait échouer `dbt build`. Une règle de calcul (dernière version, `is_current`…) est couverte par un test unitaire dbt (`unit_tests:`, données en `format: sql`, car dbt-duckdb ne lit pas les colonnes d'une source externe). Les modèles de staging du catalogue (`staging/tcgdex/`) sont `stg_tcgdex__cards` (une ligne par carte et par langue, dernière version vue, `is_current` à faux pour une carte retirée de TCGdex) et `stg_tcgdex__sets` (une ligne par set et par langue).
+
+### Standard SQL
+
+Le SQL de `dbt/models/` et `dbt/analyses/` suit le style de dbt Labs, vérifié par sqlfluff (`.sqlfluff`, dialecte `duckdb`) à chaque commit, donc dans `inv ci` :
+
+- tout en minuscules (mots-clés, fonctions, types, noms) ; 4 espaces ; 88 caractères par ligne, comme Ruff ;
+- un modèle enchaîne des CTE (`source`, `renamed`…) et finit par `select * from <dernière CTE>` ;
+- alias toujours explicites avec `as`, y compris pour une sous-requête ; virgules en fin de ligne ;
+- `group by` et `order by` par noms de colonnes, jamais par numéros ; dans un `order by` à plusieurs colonnes, le sens (`asc`, `desc`) est donné pour toutes ou pour aucune ;
+- aucun nom de colonne n'est un mot-clé SQL (règle RF04) : `language_code`, `card_name`, `pokemon_types`, `evolution_stage` plutôt que `language`, `name`, `types`, `stage`. Les colonnes des Parquet gardent leur nom d'origine et sont renommées dans le staging ;
+- l'ordre des colonnes d'un `select` suit leur sens (identité, description, images, dates), le même que dans le `.yml` : la règle ST06 (colonnes simples avant les calculs) est désactivée.
+
+sqlfluff lit les balises `{{ }}` avec son lecteur `jinja` (fonctions de dbt simulées, macros chargées depuis `dbt/macros/`) : pas besoin de compiler le projet dbt, le contrôle prend une à deux secondes. Les macros ne sont pas contrôlées (`.sqlfluffignore`).
+
+```bash
+uv run inv sql-fmt     # corrige ce que sqlfluff sait corriger (mise en page, casse)
+```
+
+Le reste (alias manquant, `group by 1`, nom de colonne réservé) se corrige à la main ; relire les corrections avant `git add`.
+
+```bash
+uv run inv dbt                    # dbt build sur data/snapshots/
+uv run inv dbt --sample           # dbt build sur l'échantillon, base data/cartograph.sample.duckdb
+uv run inv dbt --args debug       # autre commande dbt (debug, docs generate…)
+uv run inv dbt --args "show --select catalogue_changes"  # changements du catalogue par semaine
+```
+
+La source `tcgdex.cards` lit `cards-*.parquet` dans le dossier de la variable dbt `snapshot_dir` (`data/snapshots` par défaut) ; la date du snapshot vient du nom du fichier. `inv dbt --sample` la fait pointer vers `dbt/sample/snapshots/` et écrit dans `data/cartograph.sample.duckdb` : c'est ce que lancent `inv ci`, `inv finish` et `inv release`, sans `data/snapshots/` ni appel aux APIs, et sans toucher à `data/cartograph.duckdb`. L'échantillon ne contient que du catalogue public, jamais de prix ; si le schéma des snapshots change, le régénérer avec la recette de `dbt/sample/README.md`.
+
+La base est `data/cartograph.duckdb` (jamais versionnée, reconstruite à la demande) ; la variable `CARTOGRAPH_DUCKDB` en désigne une autre. `dbt/target/` et `dbt/logs/` sont recréés à chaque commande et ignorés par Git.
+
+Pour reconstruire la base depuis les données collectées :
+
+```bash
+uv run inv rebuild                  # snapshots des Releases, puis dbt build
+uv run inv rebuild --skip-download  # dbt build sur les snapshots déjà présents
+```
+
+`inv rebuild` rapatrie dans `data/snapshots/` les `*.parquet` de la Release `catalogue` de `cartograph-data` et des Releases `data-AAAA-MM` de `cartograph-prices` (dépôt privé : la session `gh auth` doit y avoir accès). Les JSON bruts ne sont pas téléchargés. Un fichier n'est téléchargé que s'il manque ou si son SHA-256 diffère de celui de GitHub (collecte relancée le même jour), et son empreinte est recontrôlée après téléchargement ; une erreur arrête la commande avant dbt. Un Parquet local absent des Releases est gardé (sauvegarde) et signalé. dbt construit une base temporaire, `data/cartograph.rebuild.duckdb`, qui ne remplace `data/cartograph.duckdb` qu'en cas de succès : un échec laisse l'ancienne base intacte.
 
 ---
 

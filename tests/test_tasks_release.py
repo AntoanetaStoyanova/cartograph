@@ -4,15 +4,20 @@ from pathlib import Path
 import pytest
 from invoke import Exit, MockContext, Result
 
-from tasks import _changelog_section, release
+from tasks import LOG_HEADER, _changelog_section, _journal_to_log, release
 
 CI = [
     "uv run pre-commit run --all-files",
     "uv run mypy src/cartograph",
     "uv run pytest",
+    "uv run dbt build --vars '{snapshot_dir: dbt/sample/snapshots}'"
+    " --project-dir dbt --profiles-dir dbt",
 ]
 DOCS = "uv run sphinx-build -b html docs docs/_build/html"
 VERSION = "uv version --short"
+GET_NEXT = "uv run cz bump --get-next"
+GIT_ADD = "git add .ai-context/JOURNAL.md .ai-context/LOG.md"
+GIT_COMMIT = "git commit -m 'chore(journal): archive avant v0.4.0'"
 PR_LIST = (
     "gh pr list --base main --head develop --state open --json url --jq '.[0].url'"
 )
@@ -33,6 +38,20 @@ CHANGELOG = """## v0.4.0 (2026-11-20)
 
 - suivi sans exécutions en cours
 """
+JOURNAL = """# Journal — cartograph
+
+---
+
+## [2026-11-20] — Session en cours
+
+### Reste à faire
+
+- COL-04
+
+## [2026-11-19] — COL-04 étape 1
+
+## [2026-11-18] — Plan COL-04
+"""
 
 
 @pytest.fixture(autouse=True)
@@ -49,10 +68,13 @@ def _context(
         *CI,
         DOCS,
         "git push --follow-tags",
+        GIT_ADD,
+        GIT_COMMIT,
     ]
     results = {cmd: Result() for cmd in commands}
     results["git branch --show-current"] = Result(f"{branch}\n")
     results["git status --porcelain"] = Result(status)
+    results[GET_NEXT] = Result("0.4.0\n", exited=bump_exit)
     results["uv run cz bump --yes"] = Result(exited=bump_exit)
     results["uv run cz bump --dry-run --yes"] = Result(exited=bump_exit)
     results[VERSION] = Result("0.4.0\n")
@@ -74,6 +96,7 @@ def test_release_runs_checks_bump_docs_push_then_opens_pr() -> None:
         "git status --porcelain",
         "git pull --ff-only",
         *CI,
+        GET_NEXT,
         "uv run cz bump --yes",
         DOCS,
         "git push --follow-tags",
@@ -119,6 +142,48 @@ def test_release_stops_when_nothing_to_bump(bump_exit: int) -> None:
     with pytest.raises(Exit, match="Rien à publier"):
         release(c)
     assert "git push --follow-tags" not in _commands(c)
+    assert "uv run cz bump --yes" not in _commands(c)
+
+
+def test_release_archives_journal_before_bump(tmp_path: Path) -> None:
+    journal = tmp_path / ".ai-context" / "JOURNAL.md"
+    journal.parent.mkdir()
+    journal.write_text(JOURNAL, encoding="utf-8")
+    c = _context()
+    release(c)
+    commands = _commands(c)
+    bump = commands.index("uv run cz bump --yes")
+    assert commands[bump - 2 : bump] == [GIT_ADD, GIT_COMMIT]
+    assert "## [2026-11-19]" not in journal.read_text(encoding="utf-8")
+    log = (tmp_path / ".ai-context" / "LOG.md").read_text(encoding="utf-8")
+    assert "# v0.4.0 — " in log
+    assert "## [2026-11-18] — Plan COL-04" in log
+
+
+def test_journal_to_log_keeps_most_recent_entry() -> None:
+    moved = _journal_to_log(JOURNAL, "", "0.4.0", "2026-11-20")
+    assert moved is not None
+    journal, log = moved
+    assert journal == JOURNAL.split("## [2026-11-19]")[0].rstrip() + "\n"
+    assert log == (
+        LOG_HEADER + "\n# v0.4.0 — 2026-11-20\n\n## [2026-11-19] — COL-04 étape 1\n\n"
+        "## [2026-11-18] — Plan COL-04\n"
+    )
+
+
+def test_journal_to_log_puts_new_version_first() -> None:
+    old = LOG_HEADER + "\n# v0.3.1 — 2026-11-16\n\n## [2026-11-16] — CI-02\n"
+    moved = _journal_to_log(JOURNAL, old, "0.4.0", "2026-11-20")
+    assert moved is not None
+    log = moved[1]
+    assert log.startswith(LOG_HEADER)
+    assert log.index("# v0.4.0") < log.index("# v0.3.1")
+    assert log.endswith("## [2026-11-16] — CI-02\n")
+
+
+def test_journal_to_log_nothing_to_move() -> None:
+    only_one = JOURNAL.split("## [2026-11-19]")[0]
+    assert _journal_to_log(only_one, "", "0.4.0", "2026-11-20") is None
 
 
 def test_changelog_section_first_version() -> None:

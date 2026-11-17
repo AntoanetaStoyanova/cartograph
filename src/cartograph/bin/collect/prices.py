@@ -7,7 +7,7 @@ la première carte rencontrée pour chaque produit.
 - Résultat: ex 29 314 requêtes au lieu de 58 000.
 - les cartes sans idProduct sont ignorées et comptées
 - le jour du catalogue, prices_from_cards lit les prix dans ses fiches, sans
-seconde passe sur l'API.
+seconde passe sur l'API ; les autres jours, de même pour les nouvelles cartes.
 """
 
 from collections.abc import Callable, Mapping, Sequence
@@ -99,6 +99,33 @@ def price_targets_from_table(table: pa.Table) -> list[PriceTarget]:
         if id_product is not None and id_product not in targets:
             targets[id_product] = PriceTarget(language, card_id, id_product)
     return list(targets.values())
+
+
+def new_card_targets(
+    table: pa.Table, known: Sequence[PriceTarget]
+) -> list[PriceTarget]:
+    """
+    Choisit les produits des nouvelles cartes qui ne sont pas déjà ciblés.
+
+    Parameters
+    ----------
+    table : pa.Table
+        Nouvelles cartes au schéma ``snapshot.CARD_SCHEMA``.
+    known : Sequence[PriceTarget]
+        Cibles tirées du catalogue, interrogées par ailleurs.
+
+    Returns
+    -------
+    list[PriceTarget]
+        Une cible par produit absent de ``known`` (voir
+        ``price_targets_from_table``).
+    """
+    known_products = {target.id_product for target in known}
+    return [
+        target
+        for target in price_targets_from_table(table)
+        if target.id_product not in known_products
+    ]
 
 
 @dataclass(frozen=True)
