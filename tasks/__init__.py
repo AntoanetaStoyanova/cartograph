@@ -1,11 +1,13 @@
 """Tâches d'automatisation — exécutées via `inv <commande>`."""
 
+import os
 import re
 import shlex
+import shutil
 import tempfile
 import time
 from datetime import date
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 import duckdb
 from invoke import Context, Exit, call, task
@@ -178,15 +180,128 @@ def docs(c: Context) -> None:
 
 
 @task
-def docs_clean(c: Context) -> None:
-    """Supprime la documentation générée."""
-    c.run("rm -rf docs/_build")
-
-
-@task
 def okflint(c: Context) -> None:
     """Vérifie le frontmatter et les liens des specs et plans (okf-base.yaml)."""
     c.run("uv run okflint validate --manifest okf-base.yaml")
+
+
+# ---------------------------------------------------------------------------
+# Nettoyage
+# ---------------------------------------------------------------------------
+
+CLEAN_FILE = Path(".clean")
+PROTECTED_PATHS = (
+    ".env",
+    ".venv",
+    ".git",
+    "data/snapshots",
+    "data/raw",
+    "data/cartograph.duckdb",
+    "docs/plans",
+    "docs/specs",
+)
+_WILDCARD = re.compile(r"[*?\[]")
+
+
+@task
+def clean(c: Context) -> None:
+    """Supprime les fichiers générés déclarés dans .clean, jamais le travail."""
+    patterns = _read_clean(CLEAN_FILE)
+    tracked = set(c.run("git ls-files", hide=True).stdout.splitlines())
+    targets = _clean_targets(Path.cwd(), patterns, tracked)
+    for target in targets:
+        if target.is_dir():
+            shutil.rmtree(target)
+        else:
+            target.unlink()
+        print(f"Supprimé : {target.relative_to(Path.cwd()).as_posix()}")
+    if not targets:
+        print("Rien à nettoyer.")
+
+
+def _read_clean(path: Path) -> list[str]:
+    """Motifs de .clean, sans lignes vides ni commentaires."""
+    if not path.exists():
+        raise Exit(f"{path} absent : la liste des fichiers à supprimer y est déclarée.")
+    lines = (line.strip() for line in path.read_text(encoding="utf-8").splitlines())
+    return [line for line in lines if line and not line.startswith("#")]
+
+
+def _clean_targets(root: Path, patterns: list[str], tracked: set[str]) -> list[Path]:
+    """Chemins à supprimer ; Exit avant toute suppression si un motif est dangereux.
+
+    Parameters
+    ----------
+    root : Path
+        Racine du dépôt.
+    patterns : list[str]
+        Motifs glob relatifs à la racine ; ``/`` final : dossiers seulement.
+    tracked : set[str]
+        Fichiers suivis par Git (``git ls-files``).
+
+    Returns
+    -------
+    list[Path]
+        Fichiers et dossiers correspondants, sans descendre dans un dossier retenu
+        ni dans un chemin protégé.
+    """
+    for pattern in patterns:
+        _check_pattern(pattern)
+    found: list[str] = []
+    for dirpath, dirnames, filenames in os.walk(root):
+        base = PurePosixPath(Path(dirpath).relative_to(root).as_posix())
+        for name in list(dirnames):
+            rel = (base / name).as_posix()
+            matched = _clean_match(rel, patterns, is_dir=True)
+            if matched:
+                found.append(rel)
+            if matched or rel in PROTECTED_PATHS:
+                dirnames.remove(name)
+        found += [
+            rel
+            for rel in ((base / name).as_posix() for name in filenames)
+            if _clean_match(rel, patterns, is_dir=False)
+        ]
+    for rel in found:
+        _check_target(rel, tracked)
+    return [root / rel for rel in found]
+
+
+def _check_pattern(pattern: str) -> None:
+    """Refuse un motif hors du dépôt ou dont la partie fixe vise un chemin protégé."""
+    path = PurePosixPath(pattern)
+    if path.is_absolute() or ".." in path.parts:
+        raise Exit(f"Motif {pattern} de .clean hors du dépôt.")
+    fixed: list[str] = []
+    for part in path.parts:
+        if _WILDCARD.search(part):
+            break
+        fixed.append(part)
+    prefix = "/".join(fixed)
+    for protected in PROTECTED_PATHS:
+        if prefix and (prefix == protected or prefix.startswith(protected + "/")):
+            raise Exit(f"Motif {pattern} de .clean : chemin protégé ({protected}).")
+
+
+def _clean_match(rel: str, patterns: list[str], is_dir: bool) -> bool:
+    """Vrai si ``rel`` correspond à un motif (``/`` final : dossiers seulement)."""
+    path = PurePosixPath(rel)
+    for pattern in patterns:
+        if pattern.endswith("/"):
+            if is_dir and path.full_match(pattern.rstrip("/")):
+                return True
+        elif path.full_match(pattern):
+            return True
+    return False
+
+
+def _check_target(rel: str, tracked: set[str]) -> None:
+    """Refuse un chemin protégé, qui en contient un ou qui contient un fichier suivi."""
+    for protected in PROTECTED_PATHS:
+        if rel == protected or protected.startswith(rel + "/"):
+            raise Exit(f"{rel} retenu par .clean : chemin protégé ({protected}).")
+    if rel in tracked or any(path.startswith(rel + "/") for path in tracked):
+        raise Exit(f"{rel} retenu par .clean contient un fichier suivi par Git.")
 
 
 # ---------------------------------------------------------------------------
@@ -226,6 +341,7 @@ def release(c: Context, dry_run: bool = False) -> None:
     docs(c)
     c.run("git push --follow-tags")
     _open_release_pr(c)
+    clean(c)
 
 
 @task
@@ -245,8 +361,9 @@ def finish(c: Context) -> None:
     existing = c.run("gh pr view --json url --jq .url", hide=True, warn=True)
     if existing.ok and existing.stdout.strip():
         print(f"PR déjà ouverte : {existing.stdout.strip()}")
-        return
-    c.run("gh pr create --base develop --fill")
+    else:
+        c.run("gh pr create --base develop --fill")
+    clean(c)
 
 
 @task

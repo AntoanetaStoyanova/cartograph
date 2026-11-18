@@ -1,0 +1,14 @@
+# Fichiers générés supprimés par inv clean : un motif glob par ligne, relatif à la racine.
+# Un motif qui touche un fichier suivi, un chemin protégé ou sort du dépôt fait échouer la tâche.
+**/__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.json
+htmlcov/
+dbt/target/
+dbt/logs/
+data/cartograph.sample.duckdb
+docs/_build/
+src/cartograph.egg-info/

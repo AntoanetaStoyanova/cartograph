@@ -19,10 +19,12 @@ PR_CREATE = "gh pr create --base develop --fill"
 PR_URL = "https://github.com/AntoanetaStoyanova/cartograph/pull/13"
 DIFF = "git diff --name-only origin/develop...HEAD"
 LOG = "git log --format=%s origin/develop..HEAD"
+LS_FILES = "git ls-files"
 
 
 @pytest.fixture(autouse=True)
 def _cwd(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    (tmp_path / ".clean").write_text(".coverage\n", encoding="utf-8")
     monkeypatch.chdir(tmp_path)
 
 
@@ -38,6 +40,7 @@ def _context(
     results["git status --porcelain"] = Result(status)
     results[DIFF] = Result(changed)
     results[LOG] = Result(subjects)
+    results[LS_FILES] = Result(".clean\n")
     results[PR_VIEW] = Result(f"{pr_url}\n") if pr_url else Result(exited=1)
     return MockContext(run=results)
 
@@ -57,7 +60,14 @@ def test_finish_checks_pushes_then_opens_pr() -> None:
         PUSH,
         PR_VIEW,
         PR_CREATE,
+        LS_FILES,
     ]
+
+
+def test_finish_cleans_generated_files(tmp_path: Path) -> None:
+    (tmp_path / ".coverage").write_text("x", encoding="utf-8")
+    finish(_context(pr_url=PR_URL))
+    assert not (tmp_path / ".coverage").exists()
 
 
 def test_finish_shows_existing_pr(capsys: pytest.CaptureFixture[str]) -> None:

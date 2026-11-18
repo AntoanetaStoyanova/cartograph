@@ -117,6 +117,8 @@ uv run inv ci          # pre-commit sur tous les fichiers, mypy, pytest, dbt bui
 uv run inv okflint     # en-tête et liens des specs et plans locaux de docs/
 ```
 
+`uv run inv clean` supprime les fichiers générés (caches, couverture, `dbt/target/`, base échantillon, `docs/_build/`) déclarés dans `.clean`, à la racine : un motif glob par ligne, relatif à la racine, `/` final pour un dossier, `#` pour un commentaire. Pour nettoyer un nouveau fichier généré, ajouter son motif à `.clean` plutôt qu'écrire un `rm`. La tâche échoue sans rien supprimer si un motif touche un fichier suivi par Git, sort du dépôt ou atteint un chemin protégé (`.env`, `.venv/`, `.git/`, `data/snapshots/`, `data/raw/`, `data/cartograph.duckdb`, `docs/plans/`, `docs/specs/`). `inv finish` et `inv release` la lancent à la fin ; `inv ci` non, pour garder `htmlcov/` et `dbt/target/` après un échec.
+
 Sur GitHub, le workflow `CI` (`.github/workflows/ci.yml`) lance `uv run inv ci` sur chaque pull request vers `develop` et `main` (environ une minute) ; un nouveau push sur la branche annule l'exécution en cours. La variable GitHub Actions `TCGDEX_USER_AGENT` du dépôt doit exister : `cartograph.config` l'exige à l'import.
 
 Les specs et plans de `docs/` (locaux, non suivis par Git) commencent par un en-tête vérifié par okflint (`okf-base.yaml`) :
