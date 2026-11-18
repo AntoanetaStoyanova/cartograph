@@ -201,6 +201,8 @@ LOG_HEADER = (
 )
 _JOURNAL_ENTRY = re.compile(r"^## \[\d{4}-\d{2}-\d{2}\]", re.MULTILINE)
 _LOG_VERSION = re.compile(r"^# v", re.MULTILINE)
+_VERSION_BUMP = re.compile(r"^(feat|fix|refactor|perf)(\([^)]*\))?!?:")
+CODE_PATHS = ("src/", "tasks/", "dbt/models/", "dbt/macros/")
 
 
 @task
@@ -232,6 +234,7 @@ def finish(c: Context) -> None:
     if not branch.startswith("feature/"):
         raise Exit(f"inv finish se lance sur une branche feature/, pas sur {branch}.")
     _require_clean(c)
+    _confirm_without_bump(c)
     lint(c)
     typecheck(c)
     test(c)
@@ -243,6 +246,33 @@ def finish(c: Context) -> None:
         print(f"PR déjà ouverte : {existing.stdout.strip()}")
         return
     c.run("gh pr create --base develop --fill")
+
+
+def _bumps_version(subjects: list[str]) -> bool:
+    """Vrai si un sujet de commit fait monter la version (feat, fix, refactor, perf)."""
+    return any(_VERSION_BUMP.match(subject) for subject in subjects)
+
+
+def _touches_code(paths: list[str]) -> bool:
+    """Vrai si un chemin modifié est du code livré (src, tasks, dbt)."""
+    return any(path.startswith(CODE_PATHS) for path in paths)
+
+
+def _confirm_without_bump(c: Context) -> None:
+    """Demande confirmation si la branche modifie du code sans commit de version."""
+    diff = c.run("git diff --name-only origin/develop...HEAD", hide=True)
+    if not _touches_code(diff.stdout.split()):
+        return
+    log = c.run("git log --format=%s origin/develop..HEAD", hide=True)
+    subjects = log.stdout.splitlines()
+    if _bumps_version(subjects):
+        return
+    print("Code modifié sans commit feat, fix, refactor ou perf :")
+    for subject in subjects:
+        print(f"  {subject}")
+    print("inv release ne publiera pas de version (corriger avec git commit --amend).")
+    if input("Continuer quand même ? (o/N) ").strip().lower() != "o":
+        raise Exit("Aucun push : renommer le commit puis relancer inv finish.")
 
 
 def _current_branch(c: Context) -> str:

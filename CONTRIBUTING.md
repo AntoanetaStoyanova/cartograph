@@ -110,7 +110,7 @@ Avant une pull request, depuis la branche `feature/…` :
 uv run inv finish      # inv ci et inv okflint, push, puis pull request vers develop
 ```
 
-`inv finish` refuse une autre branche qu'une `feature/…` et un arbre de travail non propre ; si la pull request existe déjà, il affiche son lien. Les contrôles se lancent aussi seuls :
+`inv finish` refuse une autre branche qu'une `feature/…` et un arbre de travail non propre ; si la pull request existe déjà, il affiche son lien. Si la branche modifie `src/`, `tasks/`, `dbt/models/` ou `dbt/macros/` sans aucun commit `feat`, `fix`, `refactor` ou `perf` (seuls préfixes qui font monter la version), il affiche les commits et demande confirmation avant le push ; « n » ou Entrée arrête la tâche, le temps d'un `git commit --amend`. Les contrôles se lancent aussi seuls :
 
 ```bash
 uv run inv ci          # pre-commit sur tous les fichiers, mypy, pytest, dbt build sur l'échantillon
