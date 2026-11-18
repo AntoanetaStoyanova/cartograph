@@ -203,6 +203,7 @@ _JOURNAL_ENTRY = re.compile(r"^## \[\d{4}-\d{2}-\d{2}\]", re.MULTILINE)
 _LOG_VERSION = re.compile(r"^# v", re.MULTILINE)
 _VERSION_BUMP = re.compile(r"^(feat|fix|refactor|perf)(\([^)]*\))?!?:")
 CODE_PATHS = ("src/", "tasks/", "dbt/models/", "dbt/macros/")
+PROTECTED_BRANCHES = ("main", "develop")
 
 
 @task
@@ -246,6 +247,65 @@ def finish(c: Context) -> None:
         print(f"PR déjà ouverte : {existing.stdout.strip()}")
         return
     c.run("gh pr create --base develop --fill")
+
+
+@task
+def delete_branch(c: Context, name: str, force: bool = False) -> None:
+    """Supprime une branche en local et sur origin ; PR fusionnée sauf --force."""
+    _check_deletable(c, name)
+    if not force and not _merged_pr(c, name):
+        raise Exit(f"{name} : aucune PR fusionnée (--force pour supprimer quand même).")
+    _delete_branch(c, name)
+    c.run("git fetch --prune")
+
+
+@task
+def clean_branches(c: Context) -> None:
+    """Supprime, après confirmation, les branches locales dont la PR est fusionnée."""
+    current = _current_branch(c)
+    local = c.run("git for-each-ref --format=%(refname:short) refs/heads/", hide=True)
+    merged = [
+        branch
+        for branch in local.stdout.split()
+        if branch not in (*PROTECTED_BRANCHES, current) and _merged_pr(c, branch)
+    ]
+    if not merged:
+        print("Aucune branche fusionnée à supprimer.")
+        return
+    print("Branches fusionnées :")
+    for branch in merged:
+        print(f"  {branch}")
+    if input("Supprimer en local et sur origin ? (o/N) ").strip().lower() != "o":
+        return
+    for branch in merged:
+        _delete_branch(c, branch)
+    c.run("git fetch --prune")
+
+
+def _check_deletable(c: Context, branch: str) -> None:
+    """Refuse main, develop et la branche courante, même avec --force."""
+    if branch in PROTECTED_BRANCHES:
+        raise Exit(f"{branch} est protégée : jamais supprimée.")
+    if branch == _current_branch(c):
+        raise Exit(f"{branch} est la branche courante : changer de branche d'abord.")
+
+
+def _merged_pr(c: Context, branch: str) -> bool:
+    """Vrai si une PR de la branche est fusionnée (reconnaît aussi un squash)."""
+    result = c.run(
+        f"gh pr list --head {shlex.quote(branch)} --state merged"
+        " --json number --jq length",
+        hide=True,
+    )
+    return int(result.stdout.strip() or 0) > 0
+
+
+def _delete_branch(c: Context, branch: str) -> None:
+    """Supprime la branche en local, puis sur origin si elle y est encore."""
+    name = shlex.quote(branch)
+    c.run(f"git branch -D {name}")
+    if c.run(f"git ls-remote --heads origin {name}", hide=True).stdout.strip():
+        c.run(f"git push origin --delete {name}")
 
 
 def _bumps_version(subjects: list[str]) -> bool:

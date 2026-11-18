@@ -20,7 +20,7 @@
 
 ---
 
-## [2026-11-18] — Fixtures livrées, CI-03 étape 1
+## [2026-11-18] — Fixtures livrées, CI-03 étapes 1 et 2
 
 ### Fait
 
@@ -30,10 +30,11 @@
 - Branches `feature/ci-02` et `feature/dbt-01` : déjà supprimées (locale et `origin`).
 - Plan fix-fixtures-prix-fictifs livré (PR #28 et #30 fusionnées dans `develop`) : plan et spec passés à `fait`.
 - Plan ci-03-alerte-version-finish — Étape 1 : Alerte dans `inv finish`. `tasks/__init__.py` : `_bumps_version`, `_touches_code` (`CODE_PATHS`), `_confirm_without_bump` appelée après `_require_clean` (`git diff --name-only origin/develop...HEAD`, puis `git log` seulement si du code est touché) ; `tests/test_tasks_finish.py` (« n », Entrée, « N » arrêtent avant les contrôles, « o » continue, `feat` et doc seule sans question) ; `CONTRIBUTING.md` (alerte décrite). Plan et spec CI-03 passés à `en cours`.
+- Plan ci-03-alerte-version-finish — Étape 2 : Nettoyage des branches. `tasks/__init__.py` : `PROTECTED_BRANCHES`, `_check_deletable`, `_merged_pr` (`gh pr list --state merged --json number --jq length`), `_delete_branch` (`git branch -D`, puis `git push origin --delete` seulement si `git ls-remote --heads` la trouve) ; tâches `delete-branch` (`--force`) et `clean-branches` (liste, o/N, `git fetch --prune` seulement après suppression). `tests/test_tasks_branches.py` ; `CONTRIBUTING.md` (fin de lot, `delete-branch-on-merge`). Constat : `pre-commit --all-files` ignore les fichiers non suivis, un nouveau fichier de test n'est vérifié par `inv ci` qu'une fois ajouté (`git add`).
 
 ### Reste à faire
 
-- Exécuter docs/plans/ci-03-alerte-version-finish.md — Étape 2 : Nettoyage des branches, puis Étape 3 : `inv clean` (motifs dans `.clean`, appelée à la fin de `finish` et `release`) ; les branches `feature/col-04-*` et `feature/fixtures-prix-fictifs` seront supprimées par `inv clean-branches` à la livraison.
+- Exécuter docs/plans/ci-03-alerte-version-finish.md — Étape 3 : `inv clean` (motifs dans `.clean`, appelée à la fin de `finish` et `release`) ; les branches `feature/col-04-*` et `feature/fixtures-prix-fictifs` seront supprimées par `inv clean-branches` à la livraison.
 - Ensuite : DBT-02 (staging des prix) au standard SQL.
 - Décision d'Antoaneta : collecte complète du catalogue gardée le lundi (corrections de fiches, ex. 36 raretés provisoires de M6 corrigées par TCGdex le 12/11) et contrôle quotidien des nouvelles cartes dans COL-04 (3 listes `/<langue>/cards` comparées au dernier catalogue, seules les fiches nouvelles téléchargées, prix dès le jour même). Ordre proposé : DBT-01 → CI-02 → COL-04 → DBT-02 ; à vérifier dans la spec COL-04 : l'API ne donne-t-elle que le prix du jour (premiers jours d'un set irrattrapables) ?
 - Corriger le logger de `cartograph.bin.collect.run` (`__name__` vaut `__main__` sous `-m`) : petit `fix` à part.
@@ -54,7 +55,7 @@
 
 - docs/plans/ci-03-alerte-version-finish.md, docs/specs/ci-03-alerte-version-finish.md
 - docs/plans/fix-fixtures-prix-fictifs.md, docs/specs/fix-fixtures-prix-fictifs.md
-- `tasks/__init__.py`, `tests/test_tasks_finish.py`, `CONTRIBUTING.md`
+- `tasks/__init__.py`, `tests/test_tasks_finish.py`, `tests/test_tasks_branches.py`, `CONTRIBUTING.md`
 
 ## [2026-11-17] — COL-04 terminé, plans fixtures et CI-03
 

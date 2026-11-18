@@ -212,6 +212,8 @@ uv run inv rebuild --skip-download  # dbt build sur les snapshots déjà présen
 - Protection (ruleset `.github/rulesets/develop-main.json`, appliqué par `gh api --method POST repos/AntoanetaStoyanova/cartograph/rulesets --input …`) : sur `develop` et `main`, pull request obligatoire, check `ci` vert requis, merge commit seul, ni force-push ni suppression. Le rôle admin peut passer outre : c'est ce qui laisse `inv release` pousser sur `develop`. Ne jamais cocher « bypass rules » pour fusionner une pull request rouge.
 - Pull requests fusionnées en **merge commit** uniquement : un squash réduirait le changelog à une ligne et, comme un rebase, laisserait le commit tagué hors de `main`
 - Mettre une branche feature à jour après une release : `git fetch origin && git merge origin/develop`
+- Fin de lot : `uv run inv clean-branches` liste les branches locales dont la pull request est fusionnée (`gh pr list --state merged`, qui reconnaît aussi un squash) et, après confirmation (o/N), les supprime en local puis sur `origin` si elles y sont encore, puis `git fetch --prune`. Une seule branche : `uv run inv delete-branch <nom>`, refusée sans pull request fusionnée sauf `--force`. `main`, `develop` et la branche courante ne sont jamais supprimées, même avec `--force`.
+- Réglage GitHub `delete-branch-on-merge` (`gh repo edit AntoanetaStoyanova/cartograph --delete-branch-on-merge`) : GitHub supprime la branche distante à la fusion ; `inv clean-branches` ne retire alors que la branche locale.
 - Les specs et plans de `docs/` ne sont pas suivis par Git : `git clean -fdx` les effacerait, il est interdit
 - Format des commits — **Conventional Commits**, vérifié par le hook `commit-msg`. Chaque message devient une ligne du `CHANGELOG.md` : l'écrire pour être relu.
 
