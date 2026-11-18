@@ -102,7 +102,7 @@ uv run inv hooks       # installe le hook pre-commit
 - Si un contrôle corrige un fichier, le commit est refusé : relire la correction, `git add`, recommencer le commit.
 - « Stashing unstaged files » : les modifications hors du commit sont mises de côté pendant les contrôles, puis remises.
 - `git commit --no-verify` saute les contrôles pour un commit de travail ; ils restent dus avant la pull request.
-- `tests/fixtures/` (réponses enregistrées de l'API) n'est jamais modifié.
+- Les réponses d'API enregistrées dans `tests/fixtures/` gardent leur structure ; leurs prix sont fictifs (`4000 + n + 0.37`, vérifié par `tests/test_fixtures_prices.py`).
 
 Avant une pull request, depuis la branche `feature/…` :
 
@@ -228,6 +228,14 @@ uv run inv rebuild --skip-download  # dbt build sur les snapshots déjà présen
 - `!` après le type (`feat!:`) marque un changement cassant : mineure tant que la version est en 0.x
 - Une release ne contenant que `docs`, `test` ou `chore` ne crée pas de version ; ces commits partent dans la suivante
 - `bump:` est réservé au commit créé par `inv release`
+
+---
+
+## Invariants
+
+- Aucun prix réel dans un fichier commité : les fixtures publiques n'ont que des prix fictifs.
+- Aucun prix dans le résumé de collecte ni dans les logs : seulement identifiants, nombres et messages d'erreur, comme `run.py` et `client.py`.
+- Les options de `cartograph.bin.collect.run`, `report` et `manifest`, et le format du résumé et du manifeste, sont un contrat avec le workflow `Collecte` de `cartograph-data` : vérifier les commandes de `../cartograph-data/.github/workflows/collect.yml` avant de les changer.
 
 ---
 
