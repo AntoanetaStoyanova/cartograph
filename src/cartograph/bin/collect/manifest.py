@@ -127,7 +127,8 @@ def main(argv: Sequence[str] | None = None) -> int:
 
 def _release(name: str, day: str) -> str:
     """Release où le workflow envoie le fichier, même règle que ``collect.yml``."""
-    if name.startswith(("cards-", "sets-", "new-cards-")) and name.endswith(".parquet"):
+    public = ("cards-", "sets-", "new-cards-", "card-changes-")
+    if name.startswith(public) and name.endswith(".parquet"):
         return _PUBLIC_RELEASE
     return f"cartograph-prices/data-{day[:7]}"
 

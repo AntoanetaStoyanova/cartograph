@@ -23,6 +23,13 @@ _STEP_NAMES = {
     "prices": "Prix",
 }
 _STATUSES = {"ok": "✅ ok", "failed": "❌ échec"}
+_CHANGES = {
+    "new": "Nouvelles",
+    "updated": "Modifiées",
+    "removed": "Disparues",
+    "reappeared": "Revenues",
+    "rotated": "Relues",
+}
 
 
 def render_markdown(summary: CollectSummary) -> str:
@@ -37,7 +44,8 @@ def render_markdown(summary: CollectSummary) -> str:
     Returns
     -------
     str
-        Markdown : durée, tableau des étapes, détails des étapes, fichiers écrits.
+        Markdown : durée, tableau des étapes, changements du catalogue, détails
+        des étapes, fichiers écrits.
 
     Examples
     --------
@@ -69,6 +77,8 @@ def render_markdown(summary: CollectSummary) -> str:
             f" | {_count(len(step['failed']))}"
             f" | {_count(step['skipped_without_id_product'])} |"
         )
+    for step in steps.values():
+        lines += _changes(step)
     for name, step in steps.items():
         lines += _details(_STEP_NAMES.get(name, name), step)
     files = [file for step in steps.values() for file in step["files"]]
@@ -123,6 +133,23 @@ def _details(label: str, step: StepSummary) -> list[str]:
         more = f" … et {rest} autres" if rest > 0 else ""
         details.append(f"- Cartes en échec ({len(failed)}) : {shown}{more}")
     return ["", f"### {label}", "", *details] if details else []
+
+
+def _changes(step: StepSummary) -> list[str]:
+    """Tableau des changements du catalogue, vide si l'étape n'en compte pas."""
+    changes = step.get("changes")
+    if not changes:
+        return []
+    header = " | ".join(_CHANGES.values())
+    counts = " | ".join(_count(changes.get(key, 0)) for key in _CHANGES)
+    return [
+        "",
+        "### Changements du catalogue",
+        "",
+        f"| {header} |",
+        "|" + " ---: |" * len(_CHANGES),
+        f"| {counts} |",
+    ]
 
 
 def _duration(started_at: str, finished_at: str) -> str:

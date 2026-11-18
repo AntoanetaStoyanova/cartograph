@@ -1,5 +1,5 @@
 from collections.abc import Mapping, Sequence
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -20,6 +20,7 @@ from cartograph.bin.collect.snapshot import (
     card_table,
     catalogue_table,
     price_table,
+    read_catalogue,
     write_parquet,
 )
 from tests.conftest import load_fixture
@@ -44,14 +45,14 @@ def price_targets(
 
 def _catalogue_file(
     tmp_path: Path, catalogues: Mapping[str, Sequence[dict[str, Any]]]
-) -> Path:
+) -> pa.Table:
     table = pa.concat_tables(
         card_table(cards, language, FETCHED_AT)
         for language, cards in catalogues.items()
     )
     path = tmp_path / "cards-2026-10-28.parquet"
     write_parquet(table, path, SORT_BY)
-    return path
+    return read_catalogue(path)
 
 
 def test_price_targets_deduplicates_european_products() -> None:
@@ -96,16 +97,16 @@ def test_fetch_prices_returns_one_record_per_target(
 
     result = fetch_prices(tcgdex_client, targets)
 
-    assert [(r["language"], r["card_id"]) for r in result.items] == [
+    assert [(r["language"], r["card_id"]) for r in result.prices.items] == [
         ("fr", "exu-%3F"),
         ("fr", "pop9-1"),
         ("fr", "swsh3-136"),
         ("ja", "S7D-019"),
         ("ja", "SV7-065"),
     ]
-    assert result.items[2]["id_product"] == 483559
-    assert result.items[2]["pricing"] == load_fixture("fr_swsh3-136")["pricing"]
-    assert result.failed == []
+    assert result.prices.items[2]["id_product"] == 483559
+    assert result.prices.items[2]["pricing"] == load_fixture("fr_swsh3-136")["pricing"]
+    assert result.prices.failed == []
 
 
 def test_fetch_prices_sets_fetched_at_in_utc(tcgdex_client: TcgdexClient) -> None:
@@ -116,8 +117,22 @@ def test_fetch_prices_sets_fetched_at_in_utc(tcgdex_client: TcgdexClient) -> Non
         tcgdex_client, targets, now=lambda: datetime(2026, 10, 28, 9, 30, tzinfo=paris)
     )
 
-    assert result.items[0]["fetched_at"] == "2026-10-28T08:30:00+00:00"
-    assert datetime.fromisoformat(result.items[0]["fetched_at"]).tzinfo == UTC
+    assert result.prices.items[0]["fetched_at"] == "2026-10-28T08:30:00+00:00"
+    assert datetime.fromisoformat(result.prices.items[0]["fetched_at"]).tzinfo == UTC
+
+
+def test_fetch_prices_keeps_cards_read(tcgdex_client: TcgdexClient) -> None:
+    targets = [
+        PriceTarget("fr", "swsh3-136", 483559),
+        PriceTarget("ja", "SV7-065", 779079),
+    ]
+
+    result = fetch_prices(tcgdex_client, targets)
+
+    assert result.cards == {
+        "fr": [load_fixture("fr_swsh3-136")],
+        "ja": [load_fixture("ja_SV7-065")],
+    }
 
 
 def test_price_targets_from_catalogue_filters_requested_languages(
@@ -182,6 +197,26 @@ def test_price_targets_from_catalogue_without_requested_language(
     assert selection == PriceSelection(
         targets=[], missing_languages=["en", "ja"], skipped_without_id_product=0
     )
+
+
+def test_price_targets_from_catalogue_ignores_removed_cards(tmp_path: Path) -> None:
+    catalogue = _catalogue_file(
+        tmp_path,
+        {"fr": [load_fixture("fr_swsh3-136"), load_fixture("fr_pop9-1")]},
+    )
+    removed_on = [
+        date(2026, 11, 17) if card_id == "pop9-1" else None
+        for card_id in catalogue.column("card_id").to_pylist()
+    ]
+    catalogue = catalogue.set_column(
+        catalogue.schema.get_field_index("removed_on"),
+        "removed_on",
+        pa.array(removed_on, pa.date32()),
+    )
+
+    selection = price_targets_from_catalogue(catalogue, ["fr"])
+
+    assert selection.targets == [PriceTarget("fr", "swsh3-136", 483559)]
 
 
 def test_price_targets_from_catalogue_without_languages(tmp_path: Path) -> None:
@@ -258,7 +293,7 @@ def test_prices_from_cards_matches_fetch_prices(tcgdex_client: TcgdexClient) -> 
     }
     targets = price_targets_from_table(catalogue_table(cards, FETCHED_AT))
 
-    fetched = fetch_prices(tcgdex_client, targets, now=lambda: FETCHED_AT)
+    fetched = fetch_prices(tcgdex_client, targets, now=lambda: FETCHED_AT).prices
     derived = prices_from_cards(cards, targets, FETCHED_AT)
 
     assert derived == fetched

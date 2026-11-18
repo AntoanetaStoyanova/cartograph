@@ -7,6 +7,7 @@ jamais laisser de fichier à moitié écrit.
 """
 
 import gzip
+import hashlib
 import json
 import logging
 import os
@@ -68,14 +69,24 @@ CARD_SCHEMA = pa.schema(
         ("id_product", pa.int64()),
         ("updated", _UTC_TIMESTAMP),
         ("fetched_at", _UTC_TIMESTAMP),
+        ("fingerprint", pa.string()),
+        ("removed_on", pa.date32()),
         ("raw_json", pa.string()),
     ]
 )
 """
 Schéma des snapshots du catalogue : une ligne par carte et par langue, sans prix.
 
-``fetched_at`` est l'heure du début de l'étape, la même pour toutes les cartes :
-le catalogue est un instantané, publié en entier ou pas du tout.
+``fetched_at`` est l'heure de la dernière lecture de la fiche ; ``fingerprint``
+son empreinte (voir ``card_fingerprint``) ; ``removed_on`` la date où la carte a
+quitté les listes de l'API, nulle tant qu'elle y figure.
+"""
+
+CHANGE_SCHEMA = pa.schema([("change_type", pa.string()), *CARD_SCHEMA])
+"""
+Schéma des changements du catalogue d'un jour : la ligne du jour de chaque
+carte ``new``, ``updated``, ``removed`` ou ``reappeared`` ; une carte revenue et
+modifiée a deux lignes.
 """
 
 SET_SCHEMA = pa.schema(
@@ -116,6 +127,8 @@ class SnapshotPaths:
         Sets avec date de sortie, sans prix (Parquet).
     new_cards : Path
         Cartes absentes du dernier catalogue, sans prix (Parquet).
+    card_changes : Path
+        Changements du catalogue du jour, sans prix (Parquet).
     prices : Path
         Prix Cardmarket et TCGplayer (Parquet).
     raw_cards : Path
@@ -131,6 +144,7 @@ class SnapshotPaths:
     cards: Path
     sets: Path
     new_cards: Path
+    card_changes: Path
     prices: Path
     raw_cards: Path
     raw_new_cards: Path
@@ -164,6 +178,7 @@ def snapshot_paths(data_dir: Path, day: date) -> SnapshotPaths:
         cards=data_dir / "snapshots" / f"cards-{stamp}.parquet",
         sets=data_dir / "snapshots" / f"sets-{stamp}.parquet",
         new_cards=data_dir / "snapshots" / f"new-cards-{stamp}.parquet",
+        card_changes=data_dir / "snapshots" / f"card-changes-{stamp}.parquet",
         prices=data_dir / "snapshots" / f"prices-{stamp}.parquet",
         raw_cards=data_dir / "raw" / f"cards-{stamp}.json.gz",
         raw_new_cards=data_dir / "raw" / f"new-cards-{stamp}.json.gz",
@@ -172,7 +187,7 @@ def snapshot_paths(data_dir: Path, day: date) -> SnapshotPaths:
     )
 
 
-def latest_catalogue(snapshots_dir: Path) -> Path | None:
+def latest_catalogue(snapshots_dir: Path, before: date | None = None) -> Path | None:
     """
     Renvoie le snapshot du catalogue le plus récent.
 
@@ -180,14 +195,25 @@ def latest_catalogue(snapshots_dir: Path) -> Path | None:
     ----------
     snapshots_dir : Path
         Dossier des snapshots.
+    before : date | None, optional
+        Jour exclu, avec les suivants : une relance le même jour repart du
+        catalogue de la veille, pas de celui qu'elle remplace.
 
     Returns
     -------
     Path | None
         Dernier ``cards-AAAA-MM-JJ.parquet``, ``None`` s'il n'y en a aucun ;
-        les ``new-cards-*`` ne sont pas des catalogues complets.
+        les ``new-cards-*`` et ``card-changes-*`` ne sont pas des catalogues.
     """
-    return max(snapshots_dir.glob("cards-*.parquet"), default=None)
+    limit = None if before is None else f"cards-{before.isoformat()}.parquet"
+    return max(
+        (
+            path
+            for path in snapshots_dir.glob("cards-*.parquet")
+            if limit is None or path.name < limit
+        ),
+        default=None,
+    )
 
 
 def price_table(records: Sequence[dict[str, Any]]) -> pa.Table:
@@ -263,6 +289,65 @@ def strip_prices(card: dict[str, Any]) -> dict[str, Any]:
     return stripped
 
 
+def card_fingerprint(card: dict[str, Any]) -> str:
+    """
+    Calcule l'empreinte du contenu d'une fiche, hors prix et ``updated``.
+
+    ``updated`` change sans modification du contenu : il n'entre pas dans
+    l'empreinte. Une fiche de l'API et son ``raw_json`` décodé donnent la même
+    valeur.
+
+    Parameters
+    ----------
+    card : dict[str, Any]
+        Fiche de l'API, avec ou sans prix.
+
+    Returns
+    -------
+    str
+        SHA-256 hexadécimal du JSON trié de la fiche.
+
+    Examples
+    --------
+    >>> card_fingerprint({"id": "a", "updated": "x"}) == card_fingerprint({"id": "a"})
+    True
+    """
+    content = {
+        key: value for key, value in strip_prices(card).items() if key != "updated"
+    }
+    text = json.dumps(content, ensure_ascii=False, sort_keys=True)
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def read_catalogue(path: Path) -> pa.Table:
+    """
+    Lit un snapshot du catalogue au schéma ``CARD_SCHEMA``.
+
+    Un catalogue antérieur aux colonnes ``fingerprint`` et ``removed_on`` est
+    complété : empreinte calculée depuis ``raw_json``, ``removed_on`` nul.
+
+    Parameters
+    ----------
+    path : Path
+        Fichier ``cards-AAAA-MM-JJ.parquet``.
+
+    Returns
+    -------
+    pa.Table
+        Table au schéma ``CARD_SCHEMA``.
+    """
+    table = pq.read_table(path)
+    if "fingerprint" not in table.column_names:
+        fingerprints = [
+            card_fingerprint(json.loads(raw))
+            for raw in table.column("raw_json").to_pylist()
+        ]
+        table = table.append_column("fingerprint", pa.array(fingerprints, pa.string()))
+    if "removed_on" not in table.column_names:
+        table = table.append_column("removed_on", pa.nulls(table.num_rows, pa.date32()))
+    return table.select(CARD_SCHEMA.names).cast(CARD_SCHEMA)
+
+
 def card_table(
     cards: Sequence[dict[str, Any]], language: str, fetched_at: datetime
 ) -> pa.Table:
@@ -276,13 +361,14 @@ def card_table(
     language : str
         Langue des fiches.
     fetched_at : datetime
-        Début de l'étape du catalogue, converti en UTC (voir ``CARD_SCHEMA``).
+        Heure de lecture des fiches, convertie en UTC (voir ``CARD_SCHEMA``).
 
     Returns
     -------
     pa.Table
         Table au schéma ``CARD_SCHEMA`` ; ``id_product`` est lu avant le
-        retrait des prix, ``raw_json`` est la fiche sans prix.
+        retrait des prix, ``raw_json`` est la fiche sans prix, ``removed_on``
+        est nul.
     """
     fetched_at_utc = fetched_at.astimezone(UTC)
     rows = [
@@ -300,6 +386,8 @@ def card_table(
             "id_product": _card_id_product(card),
             "updated": _utc(card.get("updated")),
             "fetched_at": fetched_at_utc,
+            "fingerprint": card_fingerprint(card),
+            "removed_on": None,
             "raw_json": json.dumps(
                 strip_prices(card), ensure_ascii=False, sort_keys=True
             ),

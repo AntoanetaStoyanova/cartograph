@@ -32,24 +32,26 @@ cp .env.example .env
 
 ## État du projet
 
-- **En service** : collecte quotidienne des prix, des nouvelles cartes et des sets, collecte hebdomadaire du catalogue depuis [TCGdex](https://tcgdex.dev), en français, anglais et japonais (voir « Collecte » et « Collecte automatique ») ; base locale reconstruite avec dbt et DuckDB (voir « Base de données »).
+- **En service** : collecte quotidienne des prix, des sets et du catalogue (mis à jour chaque jour, cartes disparues gardées) depuis [TCGdex](https://tcgdex.dev), en français, anglais et japonais (voir « Collecte » et « Collecte automatique ») ; base locale reconstruite avec dbt et DuckDB (voir « Base de données »).
 - **À venir** : prix dans la base, identification d'une carte à partir d'une photo, modèle d'estimation du prix, application locale.
 - **Pilotage** : calendrier, rapports de suivi mensuels (`inv suivi`) et bilan Green IT dans [`docs/gouvernance/`](docs/gouvernance/).
 
 ## Collecte
 
 ```bash
-uv run inv collect                            # sets, nouvelles cartes puis prix, avec le dernier catalogue
-uv run inv collect --catalogue                # catalogue, sets puis prix
+uv run inv collect                            # sets, nouvelles cartes, prix puis mise à jour du dernier catalogue
+uv run inv collect --catalogue                # collecte complète du catalogue, sets puis prix
 uv run inv collect --catalogue --no-prices    # catalogue et sets
 uv run inv collect --languages fr,ja --data-dir /tmp/cartograph
 ```
 
 Les sorties vont dans `data/` (ignoré par Git), un fichier par jour, remplacé si on relance le même jour :
 
-- `data/snapshots/` : `cards-AAAA-MM-JJ.parquet` (catalogue), `sets-AAAA-MM-JJ.parquet` (sets avec date de sortie), `new-cards-AAAA-MM-JJ.parquet` (cartes absentes du dernier catalogue, seulement s'il y en a), tous trois sans aucun prix, et `prices-AAAA-MM-JJ.parquet` (prix du catalogue et des nouvelles cartes) ;
+- `data/snapshots/` : `cards-AAAA-MM-JJ.parquet` (catalogue complet, cartes disparues gardées avec `removed_on`), `card-changes-AAAA-MM-JJ.parquet` (cartes nouvelles, modifiées, disparues ou revenues du jour), `sets-AAAA-MM-JJ.parquet` (sets avec date de sortie), `new-cards-AAAA-MM-JJ.parquet` (cartes absentes du catalogue de la veille, seulement s'il y en a), tous sans aucun prix, et `prices-AAAA-MM-JJ.parquet` (prix du catalogue et des nouvelles cartes) ;
 - `data/raw/` : réponses brutes de l'API en JSON gzip, **prix compris : jamais publiées** ;
 - `data/runs/` : résumé `collect-AAAA-MM-JJ.json` (statut, nombres, fichiers écrits, sans prix).
+
+Sans `--catalogue`, le catalogue du jour est celui de la veille (le plus récent `cards-*` antérieur au jour) mis à jour : fiches reçues avec les prix, nouvelles cartes, et les 1 000 fiches les plus anciennement lues parmi les autres (option `--rotation N` de `python -m cartograph.bin.collect.run`, 0 pour aucune). Une fiche est modifiée si son empreinte (SHA-256 sans prix ni `updated`) change. Une carte absente des listes de l'API reçoit `removed_on` et reste au catalogue ; une fiche en échec garde sa ligne de la veille.
 
 Le code de sortie vaut 1 si une étape échoue. Un échec des sets ou des nouvelles cartes ne bloque ni le catalogue ni les prix. Les logs vont dans `logs/`.
 
@@ -58,10 +60,11 @@ Le code de sortie vaut 1 si une étape échoue. Un échec des sets ou des nouvel
 Le workflow `Collecte` du dépôt public [`cartograph-data`](https://github.com/AntoanetaStoyanova/cartograph-data) installe ce dépôt depuis `main` et lance la collecte. Il est déclenché chaque jour à 03:17 UTC par [cron-job.org](https://cron-job.org), qui appelle l'API GitHub `workflow_dispatch` : le cron de GitHub Actions ne garantit pas ses déclenchements. À chaque exécution :
 
 - sets chaque jour (`/<langue>/sets`, avec date de sortie, quelques minutes), après le catalogue s'il est collecté : un set sorti en semaine est daté le jour même ;
-- prix chaque jour (1 h à 1 h 30), avec le dernier catalogue publié : avant les prix, les listes de cartes de chaque langue sont comparées à ce catalogue et seules les fiches des cartes absentes sont téléchargées (`new_cards`), leurs prix tirés de ces fiches ;
-- le lundi (paramètre `catalogue` à `auto`), catalogue (2 h 30 à 3 h 15 selon les erreurs 503 de TCGdex), les prix étant lus dans les fiches du catalogue sans nouvel appel à l'API ;
+- prix chaque jour (1 h à 1 h 30), avec le dernier catalogue publié antérieur au jour : avant les prix, les listes de cartes de chaque langue sont comparées à ce catalogue et seules les fiches des cartes absentes sont téléchargées (`new_cards`), leurs prix tirés de ces fiches ;
+- catalogue chaque jour : celui de la veille mis à jour avec les fiches reçues par les prix, les nouvelles cartes et une rotation de 1 000 fiches (quelques minutes), puis `card-changes-*` ;
+- collecte complète du catalogue seulement à la main (paramètre `catalogue` à `oui`, 2 h 30 à 3 h 15 selon les erreurs 503 de TCGdex), pour un amorçage ou une réparation, les prix étant lus dans ses fiches ;
 - résumé écrit après chaque étape suivie d'une autre, puis à la fin : une exécution coupée pendant les sets, les nouvelles cartes ou les prix publie quand même ce qui est écrit ;
-- `cards-*`, `sets-*` et `new-cards-*.parquet` publiés dans la Release `catalogue` de `cartograph-data` ;
+- `cards-*`, `card-changes-*`, `sets-*` et `new-cards-*.parquet` publiés dans la Release `catalogue` de `cartograph-data`, qui ne garde que le `cards-*` le plus récent et ceux des lundis ;
 - prix et brut envoyés dans la Release `data-AAAA-MM` du dépôt privé `cartograph-prices` (secret `PRICES_TOKEN`) ;
 - résumé et log gardés 7 jours en artefact, sans aucun prix ;
 - manifeste `manifest/AAAA/AAAA-MM-JJ.json` commité dans `cartograph-data`, même si la collecte échoue : statut des étapes, fichiers envoyés (Release, lignes, octets, SHA-256) et taille du dépôt, sans aucun prix. Il est calculé avant les envois et donne la Release de chaque fichier ; `sha256sum` d'un fichier téléchargé doit redonner son `sha256`.
@@ -73,7 +76,7 @@ Surveillance :
 - GitHub envoie un e-mail quand une exécution échoue.
 - cron-job.org envoie un e-mail quand son appel échoue ou que la tâche est désactivée.
 
-Relance manuelle : onglet *Actions* de `cartograph-data`, `Collecte`, *Run workflow* (options `catalogue` : `auto` le lundi, `oui` ou `non` pour forcer ; `prices`, `languages`, `code_ref`). Un lundi, `auto` relance aussi le catalogue : choisir `non` pour les prix seuls. Relancer le même jour remplace les fichiers du jour. Une exécution sans `catalogue` reprend le dernier catalogue publié.
+Relance manuelle : onglet *Actions* de `cartograph-data`, `Collecte`, *Run workflow* (options `catalogue` : `non` par défaut, `oui` pour la collecte complète ; `prices`, `languages`, `code_ref`). Relancer le même jour remplace les fichiers du jour et repart du catalogue de la veille.
 
 ## Base de données
 

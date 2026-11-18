@@ -13,7 +13,7 @@ from cartograph.bin.collect import batch, run
 from cartograph.bin.collect.client import TcgdexClient
 from cartograph.bin.collect.run import collect, main
 from cartograph.bin.collect.snapshot import snapshot_paths
-from cartograph.config import LANGUAGES
+from cartograph.config import LANGUAGES, ROTATION_SIZE
 from tests.conftest import fixture_route, load_fixture, mock_client, price_values
 
 DAY = date(2026, 10, 28)
@@ -102,7 +102,7 @@ def test_collect_interrupted_prices_keep_catalogue_summary(
 
 @pytest.mark.parametrize(
     ("catalogue", "prices", "writes"),
-    [(True, True, 3), (True, False, 2), (False, True, 3)],
+    [(True, True, 3), (True, False, 2), (False, True, 4)],
 )
 def test_collect_writes_summary_after_each_step(
     tcgdex_client: TcgdexClient,
@@ -423,7 +423,8 @@ def test_collect_prices_uses_latest_catalogue(
     summary = _collect(tcgdex_client, tmp_path, catalogue=False)
 
     steps = _steps(summary)
-    assert steps["catalogue"]["status"] == "skipped"
+    assert steps["catalogue"]["status"] == "ok"
+    assert steps["catalogue"]["source"] == "cards-2026-10-25.parquet"
     assert steps["prices"]["status"] == "ok"
     assert steps["prices"]["source"] == "cards-2026-10-25.parquet"
     assert pq.read_table(snapshot_paths(tmp_path, DAY).prices).num_rows == 5
@@ -699,9 +700,20 @@ def fake_collect(
 
 
 def test_main_parses_options(fake_collect: dict[str, Any], tmp_path: Path) -> None:
-    code = main(["--catalogue", "--languages", "fr, ja", "--data-dir", str(tmp_path)])
+    code = main(
+        [
+            "--catalogue",
+            "--languages",
+            "fr, ja",
+            "--rotation",
+            "250",
+            "--data-dir",
+            str(tmp_path),
+        ]
+    )
 
     assert code == 0
+    assert fake_collect["rotation"] == 250
     assert fake_collect["catalogue"] is True
     assert fake_collect["prices"] is True
     assert fake_collect["languages"] == ("fr", "ja")
@@ -715,6 +727,7 @@ def test_main_defaults(fake_collect: dict[str, Any]) -> None:
     assert fake_collect["catalogue"] is False
     assert fake_collect["prices"] is True
     assert fake_collect["languages"] == LANGUAGES
+    assert fake_collect["rotation"] == ROTATION_SIZE
     assert fake_collect["data_dir"] == run.DATA_DIR
 
 
@@ -726,7 +739,13 @@ def test_main_returns_one_when_a_step_fails(fake_collect: dict[str, Any]) -> Non
 
 @pytest.mark.parametrize(
     "argv",
-    [["--languages", "fr,de"], ["--languages", ","], ["--no-prices"]],
+    [
+        ["--languages", "fr,de"],
+        ["--languages", ","],
+        ["--no-prices"],
+        ["--rotation", "-1"],
+        ["--rotation", "mille"],
+    ],
 )
 def test_main_rejects_invalid_options(
     fake_collect: dict[str, Any], argv: list[str]
@@ -736,3 +755,182 @@ def test_main_rejects_invalid_options(
 
     assert exit_info.value.code == 2
     assert "data_dir" not in fake_collect
+
+
+def _rows(path: Path) -> dict[tuple[str, str], dict[str, Any]]:
+    return {
+        (row["language"], row["card_id"]): row
+        for row in pq.read_table(path).to_pylist()
+    }
+
+
+def _changes(path: Path) -> list[tuple[str, str, str]]:
+    table = pq.read_table(path)
+    return sorted(
+        zip(
+            table.column("change_type").to_pylist(),
+            table.column("language").to_pylist(),
+            table.column("card_id").to_pylist(),
+            strict=True,
+        )
+    )
+
+
+def test_collect_daily_writes_catalogue_and_changes(tmp_path: Path) -> None:
+    _old_catalogue(tmp_path, "SV7-065")
+
+    with mock_client(fixture_route) as client:
+        summary = _collect(client, tmp_path, catalogue=False)
+
+    paths = snapshot_paths(tmp_path, DAY)
+    catalogue = _steps(summary)["catalogue"]
+    assert catalogue["status"] == "ok"
+    assert [f["name"] for f in catalogue["files"]] == [
+        paths.cards.name,
+        paths.card_changes.name,
+    ]
+    assert catalogue["changes"] == {
+        "new": 1,
+        "updated": 0,
+        "removed": 0,
+        "reappeared": 0,
+        "rotated": 4,
+    }
+    assert pq.read_table(paths.cards).num_rows == 9
+    assert _changes(paths.card_changes) == [("new", "ja", "SV7-065")]
+
+
+def test_collect_daily_failed_price_card_keeps_previous_row(tmp_path: Path) -> None:
+    old_day = date(2026, 10, 25)
+    with mock_client(fixture_route) as client:
+        _collect(client, tmp_path, day=old_day, prices=False)
+
+    with mock_client(_down("/v2/fr/cards/pop9-1")) as client:
+        _collect(client, tmp_path, catalogue=False)
+
+    old = _rows(snapshot_paths(tmp_path, old_day).cards)
+    rows = _rows(snapshot_paths(tmp_path, DAY).cards)
+    assert rows[("fr", "pop9-1")] == old[("fr", "pop9-1")]
+    assert (
+        rows[("fr", "swsh3-136")]["fetched_at"] > old[("fr", "swsh3-136")]["fetched_at"]
+    )
+
+
+def test_collect_daily_marks_removed_card_and_skips_its_price(tmp_path: Path) -> None:
+    with mock_client(fixture_route) as client:
+        _collect(client, tmp_path, day=date(2026, 10, 25), prices=False)
+
+    with mock_client(_without("pop9-1")) as client:
+        summary = _collect(client, tmp_path, catalogue=False)
+
+    paths = snapshot_paths(tmp_path, DAY)
+    rows = _rows(paths.cards)
+    assert rows[("fr", "pop9-1")]["removed_on"] == DAY
+    assert rows[("en", "pop9-1")]["removed_on"] == DAY
+    assert len(rows) == 9
+    assert _changes(paths.card_changes) == [
+        ("removed", "en", "pop9-1"),
+        ("removed", "fr", "pop9-1"),
+    ]
+    assert _steps(summary)["prices"]["fetched"] == 4
+    assert _steps(summary)["prices"]["failed"] == []
+
+
+def test_collect_daily_rotation_reads_oldest_cards_outside_prices(
+    tmp_path: Path,
+) -> None:
+    with mock_client(fixture_route) as client:
+        _collect(client, tmp_path, day=date(2026, 10, 25), prices=False)
+    requested: list[str] = []
+
+    def recording(request: httpx.Request) -> httpx.Response:
+        requested.append(request.url.path)
+        return fixture_route(request)
+
+    with mock_client(recording) as client:
+        summary = collect(
+            client, tmp_path, False, True, LANGUAGES, now=_clock(), rotation=1
+        )
+
+    catalogue = _steps(summary)["catalogue"]
+    assert catalogue["fetched"] == 1
+    assert catalogue["changes"]["rotated"] == 1
+    assert requested.count("/v2/ja/cards/PMCG6-055") == 1
+    assert "/v2/en/cards/exu-%253F" not in requested
+
+
+def test_collect_daily_without_rotation_reads_only_prices(tmp_path: Path) -> None:
+    with mock_client(fixture_route) as client:
+        _collect(client, tmp_path, day=date(2026, 10, 25), prices=False)
+
+    with mock_client(fixture_route) as client:
+        summary = collect(
+            client, tmp_path, False, True, LANGUAGES, now=_clock(), rotation=0
+        )
+
+    catalogue = _steps(summary)["catalogue"]
+    assert catalogue["status"] == "ok"
+    assert catalogue["fetched"] == 0
+    assert catalogue["changes"]["rotated"] == 0
+
+
+def test_collect_catalogue_day_failed_card_keeps_previous_row(tmp_path: Path) -> None:
+    old_day = date(2026, 10, 25)
+    with mock_client(fixture_route) as client:
+        _collect(client, tmp_path, day=old_day, prices=False)
+
+    with mock_client(_down("/v2/ja/cards/S7D-019")) as client:
+        summary = _collect(client, tmp_path, prices=False)
+
+    paths = snapshot_paths(tmp_path, DAY)
+    catalogue = _steps(summary)["catalogue"]
+    assert catalogue["failed"] == ["ja/S7D-019"]
+    assert catalogue["source"] == "cards-2026-10-25.parquet"
+    old = _rows(snapshot_paths(tmp_path, old_day).cards)
+    assert _rows(paths.cards)[("ja", "S7D-019")] == old[("ja", "S7D-019")]
+    assert _changes(paths.card_changes) == []
+
+
+def test_collect_same_day_rerun_starts_from_previous_catalogue(tmp_path: Path) -> None:
+    _old_catalogue(tmp_path, "SV7-065")
+
+    with mock_client(fixture_route) as client:
+        _collect(client, tmp_path, catalogue=False)
+        summary = _collect(client, tmp_path, catalogue=False)
+
+    paths = snapshot_paths(tmp_path, DAY)
+    assert _steps(summary)["catalogue"]["source"] == "cards-2026-10-25.parquet"
+    assert _changes(paths.card_changes) == [("new", "ja", "SV7-065")]
+
+
+def test_collect_two_daily_runs_chain_catalogues(tmp_path: Path) -> None:
+    _old_catalogue(tmp_path, "SV7-065")
+    first, second = date(2026, 10, 26), date(2026, 10, 27)
+    corrected = _with_card("/v2/fr/cards/swsh3-136", {"rarity": "Rare"})
+
+    with mock_client(fixture_route) as client:
+        _collect(client, tmp_path, day=first, catalogue=False)
+    with mock_client(corrected) as client:
+        summary = _collect(client, tmp_path, day=second, catalogue=False)
+
+    paths = snapshot_paths(tmp_path, second)
+    assert _steps(summary)["catalogue"]["source"] == "cards-2026-10-26.parquet"
+    assert _changes(paths.card_changes) == [("updated", "fr", "swsh3-136")]
+    rows = _rows(paths.cards)
+    assert len(rows) == 9
+    assert rows[("fr", "swsh3-136")]["rarity"] == "Rare"
+    assert rows[("ja", "SV7-065")]["removed_on"] is None
+
+
+def test_collect_daily_catalogue_leaks_no_price(tmp_path: Path) -> None:
+    _old_catalogue(tmp_path, "SV7-065")
+    prices = price_values([load_fixture(n) for names in CARDS.values() for n in names])
+
+    with mock_client(fixture_route) as client:
+        _collect(client, tmp_path, catalogue=False)
+
+    paths = snapshot_paths(tmp_path, DAY)
+    for path in [paths.cards, paths.card_changes]:
+        text = json.dumps(pq.read_table(path).to_pylist(), default=str)
+        assert not [price for price in prices if price in text]
+        assert "pricing" not in text
