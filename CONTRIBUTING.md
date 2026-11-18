@@ -161,7 +161,7 @@ dbt/
     └── marts/          # fct_, dim_, mart_ : tables lues par l'application
 ```
 
-Chaque modèle, analyse ou macro `<nom>.sql` a son fichier de propriétés `<nom>.yml` à côté (description, colonnes, tests) ; les sources sont déclarées dans `sources.yml`. Chaque colonne déclare son `data_type` ; les modèles ont un contrat (`contract: enforced: true`) : un type qui ne correspond plus fait échouer `dbt build`. Une règle de calcul (dernière version, `is_current`…) est couverte par un test unitaire dbt (`unit_tests:`, données en `format: sql`, car dbt-duckdb ne lit pas les colonnes d'une source externe). Les modèles de staging du catalogue (`staging/tcgdex/`) sont `stg_tcgdex__cards` (une ligne par carte et par langue, dernière version vue dans un catalogue complet ou un `new-cards`, `is_current` vrai si la carte est dans le dernier catalogue complet ou dans un `new-cards` postérieur) et `stg_tcgdex__sets` (une ligne par set et par langue, avec date de sortie et série, tirée des `sets-*.parquet`).
+Chaque modèle, analyse ou macro `<nom>.sql` a son fichier de propriétés `<nom>.yml` à côté (description, colonnes, tests) ; les sources sont déclarées dans `sources.yml`. Chaque colonne déclare son `data_type` ; les modèles ont un contrat (`contract: enforced: true`) : un type qui ne correspond plus fait échouer `dbt build`. Une règle de calcul (dernière version, `is_current`…) est couverte par un test unitaire dbt (`unit_tests:`, données en `format: sql`, car dbt-duckdb ne lit pas les colonnes d'une source externe). Les modèles de staging du catalogue (`staging/tcgdex/`) sont `stg_tcgdex__cards` (une ligne par carte et par langue, dernière version vue dans un catalogue `cards-*` ou un `new-cards`, `is_current` vrai si la carte est sans `removed_on` dans le dernier catalogue ou dans un `new-cards` postérieur) et `stg_tcgdex__sets` (une ligne par set et par langue, avec date de sortie et série, tirée des `sets-*.parquet`).
 
 ### Standard SQL
 
@@ -186,7 +186,7 @@ Le reste (alias manquant, `group by 1`, nom de colonne réservé) se corrige à 
 uv run inv dbt                    # dbt build sur data/snapshots/
 uv run inv dbt --sample           # dbt build sur l'échantillon, base data/cartograph.sample.duckdb
 uv run inv dbt --args debug       # autre commande dbt (debug, docs generate…)
-uv run inv dbt --args "show --select catalogue_changes"  # changements du catalogue par semaine
+uv run inv dbt --args "show --select catalogue_changes"  # changements entre catalogues successifs
 ```
 
 La source `tcgdex.cards` lit `*cards-*.parquet` (catalogues complets `cards-` et nouvelles cartes `new-cards-`, distingués par la macro `is_new_cards`) et la source `tcgdex.sets` lit `sets-*.parquet`, dans le dossier de la variable dbt `snapshot_dir` (`data/snapshots` par défaut) ; la date du snapshot vient de la fin du nom du fichier (macro `snapshot_date`). Chaque motif doit trouver au moins un fichier, sinon `read_parquet` échoue. `inv dbt --sample` la fait pointer vers `dbt/sample/snapshots/` et écrit dans `data/cartograph.sample.duckdb` : c'est ce que lancent `inv ci`, `inv finish` et `inv release`, sans `data/snapshots/` ni appel aux APIs, et sans toucher à `data/cartograph.duckdb`. L'échantillon ne contient que du catalogue public, jamais de prix ; si le schéma des snapshots change, le régénérer avec la recette de `dbt/sample/README.md`.

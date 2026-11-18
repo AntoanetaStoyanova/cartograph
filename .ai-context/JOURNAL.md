@@ -20,7 +20,7 @@
 
 ---
 
-## [2026-11-18] — CI-04 livré, COL-05 livré
+## [2026-11-18] — CI-04 et COL-05 livrés, audit, removed_on dans dbt
 
 ### Fait
 
@@ -52,10 +52,12 @@
 - Plan lot-sto-01-manifeste clos : SHA-256 de `cards-2026-11-16.parquet` (Release `catalogue`) identique à celui du manifeste du 16/11 ; dernier critère de la spec coché, plan et spec à `fait`.
 - `/audit` (tout le dépôt) : 26 trouvailles CRITICAL/WARN confirmées, 1 à vérifier (prix perdus après une panne → choix B : écrire le partiel), `clean-branches` sorti du périmètre (commande manuelle). Entrée ajoutée dans `.ai-context/CURRENT.md`. Plan et spec `fix-audit-2026-11-18` rédigés (3 étapes : dbt et `removed_on` avec `union_by_name`, collecte, tests et doc).
 
+- Plan fix-audit-2026-11-18 — Étape 1 : dbt et `removed_on`. `sources.yml` (`union_by_name = true`, `fingerprint`, `removed_on`, `fetched_at`, `raw_json`) ; `stg_tcgdex__cards` (`is_current` exige `removed_on is null`, `last_seen_on` = dernier fichier où la carte est présente, colonne `removed_on`, test unitaire `reads_removed_on`) ; `catalogue_changes` (retraits et retours par `removed_on`, juste avant et après COL-05) ; doc README, CONTRIBUTING, `.yml`. Échantillon : `dbt/sample/snapshots/cards-2026-11-18.parquet` construit (aucun `cards-*` post-COL-05 en local), `removed_on` posé sur `fr` `hgss3-1` ; décision dans la spec. `inv ci` (378 tests, dbt 18/18) et `inv okflint` verts. Plan et spec passés à `en cours`.
 ### Reste à faire
 
 - Vérifier le 19/11 que « Nettoyer les anciens catalogues » a supprimé `cards-2026-11-18.parquet` de la Release `catalogue` (seul critère vérifié à blanc).
-- Plan `fix-audit-2026-11-18` : Antoaneta crée `feature/fix-audit-2026-11-18` depuis `develop`, puis étape 1 (dbt et `removed_on`, échantillon dbt à régénérer).
+- Étape 1 de fix-audit-2026-11-18, dernier point : `uv run inv rebuild` puis `uv run inv dbt` sur les vraies données (schémas mélangés).
+- Exécuter docs/plans/fix-audit-2026-11-18.md — Étape 2 : Collecte.
 - Planifier DBT-02 (staging des prix) au standard SQL : `/workspace-plan dbt-02`.
 - Avant la porte 1 : relire dans un navigateur les conditions de Cardmarket et de TCGplayer (veille).
 - Rapport de novembre à régénérer en fin de mois (`inv suivi --mois 2026-11 --force`, commentaire gardé), puis `statut: fait` ; mettre à jour les chiffres de `docs/gouvernance/green-it.md`. Chaque début de mois : `inv ci` puis `inv suivi`, commentaire.
@@ -73,3 +75,4 @@
 - `tasks/__init__.py`, `tests/test_tasks_finish.py`, `tests/test_tasks_branches.py`, `tests/test_tasks_clean.py`, `.clean`, `CONTRIBUTING.md`
 - docs/plans/roadmap-lots.md (DBT-T1)
 - docs/plans/fix-audit-2026-11-18.md, docs/specs/fix-audit-2026-11-18.md, `.ai-context/CURRENT.md` (audit du 18/11)
+- `dbt/models/staging/tcgdex/sources.yml`, `stg_tcgdex__cards.sql`, `stg_tcgdex__cards.yml`, `dbt/analyses/catalogue_changes.{sql,yml}`, `dbt/sample/`

@@ -5,6 +5,7 @@ source as (
     select
         language as language_code,
         card_id,
+        removed_on,
         json_merge_patch(raw_json, '{"updated": null}') as card_json,
         {{ snapshot_date('filename') }} as snapshot_date
     from {{ source('tcgdex', 'cards') }}
@@ -48,8 +49,10 @@ compared as (
         coalesce(curr.snapshot_date, prev.next_date) as snapshot_date,
         coalesce(curr.previous_date, prev.snapshot_date) as previous_date,
         coalesce(curr.language_code, prev.language_code) as language_code,
-        prev.card_id is null as is_added,
-        curr.card_id is null as is_removed,
+        curr.removed_on is null
+        and (prev.card_id is null or prev.removed_on is not null) as is_added,
+        prev.removed_on is null
+        and (curr.card_id is null or curr.removed_on is not null) as is_removed,
         prev.card_json <> curr.card_json as is_modified
     from current_cards as curr
     full outer join previous_cards as prev
