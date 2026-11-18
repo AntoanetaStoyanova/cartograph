@@ -38,7 +38,7 @@ from cartograph.bin.collect import (
     StepSummary,
     skipped_step,
 )
-from cartograph.bin.collect.catalogue import fetch_catalogue, new_card_ids
+from cartograph.bin.collect.catalogue import fetch_catalogue, listing_diff
 from cartograph.bin.collect.client import TcgdexClient, TcgdexError
 from cartograph.bin.collect.prices import (
     PriceTarget,
@@ -55,6 +55,7 @@ from cartograph.bin.collect.snapshot import (
     catalogue_table,
     latest_catalogue,
     price_table,
+    read_catalogue,
     set_table,
     snapshot_paths,
     write_json,
@@ -426,7 +427,8 @@ def _collect_new_cards(
     report = skipped_step()
     report["source"] = source.name
     try:
-        for language, card_ids in new_card_ids(client, languages, source).items():
+        diff = listing_diff(client, languages, read_catalogue(source))
+        for language, card_ids in diff.new.items():
             if card_ids:
                 result = fetch_catalogue(client, language, card_ids)
                 cards[language] = result.items
