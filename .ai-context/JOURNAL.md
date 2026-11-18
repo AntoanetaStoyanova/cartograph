@@ -20,7 +20,7 @@
 
 ---
 
-## [2026-11-18] — CI-04 livré, COL-05 planifié
+## [2026-11-18] — CI-04 livré, COL-05 Étape 1
 
 ### Fait
 
@@ -39,11 +39,13 @@
 - Plan optimisation-collecte clos (PR, release et exécution `catalogue=oui` faites, confirmé par Antoaneta) ; plan et spec à `fait`.
 - Discussion collecte (catalogues du 9 et du 16/11, API) puis `docs/specs/collecte-incrementale.md` et `docs/plans/collecte-incrementale.md` créés (lot COL-05, 7 étapes). Décisions actées dans la spec : collecte complète du lundi supprimée (manuelle seulement), empreinte SHA-256 sans `pricing` ni `updated`, fiches des prix réutilisées, rotation de 1 000 fiches par jour, `removed_on` sans suppression, fiche en échec = ligne de la veille, cartes sans `idProduct` gardées sans prédiction, Release `catalogue` : dernier `cards-*` et ceux des lundis + `card-changes-*` quotidien.
 
+- Plan collecte-incrementale — Étape 1 : Empreinte et schéma du catalogue. `snapshot.py` : `card_fingerprint` (SHA-256 du JSON trié sans `pricing` ni `updated`), `CARD_SCHEMA` + `fingerprint` et `removed_on` (avant `raw_json`), `card_table` les remplit, `read_catalogue` complète un catalogue antérieur depuis `raw_json`. `tests/test_collect_snapshot.py` (6 tests). Vérifié : 20 fiches de `cards-2026-11-16.parquet` sur 20 ont la même empreinte que l'API, 59 400 lignes complétées en 7 s ; DuckDB lit un mélange d'anciens et de nouveaux `cards-*` sans erreur (`union_by_name` plus tard, consigné dans la spec). Spec à `en cours`.
+- Retiré du « Reste à faire » : la décision du catalogue complet du lundi (COL-04), remplacée par COL-05.
+
 ### Reste à faire
 
-- Exécuter docs/plans/collecte-incrementale.md — Étape 1 : Empreinte et schéma du catalogue (branche `feature/col-05-catalogue-incremental`).
+- Exécuter docs/plans/collecte-incrementale.md — Étape 2 : Listes : nouvelles, disparues, revenues (branche `feature/col-05-catalogue-incremental`).
 - Planifier DBT-02 (staging des prix) au standard SQL : `/workspace-plan dbt-02`.
-- Décision d'Antoaneta : collecte complète du catalogue gardée le lundi (corrections de fiches, ex. 36 raretés provisoires de M6 corrigées par TCGdex le 12/11) et contrôle quotidien des nouvelles cartes dans COL-04 (3 listes `/<langue>/cards` comparées au dernier catalogue, seules les fiches nouvelles téléchargées, prix dès le jour même). Ordre proposé : DBT-01 → CI-02 → COL-04 → DBT-02 ; à vérifier dans la spec COL-04 : l'API ne donne-t-elle que le prix du jour (premiers jours d'un set irrattrapables) ?
 - Corriger le logger de `cartograph.bin.collect.run` (`__name__` vaut `__main__` sous `-m`) : petit `fix` à part.
 - Avant la porte 1 : relire dans un navigateur les conditions de Cardmarket et de TCGplayer (veille).
 - Rapport de novembre à régénérer en fin de mois (`inv suivi --mois 2026-11 --force`, commentaire gardé), puis `statut: fait` ; mettre à jour les chiffres de `docs/gouvernance/green-it.md`. Chaque début de mois : `inv ci` puis `inv suivi`, commentaire.
@@ -55,6 +57,7 @@
 ### Références
 
 - ../docs/specs/collecte-incrementale.md, ../docs/plans/collecte-incrementale.md
+- `src/cartograph/bin/collect/snapshot.py`, `tests/test_collect_snapshot.py`
 - docs/plans/ci-04-alerte-version-finish.md, docs/specs/ci-04-alerte-version-finish.md
 - docs/plans/fix-fixtures-prix-fictifs.md, docs/specs/fix-fixtures-prix-fictifs.md
 - `tasks/__init__.py`, `tests/test_tasks_finish.py`, `tests/test_tasks_branches.py`, `tests/test_tasks_clean.py`, `.clean`, `CONTRIBUTING.md`
