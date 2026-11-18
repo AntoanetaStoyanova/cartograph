@@ -29,6 +29,9 @@ MAX_CONSECUTIVE_FAILURES : int
     Nombre de cartes en échec d'affilée (hors 404) qui arrête une collecte.
 PROGRESS_EVERY : int
     Nombre de cartes entre deux messages de progression.
+ROTATION_SIZE : int
+    Fiches hors prix relues chaque jour pour tenir le catalogue à jour, les
+    plus anciennes d'abord.
 DATA_DIR : pathlib.Path
     Dossier local des sorties de collecte (``snapshots/``, ``raw/``,
     ``runs/``), ignoré par Git.
@@ -106,6 +109,7 @@ MAX_RETRY_AFTER_S = 60.0
 RETRY_STATUSES: frozenset[int] = frozenset({429, 500, 502, 503, 504})
 MAX_CONSECUTIVE_FAILURES = 20
 PROGRESS_EVERY = 1000
+ROTATION_SIZE = 1000
 DATA_DIR = PROJECT_ROOT / "data"
 LOG_DIR = PROJECT_ROOT / "logs"
 SNAPSHOT_COMPRESSION = "zstd"

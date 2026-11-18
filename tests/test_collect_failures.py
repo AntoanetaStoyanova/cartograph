@@ -42,8 +42,9 @@ def test_fetch_prices_records_failed_card_and_continues() -> None:
     with mock_client(_fail_on("/pop9-1")) as client:
         result = fetch_prices(client, targets)
 
-    assert [r["card_id"] for r in result.items] == ["swsh3-136"]
-    assert result.failed == ["fr/pop9-1"]
+    assert [r["card_id"] for r in result.prices.items] == ["swsh3-136"]
+    assert result.prices.failed == ["fr/pop9-1"]
+    assert [card["id"] for card in result.cards["fr"]] == ["swsh3-136"]
 
 
 def test_fetch_catalogue_with_empty_list_returns_nothing() -> None:
@@ -72,11 +73,11 @@ def test_fetch_prices_logs_no_price(caplog: pytest.LogCaptureFixture) -> None:
     with mock_client(_fail_on("/pop9-1")) as client:
         result = fetch_prices(client, targets)
 
-    assert len(result.items) == 4
+    assert len(result.prices.items) == 4
     assert prices
     assert not any(price in caplog.text for price in prices)
     assert "en échec" in caplog.text
-    assert json.dumps(result.items[0]["pricing"]) not in caplog.text
+    assert json.dumps(result.prices.items[0]["pricing"]) not in caplog.text
 
 
 def test_list_card_ids_propagates_error() -> None:
@@ -145,5 +146,5 @@ def test_fetch_prices_failed_ids_keep_language() -> None:
     with mock_client(ja_down) as client:
         result = fetch_prices(client, targets)
 
-    assert [r["language"] for r in result.items] == ["fr"]
-    assert result.failed == ["ja/x-1"]
+    assert [r["language"] for r in result.prices.items] == ["fr"]
+    assert result.prices.failed == ["ja/x-1"]

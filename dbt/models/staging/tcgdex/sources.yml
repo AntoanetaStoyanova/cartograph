@@ -4,8 +4,9 @@ sources:
   - name: tcgdex
     description: >
       Snapshots publics de TCGdex, dans le dossier de la variable `snapshot_dir`, un fichier
-      `<préfixe>AAAA-MM-JJ.parquet` par jour : catalogue complet (`cards-`, le lundi),
-      nouvelles cartes (`new-cards-`, les autres jours s'il y en a), sets (`sets-`, chaque jour).
+      `<préfixe>AAAA-MM-JJ.parquet` par jour : catalogue complet (`cards-`, le lundi, chaque jour
+      depuis COL-05), nouvelles cartes (`new-cards-`, s'il y en a), sets (`sets-`, chaque jour).
+      `card-changes-` n'est pas encore lu (DBT-02).
     tables:
       - name: cards
         description: >

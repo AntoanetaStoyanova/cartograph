@@ -6,6 +6,7 @@ idProduct et donc le même prix.
 la première carte rencontrée pour chaque produit.
 - Résultat: ex 29 314 requêtes au lieu de 58 000.
 - les cartes sans idProduct sont ignorées et comptées
+- fetch_prices garde aussi les fiches reçues, comparées ensuite au catalogue.
 - le jour du catalogue, prices_from_cards lit les prix dans ses fiches, sans
 seconde passe sur l'API ; les autres jours, de même pour les nouvelles cartes.
 """
@@ -13,20 +14,16 @@ seconde passe sur l'API ; les autres jours, de même pour les nouvelles cartes.
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from pathlib import Path
 from typing import Any
 
 import pyarrow as pa
 import pyarrow.compute as pc
-import pyarrow.parquet as pq
 
 from cartograph.bin.collect import FetchResult
 from cartograph.bin.collect.batch import fetch_each
 from cartograph.bin.collect.catalogue import card_path
 from cartograph.bin.collect.client import TcgdexClient
 from cartograph.config import LANGUAGES
-
-_TARGET_COLUMNS = ["language", "card_id", "id_product"]
 
 
 @dataclass(frozen=True)
@@ -149,15 +146,16 @@ class PriceSelection:
 
 
 def price_targets_from_catalogue(
-    source: Path, languages: Sequence[str]
+    catalogue: pa.Table, languages: Sequence[str]
 ) -> PriceSelection:
     """
-    Lit un snapshot du catalogue et choisit les produits à interroger.
+    Choisit dans un catalogue les produits à interroger.
 
     Parameters
     ----------
-    source : Path
-        Fichier ``cards-AAAA-MM-JJ.parquet``.
+    catalogue : pa.Table
+        Catalogue au schéma ``snapshot.CARD_SCHEMA`` ; les cartes disparues
+        (``removed_on`` posé) sont ignorées.
     languages : Sequence[str]
         Langues dont les cartes sont gardées.
 
@@ -167,10 +165,14 @@ def price_targets_from_catalogue(
         Cibles des langues demandées, langues absentes du catalogue et cartes
         sans ``id_product`` ; cibles vides si aucune langue demandée n'y figure.
     """
-    table = pq.read_table(source, columns=_TARGET_COLUMNS)
-    available = set(table.column("language").unique().to_pylist())
-    table = table.filter(
-        pc.is_in(table.column("language"), pa.array(languages, type=pa.string()))
+    available = set(catalogue.column("language").unique().to_pylist())
+    table = catalogue.filter(
+        pc.and_(
+            pc.is_in(
+                catalogue.column("language"), pa.array(languages, type=pa.string())
+            ),
+            pc.is_null(catalogue.column("removed_on")),
+        )
     )
     return PriceSelection(
         targets=price_targets_from_table(table),
@@ -179,13 +181,34 @@ def price_targets_from_catalogue(
     )
 
 
+@dataclass(frozen=True)
+class PriceFetch:
+    """
+    Prix et fiches lus par ``fetch_prices``.
+
+    Attributes
+    ----------
+    prices : FetchResult
+        Enregistrements de prix et cibles en échec.
+    cards : dict[str, list[dict[str, Any]]]
+        Fiches complètes reçues, prix compris, par langue dans l'ordre des
+        cibles ; une cible en échec n'a pas de fiche.
+    """
+
+    prices: FetchResult
+    cards: dict[str, list[dict[str, Any]]]
+
+
 def fetch_prices(
     client: TcgdexClient,
     targets: Sequence[PriceTarget],
     now: Callable[[], datetime] = lambda: datetime.now(UTC),
-) -> FetchResult:
+) -> PriceFetch:
     """
-    Récupère les prix de chaque cible.
+    Récupère les prix de chaque cible et garde les fiches reçues.
+
+    La réponse est la fiche complète : la garder évite une seconde lecture
+    pour tenir le catalogue à jour.
 
     Parameters
     ----------
@@ -198,11 +221,12 @@ def fetch_prices(
 
     Returns
     -------
-    FetchResult
-        Un enregistrement ``{"language", "card_id", "id_product",
+    PriceFetch
+        ``prices`` : un enregistrement ``{"language", "card_id", "id_product",
         "fetched_at", "pricing"}`` par cible, ``fetched_at`` en UTC
         ISO 8601 et ``pricing`` brut, et les cibles en échec au format
-        ``langue/identifiant`` (une carte peut exister dans plusieurs langues).
+        ``langue/identifiant`` (une carte peut exister dans plusieurs langues) ;
+        ``cards`` : les fiches reçues.
 
     Raises
     ------
@@ -214,14 +238,21 @@ def fetch_prices(
     Une carte en échec est notée dans ``failed`` et la collecte continue.
     Aucune valeur de ``pricing`` n'est journalisée.
     """
-    return fetch_each(
+    cards: dict[str, list[dict[str, Any]]] = {}
+
+    def build(target: PriceTarget, card: dict[str, Any]) -> dict[str, Any]:
+        cards.setdefault(target.language, []).append(card)
+        return _price_record(target, card, now())
+
+    prices = fetch_each(
         client,
         targets,
         path=lambda target: card_path(target.language, target.card_id),
-        build=lambda target, card: _price_record(target, card, now()),
+        build=build,
         card_id=lambda target: f"{target.language}/{target.card_id}",
         label="prix",
     )
+    return PriceFetch(prices, cards)
 
 
 def prices_from_cards(

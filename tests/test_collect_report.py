@@ -81,3 +81,23 @@ def test_new_cards_step_is_named() -> None:
     markdown = render_markdown(make_summary(new_cards=new_cards))
 
     assert "| Nouvelles cartes | ✅ ok | 12 | 0 | 3 |" in markdown
+
+
+def test_catalogue_changes_are_shown() -> None:
+    changes = {
+        "new": 3,
+        "updated": 1250,
+        "removed": 2,
+        "reappeared": 0,
+        "rotated": 1000,
+    }
+    catalogue = make_step(fetched=1000, skipped_without_id_product=0, changes=changes)
+
+    markdown = render_markdown(make_summary(catalogue=catalogue))
+
+    assert "### Changements du catalogue" in markdown
+    assert "| 3 | 1 250 | 2 | 0 | 1 000 |" in markdown
+
+
+def test_no_changes_table_without_changes() -> None:
+    assert "Changements du catalogue" not in render_markdown(make_summary())

@@ -90,6 +90,10 @@ class StepSummary(TypedDict):
         des premiers résumés (28 octobre 2026).
     error : str | None
         Cause de l'échec de l'étape.
+    changes : dict[str, int]
+        Étape catalogue, depuis COL-05 : lignes ``new``, ``updated``,
+        ``removed``, ``reappeared`` du jour et fiches relues par la rotation
+        (``rotated``).
     """
 
     status: Literal["ok", "failed", "skipped"]
@@ -100,6 +104,7 @@ class StepSummary(TypedDict):
     source: str | None
     missing_languages: NotRequired[list[str]]
     error: str | None
+    changes: NotRequired[dict[str, int]]
 
 
 class CollectSummary(TypedDict):

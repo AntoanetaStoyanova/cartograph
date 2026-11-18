@@ -14,10 +14,12 @@ from cartograph.bin.collect.snapshot import (
     CARD_SCHEMA,
     PRICE_SCHEMA,
     _write_atomic,
+    card_fingerprint,
     card_table,
     catalogue_table,
     latest_catalogue,
     price_table,
+    read_catalogue,
     snapshot_paths,
     strip_prices,
     write_json_gz,
@@ -312,3 +314,79 @@ def test_catalogue_table_empty() -> None:
 
     assert table.schema == CARD_SCHEMA
     assert table.num_rows == 0
+
+
+def test_card_fingerprint_same_for_card_and_raw_json() -> None:
+    card = load_fixture("fr_swsh3-136")
+    raw_json = card_table([card], "fr", FETCHED_AT).column("raw_json")[0].as_py()
+
+    assert card_fingerprint(card) == card_fingerprint(json.loads(raw_json))
+
+
+def test_card_fingerprint_ignores_updated_and_pricing() -> None:
+    card = load_fixture("fr_swsh3-136")
+    changed = copy.deepcopy(card)
+    changed["updated"] = "2026-11-12T08:00:00Z"
+    changed["pricing"] = {"cardmarket": {"avg": 4999.37}}
+    for variant in changed["variants_detailed"]:
+        variant["pricing"] = {"cardmarket": {"avg": 4998.37}}
+
+    assert card_fingerprint(changed) == card_fingerprint(card)
+
+
+def test_card_fingerprint_changes_with_rarity() -> None:
+    card = load_fixture("fr_swsh3-136")
+    corrected = {**card, "rarity": "Rare"}
+
+    assert card_fingerprint(corrected) != card_fingerprint(card)
+
+
+def test_card_table_fills_fingerprint_and_removed_on() -> None:
+    cards = [load_fixture(name) for name in JA_CARDS]
+
+    rows = card_table(cards, "ja", FETCHED_AT).to_pylist()
+
+    assert [row["fingerprint"] for row in rows] == [
+        card_fingerprint(card) for card in cards
+    ]
+    assert [row["removed_on"] for row in rows] == [None, None, None]
+
+
+def test_read_catalogue_completes_old_catalogue(tmp_path: Path) -> None:
+    cards = {"fr": [load_fixture(name) for name in FR_CARDS]}
+    table = catalogue_table(cards, FETCHED_AT)
+    path = tmp_path / "cards-2026-11-16.parquet"
+    pq.write_table(table.drop_columns(["fingerprint", "removed_on"]), path)
+
+    catalogue = read_catalogue(path)
+
+    assert catalogue.schema == CARD_SCHEMA
+    assert catalogue.to_pylist() == table.to_pylist()
+
+
+def test_read_catalogue_keeps_current_catalogue(tmp_path: Path) -> None:
+    table = catalogue_table({"ja": [load_fixture("ja_SV7-065")]}, FETCHED_AT)
+    table = table.set_column(
+        table.schema.get_field_index("removed_on"),
+        "removed_on",
+        pa.array([date(2026, 11, 17)], pa.date32()),
+    )
+    path = tmp_path / "cards-2026-11-18.parquet"
+    pq.write_table(table, path)
+
+    assert read_catalogue(path).to_pylist() == table.to_pylist()
+
+
+def test_latest_catalogue_before_day_skips_same_day(tmp_path: Path) -> None:
+    for name in [
+        "cards-2026-11-17.parquet",
+        "cards-2026-11-18.parquet",
+        "card-changes-2026-11-17.parquet",
+    ]:
+        (tmp_path / name).touch()
+
+    latest = latest_catalogue(tmp_path, before=date(2026, 11, 18))
+
+    assert latest == tmp_path / "cards-2026-11-17.parquet"
+    assert latest_catalogue(tmp_path, before=date(2026, 11, 17)) is None
+    assert latest_catalogue(tmp_path) == tmp_path / "cards-2026-11-18.parquet"
