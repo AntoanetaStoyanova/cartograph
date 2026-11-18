@@ -49,6 +49,7 @@
 - Plan collecte-incrementale — Étape 7 : Documentation (part de Claude). `README.md` de `cartograph` (état, collecte, collecte automatique, relance) et de `cartograph-data` (fichiers publiés, `card-changes-*`, rétention, paramètres, relance) ; `dbt/models/staging/tcgdex/sources.yml` (description) ; docs/plans/roadmap-lots.md : COL-05 ajouté et coché, COL-02 et COL-04 annotés, ordre « … CI-04 → COL-05 → DBT-02 ». `CONTRIBUTING.md` inchangé (invariant général).
 - COL-05 livré (PR #33, v0.8.0 ; `cartograph-data` envoyé ; branche supprimée). Exécution manuelle du 18/11 (run 44314516180) : « Collecter » 1 h 37 (1 h 44 à 1 h 47 avant), rotation 1 000 fiches en 3 min, 10 `new` (les 10 fiches en échec du 16/11, récupérées), 0 `updated` sur 31 284 fiches lues, `cards-2026-11-18.parquet` 59 410 lignes et 10,1 Mo (+2 Mo pour `fingerprint`), aucun prix publié. Résultats dans la spec ; plan et spec à `fait`.
 - Discussion échecs de collecte : 11 prix en échec en 11 jours (~1 par jour, manifestes du 8 au 18/11). Décision : pas de seconde passe pour l'instant (relevé du lendemain couvert par `cm_avg7`/`cm_avg30`) ; à reprendre si > 50 échecs par jour, ou par un test de couverture des prix en QUA-01.
+- Plan lot-sto-01-manifeste clos : SHA-256 de `cards-2026-11-16.parquet` (Release `catalogue`) identique à celui du manifeste du 16/11 ; dernier critère de la spec coché, plan et spec à `fait`.
 
 ### Reste à faire
 
@@ -58,7 +59,6 @@
 - Corriger le logger de `cartograph.bin.collect.run` (`__name__` vaut `__main__` sous `-m`) : petit `fix` à part.
 - Avant la porte 1 : relire dans un navigateur les conditions de Cardmarket et de TCGplayer (veille).
 - Rapport de novembre à régénérer en fin de mois (`inv suivi --mois 2026-11 --force`, commentaire gardé), puis `statut: fait` ; mettre à jour les chiffres de `docs/gouvernance/green-it.md`. Chaque début de mois : `inv ci` puis `inv suivi`, commentaire.
-- Clore docs/plans/lot-sto-01-manifeste.md : après l'exécution `catalogue=oui`, comparer le SHA-256 du catalogue (`gh release download catalogue`) au manifeste, cocher le dernier critère de la spec, passer plan et spec à `fait`.
 - Porte 0 franchie le 15 novembre 2026 (P0-DEC) : neuf tests tranchés dans la spec maîtresse.
 - Antoaneta : avant PRO-02, demander aux testeurs leur logiciel de caisse et un fichier d'import exemple.
 - `cadrage-flux.md` : flux d'export pro (FX7 et FX8, écrans) à ajouter quand PRO-01 et PRO-02 seront planifiés.
