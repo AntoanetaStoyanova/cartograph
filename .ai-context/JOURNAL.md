@@ -20,7 +20,7 @@
 
 ---
 
-## [2026-11-18] — CI-04 livré, COL-05 Étapes 1-7
+## [2026-11-18] — CI-04 livré, COL-05 livré
 
 ### Fait
 
@@ -47,10 +47,12 @@
 - Plan collecte-incrementale — Étape 5 : Fusion et collecte quotidienne. `incremental.py` : `apply_listing`, `merge_catalogue`, `card_changes_table`, `count_changes` ; `snapshot.py` : `CHANGE_SCHEMA`, `SnapshotPaths.card_changes`, `latest_catalogue(before=day)` ; `catalogue.py` : `compare_listing` (partagé avec la collecte complète) ; `prices.py` : `price_targets_from_catalogue(table, ...)` ignore les cartes disparues ; `run.py` : étape `catalogue` quotidienne (`_update_catalogue`, `_write_catalogue`), collecte complète avec lignes de la veille pour les fiches en échec ; `__init__.py` : `StepSummary.changes` ; `report.py` : tableau « Changements du catalogue » ; `manifest.py` : `card-changes-*` public. Bug trouvé et corrigé en test : changements calculés contre le catalogue déjà marqué (pas de `removed`). Mesure sur `cards-2026-11-16.parquet` : 31 000 fiches comparées en 2,4 s, fusion 0,7 s, 0 fausse modification. Décisions consignées dans la spec (source antérieure au jour, `apply_listing` avant les prix, échecs de prix et de rotation, `read_at` unique).
 - Plan collecte-incrementale — Étape 6 : Workflow de `cartograph-data`. `collect.yml` : `catalogue` = `non` (défaut) ou `oui`, plus de lundi automatique ; « Télécharger le dernier catalogue » sans condition, dernier `cards-*` antérieur au jour (`awk '$0 < limit'`) ; notes de la Release (`cards-*` quotidien avec `removed_on`, `card-changes-*`) ; nouvelle étape « Nettoyer les anciens catalogues » (non bloquante, après « Publier le catalogue » réussie : garde le plus récent, ceux des lundis et celui du jour). actionlint et zizmor verts ; logique vérifiée à blanc. Non commité.
 - Plan collecte-incrementale — Étape 7 : Documentation (part de Claude). `README.md` de `cartograph` (état, collecte, collecte automatique, relance) et de `cartograph-data` (fichiers publiés, `card-changes-*`, rétention, paramètres, relance) ; `dbt/models/staging/tcgdex/sources.yml` (description) ; docs/plans/roadmap-lots.md : COL-05 ajouté et coché, COL-02 et COL-04 annotés, ordre « … CI-04 → COL-05 → DBT-02 ». `CONTRIBUTING.md` inchangé (invariant général).
+- COL-05 livré (PR #33, v0.8.0 ; `cartograph-data` envoyé ; branche supprimée). Exécution manuelle du 18/11 (run 44314516180) : « Collecter » 1 h 37 (1 h 44 à 1 h 47 avant), rotation 1 000 fiches en 3 min, 10 `new` (les 10 fiches en échec du 16/11, récupérées), 0 `updated` sur 31 284 fiches lues, `cards-2026-11-18.parquet` 59 410 lignes et 10,1 Mo (+2 Mo pour `fingerprint`), aucun prix publié. Résultats dans la spec ; plan et spec à `fait`.
+- Discussion échecs de collecte : 11 prix en échec en 11 jours (~1 par jour, manifestes du 8 au 18/11). Décision : pas de seconde passe pour l'instant (relevé du lendemain couvert par `cm_avg7`/`cm_avg30`) ; à reprendre si > 50 échecs par jour, ou par un test de couverture des prix en QUA-01.
 
 ### Reste à faire
 
-- Livrer COL-05 (Antoaneta, docs/plans/collecte-incrementale.md Étape 7) : commits de `cartograph`, `inv finish`, PR vers `develop`, `inv release`, PR vers `main` ; puis seulement commit de `collect.yml` et du README dans `cartograph-data` et `git envoyer` ; puis exécution manuelle (`catalogue=non`, prix) : durée de « Collecter », changements et relues, `cards-*` et `card-changes-*` publiés, ancien `cards-*` non-lundi supprimé, à noter dans la spec. Première exécution : catalogue du 16/11 sans empreintes (~7 s) et nouvelles cartes du 17 et du 18 reprises.
+- Vérifier le 19/11 que « Nettoyer les anciens catalogues » a supprimé `cards-2026-11-18.parquet` de la Release `catalogue` (seul critère vérifié à blanc).
 - DBT-02 : `stg_tcgdex__cards` devra lire `removed_on` (`union_by_name = true`) : les `cards-*` quotidiens gardent les cartes disparues.
 - Planifier DBT-02 (staging des prix) au standard SQL : `/workspace-plan dbt-02`.
 - Corriger le logger de `cartograph.bin.collect.run` (`__name__` vaut `__main__` sous `-m`) : petit `fix` à part.
