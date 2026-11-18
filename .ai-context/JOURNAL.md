@@ -32,7 +32,7 @@
 ### Reste à faire
 
 - Antoaneta : livrer docs/plans/fix-fixtures-prix-fictifs.md — commit `docs: invariants du dépôt` (le `test:` est fait, `0bd6c8a`), `inv finish` (PR vers `develop`) ; puis passer plan et spec à `fait`.
-- Puis Exécuter docs/plans/ci-03-alerte-version-finish.md — Étape 1 : Alerte dans `inv finish` (option A décidée le 17/11), puis Étape 2 : Nettoyage des branches ; les branches `feature/col-04-sets`, `feature/col-04-dbt` et `feature/col-04-changelog` seront supprimées par `inv clean-branches` à la livraison.
+- Puis Exécuter docs/plans/ci-03-alerte-version-finish.md — Étape 1 : Alerte dans `inv finish` (option A décidée le 17/11), puis Étape 2 : Nettoyage des branches, puis Étape 3 : `inv clean` (ajoutée le 18/11 : motifs dans `.clean`, appelée à la fin de `finish` et `release`) ; branche `feature/ci-03-alerte-version` ; les branches `feature/col-04-sets`, `feature/col-04-dbt` et `feature/col-04-changelog` seront supprimées par `inv clean-branches` à la livraison.
 - Ensuite : DBT-02 (staging des prix) au standard SQL.
 - Décision d'Antoaneta : collecte complète du catalogue gardée le lundi (corrections de fiches, ex. 36 raretés provisoires de M6 corrigées par TCGdex le 12/11) et contrôle quotidien des nouvelles cartes dans COL-04 (3 listes `/<langue>/cards` comparées au dernier catalogue, seules les fiches nouvelles téléchargées, prix dès le jour même). Ordre proposé : DBT-01 → CI-02 → COL-04 → DBT-02 ; à vérifier dans la spec COL-04 : l'API ne donne-t-elle que le prix du jour (premiers jours d'un set irrattrapables) ?
 - Corriger le logger de `cartograph.bin.collect.run` (`__name__` vaut `__main__` sous `-m`) : petit `fix` à part.
