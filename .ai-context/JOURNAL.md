@@ -20,7 +20,7 @@
 
 ---
 
-## [2026-11-18] — CI-04 livré, COL-05 Étapes 1-5
+## [2026-11-18] — CI-04 livré, COL-05 Étapes 1-7
 
 ### Fait
 
@@ -45,10 +45,12 @@
 - Plan collecte-incrementale — Étape 3 : Fiches reçues avec les prix. `prices.py` : `PriceFetch` (`prices`, `cards` par langue) renvoyé par `fetch_prices` ; `run.py` n'en prend encore que `.prices` (fusion à l'Étape 5). Nouveau module `incremental.py` : `changed_cards(base, cards)` renvoie les fiches modifiées (ou absentes de la base) et les identifiants des fiches identiques, par langue (dictionnaires plutôt que listes, pour alimenter `catalogue_table`). Tests : `tests/test_collect_prices.py`, `tests/test_collect_failures.py` adaptés, `tests/test_collect_incremental.py` créé.
 - Plan collecte-incrementale — Étape 4 : Rotation. `incremental.py` : `rotation_ids(base, price_targets, size)` (hors cibles de prix et disparues, tri `fetched_at` puis `card_id`, coupe à `size` toutes langues confondues) ; `config` : `ROTATION_SIZE = 1000` ; `run.py` : option `--rotation N` (`_rotation`, entier ≥ 0) passée à `collect(rotation=...)`, encore sans effet jusqu'à l'Étape 5. Tests : `tests/test_collect_incremental.py`, `tests/test_collect_run.py`.
 - Plan collecte-incrementale — Étape 5 : Fusion et collecte quotidienne. `incremental.py` : `apply_listing`, `merge_catalogue`, `card_changes_table`, `count_changes` ; `snapshot.py` : `CHANGE_SCHEMA`, `SnapshotPaths.card_changes`, `latest_catalogue(before=day)` ; `catalogue.py` : `compare_listing` (partagé avec la collecte complète) ; `prices.py` : `price_targets_from_catalogue(table, ...)` ignore les cartes disparues ; `run.py` : étape `catalogue` quotidienne (`_update_catalogue`, `_write_catalogue`), collecte complète avec lignes de la veille pour les fiches en échec ; `__init__.py` : `StepSummary.changes` ; `report.py` : tableau « Changements du catalogue » ; `manifest.py` : `card-changes-*` public. Bug trouvé et corrigé en test : changements calculés contre le catalogue déjà marqué (pas de `removed`). Mesure sur `cards-2026-11-16.parquet` : 31 000 fiches comparées en 2,4 s, fusion 0,7 s, 0 fausse modification. Décisions consignées dans la spec (source antérieure au jour, `apply_listing` avant les prix, échecs de prix et de rotation, `read_at` unique).
+- Plan collecte-incrementale — Étape 6 : Workflow de `cartograph-data`. `collect.yml` : `catalogue` = `non` (défaut) ou `oui`, plus de lundi automatique ; « Télécharger le dernier catalogue » sans condition, dernier `cards-*` antérieur au jour (`awk '$0 < limit'`) ; notes de la Release (`cards-*` quotidien avec `removed_on`, `card-changes-*`) ; nouvelle étape « Nettoyer les anciens catalogues » (non bloquante, après « Publier le catalogue » réussie : garde le plus récent, ceux des lundis et celui du jour). actionlint et zizmor verts ; logique vérifiée à blanc. Non commité.
+- Plan collecte-incrementale — Étape 7 : Documentation (part de Claude). `README.md` de `cartograph` (état, collecte, collecte automatique, relance) et de `cartograph-data` (fichiers publiés, `card-changes-*`, rétention, paramètres, relance) ; `dbt/models/staging/tcgdex/sources.yml` (description) ; docs/plans/roadmap-lots.md : COL-05 ajouté et coché, COL-02 et COL-04 annotés, ordre « … CI-04 → COL-05 → DBT-02 ». `CONTRIBUTING.md` inchangé (invariant général).
 
 ### Reste à faire
 
-- Exécuter docs/plans/collecte-incrementale.md — Étape 6 : Workflow de `cartograph-data` (télécharger le dernier `cards-*` antérieur au jour, rétention) (branche `feature/col-05-catalogue-incremental`).
+- Livrer COL-05 (Antoaneta, docs/plans/collecte-incrementale.md Étape 7) : commits de `cartograph`, `inv finish`, PR vers `develop`, `inv release`, PR vers `main` ; puis seulement commit de `collect.yml` et du README dans `cartograph-data` et `git envoyer` ; puis exécution manuelle (`catalogue=non`, prix) : durée de « Collecter », changements et relues, `cards-*` et `card-changes-*` publiés, ancien `cards-*` non-lundi supprimé, à noter dans la spec. Première exécution : catalogue du 16/11 sans empreintes (~7 s) et nouvelles cartes du 17 et du 18 reprises.
 - DBT-02 : `stg_tcgdex__cards` devra lire `removed_on` (`union_by_name = true`) : les `cards-*` quotidiens gardent les cartes disparues.
 - Planifier DBT-02 (staging des prix) au standard SQL : `/workspace-plan dbt-02`.
 - Corriger le logger de `cartograph.bin.collect.run` (`__name__` vaut `__main__` sous `-m`) : petit `fix` à part.
@@ -62,6 +64,7 @@
 ### Références
 
 - ../docs/specs/collecte-incrementale.md, ../docs/plans/collecte-incrementale.md
+- `cartograph-data/.github/workflows/collect.yml`
 - `src/cartograph/bin/collect/snapshot.py`, `catalogue.py`, `run.py`, `prices.py`, `incremental.py`, `report.py`, `manifest.py`, `tests/test_collect_snapshot.py`, `tests/test_collect_catalogue.py`, `tests/test_collect_incremental.py`
 - docs/plans/ci-04-alerte-version-finish.md, docs/specs/ci-04-alerte-version-finish.md
 - docs/plans/fix-fixtures-prix-fictifs.md, docs/specs/fix-fixtures-prix-fictifs.md
