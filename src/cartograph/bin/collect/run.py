@@ -154,7 +154,7 @@ def collect(
                 checkpoint("prices")
 
             def fetch(targets: Sequence[PriceTarget]) -> FetchResult:
-                result = fetch_prices(client, targets, now=now)
+                result = fetch_prices(client, targets, now=now).prices
                 if new_table is None:
                     return result
                 new_targets = new_card_targets(new_table, targets)

@@ -20,7 +20,7 @@
 
 ---
 
-## [2026-11-18] — CI-04 livré, COL-05 Étapes 1-2
+## [2026-11-18] — CI-04 livré, COL-05 Étapes 1-3
 
 ### Fait
 
@@ -42,10 +42,11 @@
 - Plan collecte-incrementale — Étape 1 : Empreinte et schéma du catalogue. `snapshot.py` : `card_fingerprint` (SHA-256 du JSON trié sans `pricing` ni `updated`), `CARD_SCHEMA` + `fingerprint` et `removed_on` (avant `raw_json`), `card_table` les remplit, `read_catalogue` complète un catalogue antérieur depuis `raw_json`. `tests/test_collect_snapshot.py` (6 tests). Vérifié : 20 fiches de `cards-2026-11-16.parquet` sur 20 ont la même empreinte que l'API, 59 400 lignes complétées en 7 s ; DuckDB lit un mélange d'anciens et de nouveaux `cards-*` sans erreur (`union_by_name` plus tard, consigné dans la spec). Spec à `en cours`.
 - Retiré du « Reste à faire » : la décision du catalogue complet du lundi (COL-04), remplacée par COL-05.
 - Plan collecte-incrementale — Étape 2 : Listes : nouvelles, disparues, revenues. `catalogue.py` : `ListingDiff` et `listing_diff(client, languages, catalogue: pa.Table)` remplacent `new_card_ids` ; `run._collect_new_cards` lit le catalogue par `read_catalogue` et prend `diff.new`. Tests déplacés de `tests/test_collect_new_cards.py` vers `tests/test_collect_catalogue.py` (5 tests). Décision : une liste vide de l'API ne fait disparaître aucune carte (consignée dans la spec).
+- Plan collecte-incrementale — Étape 3 : Fiches reçues avec les prix. `prices.py` : `PriceFetch` (`prices`, `cards` par langue) renvoyé par `fetch_prices` ; `run.py` n'en prend encore que `.prices` (fusion à l'Étape 5). Nouveau module `incremental.py` : `changed_cards(base, cards)` renvoie les fiches modifiées (ou absentes de la base) et les identifiants des fiches identiques, par langue (dictionnaires plutôt que listes, pour alimenter `catalogue_table`). Tests : `tests/test_collect_prices.py`, `tests/test_collect_failures.py` adaptés, `tests/test_collect_incremental.py` créé.
 
 ### Reste à faire
 
-- Exécuter docs/plans/collecte-incrementale.md — Étape 3 : Fiches reçues avec les prix (branche `feature/col-05-catalogue-incremental`).
+- Exécuter docs/plans/collecte-incrementale.md — Étape 4 : Rotation (branche `feature/col-05-catalogue-incremental`).
 - Planifier DBT-02 (staging des prix) au standard SQL : `/workspace-plan dbt-02`.
 - Corriger le logger de `cartograph.bin.collect.run` (`__name__` vaut `__main__` sous `-m`) : petit `fix` à part.
 - Avant la porte 1 : relire dans un navigateur les conditions de Cardmarket et de TCGplayer (veille).
@@ -58,7 +59,7 @@
 ### Références
 
 - ../docs/specs/collecte-incrementale.md, ../docs/plans/collecte-incrementale.md
-- `src/cartograph/bin/collect/snapshot.py`, `catalogue.py`, `run.py`, `tests/test_collect_snapshot.py`, `tests/test_collect_catalogue.py`
+- `src/cartograph/bin/collect/snapshot.py`, `catalogue.py`, `run.py`, `prices.py`, `incremental.py`, `tests/test_collect_snapshot.py`, `tests/test_collect_catalogue.py`, `tests/test_collect_incremental.py`
 - docs/plans/ci-04-alerte-version-finish.md, docs/specs/ci-04-alerte-version-finish.md
 - docs/plans/fix-fixtures-prix-fictifs.md, docs/specs/fix-fixtures-prix-fictifs.md
 - `tasks/__init__.py`, `tests/test_tasks_finish.py`, `tests/test_tasks_branches.py`, `tests/test_tasks_clean.py`, `.clean`, `CONTRIBUTING.md`
