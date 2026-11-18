@@ -20,17 +20,18 @@
 
 ---
 
-## [2026-11-18] — Fixtures : prix déjà fictifs, test de non-régression
+## [2026-11-18] — Fixtures : test de non-régression et invariants
 
 ### Fait
 
 - Session ouverte (`/workspace-init`).
 - Plan fix-fixtures-prix-fictifs — Étape 1 : Fixtures et test. Prémisse fausse : le commit `51973c5` (28/10, sur `main`) a déjà remplacé tous les prix par des valeurs `4000 + n + 0.37`. Fixtures non modifiées ; décision : garder cet ensemble plutôt que `rang + 0.07` (consignée dans la spec). Créé `tests/test_fixtures_prices.py` (chaque `float` d'un `pricing` appartient à `{n + 0.37, n ≥ 4000}`, détection d'un prix hors ensemble, présence de prix). `inv ci` vert. Commit prévu : `test:` au lieu de `fix:`, sans v0.6.1.
+- Plan fix-fixtures-prix-fictifs — Étape 2 : `CONTRIBUTING.md`. Règle des fixtures réécrite (structure gardée, prix fictifs `4000 + n + 0.37`) ; section « Invariants » avant « Règles générales » (contrat : `collect.run`, `report`, `manifest`, appelés par `cartograph-data/.github/workflows/collect.yml`). `inv ci` et `inv okflint` verts. Critères de fin et de la spec cochés ; reste la livraison.
 - Branches `feature/ci-02` et `feature/dbt-01` : déjà supprimées (locale et `origin`).
 
 ### Reste à faire
 
-- Exécuter docs/plans/fix-fixtures-prix-fictifs.md — Étape 2 : `CONTRIBUTING.md` (règle des fixtures, section « Invariants »), sur `feature/fixtures-prix-fictifs`.
+- Antoaneta : livrer docs/plans/fix-fixtures-prix-fictifs.md — commit `docs: invariants du dépôt` (le `test:` est fait, `0bd6c8a`), `inv finish` (PR vers `develop`) ; puis passer plan et spec à `fait`.
 - Puis Exécuter docs/plans/ci-03-alerte-version-finish.md — Étape 1 : Alerte dans `inv finish` (option A décidée le 17/11), puis Étape 2 : Nettoyage des branches ; les branches `feature/col-04-sets`, `feature/col-04-dbt` et `feature/col-04-changelog` seront supprimées par `inv clean-branches` à la livraison.
 - Ensuite : DBT-02 (staging des prix) au standard SQL.
 - Décision d'Antoaneta : collecte complète du catalogue gardée le lundi (corrections de fiches, ex. 36 raretés provisoires de M6 corrigées par TCGdex le 12/11) et contrôle quotidien des nouvelles cartes dans COL-04 (3 listes `/<langue>/cards` comparées au dernier catalogue, seules les fiches nouvelles téléchargées, prix dès le jour même). Ordre proposé : DBT-01 → CI-02 → COL-04 → DBT-02 ; à vérifier dans la spec COL-04 : l'API ne donne-t-elle que le prix du jour (premiers jours d'un set irrattrapables) ?
