@@ -1,3 +1,25 @@
+## v0.7.0 (2026-11-18)
+
+### Nouveautés
+
+- inv clean et fichier .clean.
+- inv clean et fichier .clean
+- nettoyage des branches fusionnées
+- alerte de version dans inv finish
+
+### Documentation
+
+- journal mise a jour
+- invariants du dépôt
+
+### Tests
+
+- garde-fou contre les vrais prix dans les fixtures
+
+### Maintenance
+
+- **journal**: archive avant v0.7.0
+
 ## v0.6.0 (2026-11-17)
 
 ### Nouveautés
