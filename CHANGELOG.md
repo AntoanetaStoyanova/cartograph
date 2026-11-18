@@ -1,3 +1,20 @@
+## v0.8.0 (2026-11-18)
+
+### Nouveautés
+
+- catalogue quotidien par fusion et fichier card-changes
+- rotation des fiches hors prix, option --rotation
+- fiches gardées par la collecte des prix et comparées au catalogue par empreinte
+- repérage des cartes nouvelles, disparues et revenues par les listes de l'API
+- empreinte de fiche et colonnes fingerprint et removed_on du catalogue
+
+### Documentation
+
+- catalogue quotidien et card-changes dans le README et la roadmap
+- mise a jour journal
+- lots DOC-01 et optimisation de la collecte clos
+- lot CI-04 livré et renommé
+
 ## v0.7.0 (2026-11-18)
 
 ### Nouveautés
