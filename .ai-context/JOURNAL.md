@@ -20,7 +20,7 @@
 
 ---
 
-## [2026-11-18] — CI-04 livré, COL-05 Étapes 1-4
+## [2026-11-18] — CI-04 livré, COL-05 Étapes 1-5
 
 ### Fait
 
@@ -44,10 +44,12 @@
 - Plan collecte-incrementale — Étape 2 : Listes : nouvelles, disparues, revenues. `catalogue.py` : `ListingDiff` et `listing_diff(client, languages, catalogue: pa.Table)` remplacent `new_card_ids` ; `run._collect_new_cards` lit le catalogue par `read_catalogue` et prend `diff.new`. Tests déplacés de `tests/test_collect_new_cards.py` vers `tests/test_collect_catalogue.py` (5 tests). Décision : une liste vide de l'API ne fait disparaître aucune carte (consignée dans la spec).
 - Plan collecte-incrementale — Étape 3 : Fiches reçues avec les prix. `prices.py` : `PriceFetch` (`prices`, `cards` par langue) renvoyé par `fetch_prices` ; `run.py` n'en prend encore que `.prices` (fusion à l'Étape 5). Nouveau module `incremental.py` : `changed_cards(base, cards)` renvoie les fiches modifiées (ou absentes de la base) et les identifiants des fiches identiques, par langue (dictionnaires plutôt que listes, pour alimenter `catalogue_table`). Tests : `tests/test_collect_prices.py`, `tests/test_collect_failures.py` adaptés, `tests/test_collect_incremental.py` créé.
 - Plan collecte-incrementale — Étape 4 : Rotation. `incremental.py` : `rotation_ids(base, price_targets, size)` (hors cibles de prix et disparues, tri `fetched_at` puis `card_id`, coupe à `size` toutes langues confondues) ; `config` : `ROTATION_SIZE = 1000` ; `run.py` : option `--rotation N` (`_rotation`, entier ≥ 0) passée à `collect(rotation=...)`, encore sans effet jusqu'à l'Étape 5. Tests : `tests/test_collect_incremental.py`, `tests/test_collect_run.py`.
+- Plan collecte-incrementale — Étape 5 : Fusion et collecte quotidienne. `incremental.py` : `apply_listing`, `merge_catalogue`, `card_changes_table`, `count_changes` ; `snapshot.py` : `CHANGE_SCHEMA`, `SnapshotPaths.card_changes`, `latest_catalogue(before=day)` ; `catalogue.py` : `compare_listing` (partagé avec la collecte complète) ; `prices.py` : `price_targets_from_catalogue(table, ...)` ignore les cartes disparues ; `run.py` : étape `catalogue` quotidienne (`_update_catalogue`, `_write_catalogue`), collecte complète avec lignes de la veille pour les fiches en échec ; `__init__.py` : `StepSummary.changes` ; `report.py` : tableau « Changements du catalogue » ; `manifest.py` : `card-changes-*` public. Bug trouvé et corrigé en test : changements calculés contre le catalogue déjà marqué (pas de `removed`). Mesure sur `cards-2026-11-16.parquet` : 31 000 fiches comparées en 2,4 s, fusion 0,7 s, 0 fausse modification. Décisions consignées dans la spec (source antérieure au jour, `apply_listing` avant les prix, échecs de prix et de rotation, `read_at` unique).
 
 ### Reste à faire
 
-- Exécuter docs/plans/collecte-incrementale.md — Étape 5 : Fusion et collecte quotidienne (branche `feature/col-05-catalogue-incremental`).
+- Exécuter docs/plans/collecte-incrementale.md — Étape 6 : Workflow de `cartograph-data` (télécharger le dernier `cards-*` antérieur au jour, rétention) (branche `feature/col-05-catalogue-incremental`).
+- DBT-02 : `stg_tcgdex__cards` devra lire `removed_on` (`union_by_name = true`) : les `cards-*` quotidiens gardent les cartes disparues.
 - Planifier DBT-02 (staging des prix) au standard SQL : `/workspace-plan dbt-02`.
 - Corriger le logger de `cartograph.bin.collect.run` (`__name__` vaut `__main__` sous `-m`) : petit `fix` à part.
 - Avant la porte 1 : relire dans un navigateur les conditions de Cardmarket et de TCGplayer (veille).
@@ -60,7 +62,7 @@
 ### Références
 
 - ../docs/specs/collecte-incrementale.md, ../docs/plans/collecte-incrementale.md
-- `src/cartograph/bin/collect/snapshot.py`, `catalogue.py`, `run.py`, `prices.py`, `incremental.py`, `tests/test_collect_snapshot.py`, `tests/test_collect_catalogue.py`, `tests/test_collect_incremental.py`
+- `src/cartograph/bin/collect/snapshot.py`, `catalogue.py`, `run.py`, `prices.py`, `incremental.py`, `report.py`, `manifest.py`, `tests/test_collect_snapshot.py`, `tests/test_collect_catalogue.py`, `tests/test_collect_incremental.py`
 - docs/plans/ci-04-alerte-version-finish.md, docs/specs/ci-04-alerte-version-finish.md
 - docs/plans/fix-fixtures-prix-fictifs.md, docs/specs/fix-fixtures-prix-fictifs.md
 - `tasks/__init__.py`, `tests/test_tasks_finish.py`, `tests/test_tasks_branches.py`, `tests/test_tasks_clean.py`, `.clean`, `CONTRIBUTING.md`

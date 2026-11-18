@@ -14,20 +14,16 @@ seconde passe sur l'API ; les autres jours, de même pour les nouvelles cartes.
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from pathlib import Path
 from typing import Any
 
 import pyarrow as pa
 import pyarrow.compute as pc
-import pyarrow.parquet as pq
 
 from cartograph.bin.collect import FetchResult
 from cartograph.bin.collect.batch import fetch_each
 from cartograph.bin.collect.catalogue import card_path
 from cartograph.bin.collect.client import TcgdexClient
 from cartograph.config import LANGUAGES
-
-_TARGET_COLUMNS = ["language", "card_id", "id_product"]
 
 
 @dataclass(frozen=True)
@@ -150,15 +146,16 @@ class PriceSelection:
 
 
 def price_targets_from_catalogue(
-    source: Path, languages: Sequence[str]
+    catalogue: pa.Table, languages: Sequence[str]
 ) -> PriceSelection:
     """
-    Lit un snapshot du catalogue et choisit les produits à interroger.
+    Choisit dans un catalogue les produits à interroger.
 
     Parameters
     ----------
-    source : Path
-        Fichier ``cards-AAAA-MM-JJ.parquet``.
+    catalogue : pa.Table
+        Catalogue au schéma ``snapshot.CARD_SCHEMA`` ; les cartes disparues
+        (``removed_on`` posé) sont ignorées.
     languages : Sequence[str]
         Langues dont les cartes sont gardées.
 
@@ -168,10 +165,14 @@ def price_targets_from_catalogue(
         Cibles des langues demandées, langues absentes du catalogue et cartes
         sans ``id_product`` ; cibles vides si aucune langue demandée n'y figure.
     """
-    table = pq.read_table(source, columns=_TARGET_COLUMNS)
-    available = set(table.column("language").unique().to_pylist())
-    table = table.filter(
-        pc.is_in(table.column("language"), pa.array(languages, type=pa.string()))
+    available = set(catalogue.column("language").unique().to_pylist())
+    table = catalogue.filter(
+        pc.and_(
+            pc.is_in(
+                catalogue.column("language"), pa.array(languages, type=pa.string())
+            ),
+            pc.is_null(catalogue.column("removed_on")),
+        )
     )
     return PriceSelection(
         targets=price_targets_from_table(table),

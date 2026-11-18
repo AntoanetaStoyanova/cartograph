@@ -7,15 +7,18 @@ de l'échec d'une étape et sert le CLI ; la récupération, la sélection des p
 et la mise en forme des tables sont dans ``catalogue``, ``sets``, ``prices`` et
 ``snapshot``.
 
-Le catalogue est tout ou rien : si une langue échoue, aucun
-``cards-*.parquet`` n'est écrit. Les prix utilisent le catalogue du jour s'il
+La collecte complète (``--catalogue``) est tout ou rien : si une langue
+échoue, aucun ``cards-*.parquet`` n'est écrit ; une fiche en échec garde sa
+ligne du catalogue précédent. Les prix utilisent le catalogue du jour s'il
 vient d'être écrit, en lisant ses fiches sans nouvel appel à l'API ; sinon,
 ceux du plus récent du dossier, interrogés carte par carte. Les sets sont
 collectés à chaque exécution, après le catalogue ; leur échec ne touche ni le
 catalogue, ni les nouvelles cartes, ni les prix.
-Les jours sans catalogue, les cartes absentes du dernier catalogue sont téléchargées
-(``new_cards``) et leurs prix ajoutés à ceux du jour ; leur échec ne touche
-pas les prix du catalogue.
+Les jours sans collecte complète, les listes de l'API donnent les cartes
+nouvelles, disparues et revenues ; les nouvelles sont téléchargées
+(``new_cards``) et leurs prix ajoutés à ceux du jour. Le catalogue de la veille
+est ensuite mis à jour avec les fiches reçues avec les prix, les nouvelles et
+une rotation des fiches les plus anciennes, puis écrit avec ses changements.
 
 Lancé par ``inv collect`` ou ``python -m cartograph.bin.collect.run`` ; code de
 sortie 0 si chaque étape demandée est ``ok``, 1 sinon.
@@ -30,6 +33,7 @@ from pathlib import Path
 from typing import Any
 
 import pyarrow as pa
+import pyarrow.compute as pc
 
 from cartograph.bin.collect import (
     CollectSummary,
@@ -38,8 +42,21 @@ from cartograph.bin.collect import (
     StepSummary,
     skipped_step,
 )
-from cartograph.bin.collect.catalogue import fetch_catalogue, listing_diff
+from cartograph.bin.collect.catalogue import (
+    ListingDiff,
+    compare_listing,
+    fetch_catalogue,
+    listing_diff,
+)
 from cartograph.bin.collect.client import TcgdexClient, TcgdexError
+from cartograph.bin.collect.incremental import (
+    apply_listing,
+    card_changes_table,
+    changed_cards,
+    count_changes,
+    merge_catalogue,
+    rotation_ids,
+)
 from cartograph.bin.collect.prices import (
     PriceTarget,
     fetch_prices,
@@ -111,12 +128,15 @@ def collect(
     fichiers déjà écrits. Les sets sont collectés à chaque exécution. Si le
     catalogue du jour est ``ok``, les prix sont tirés de ses fiches sans
     nouvel appel à l'API ; sinon ils sont demandés pour les produits du
-    dernier catalogue du dossier, et ceux des nouvelles cartes tirés de leurs
-    fiches.
+    dernier catalogue du dossier antérieur au jour, et ceux des nouvelles
+    cartes tirés de leurs fiches. Sans ``catalogue``, le catalogue de la
+    veille est ensuite mis à jour (étape ``catalogue``) ; une collecte
+    complète en échec n'est pas remplacée par cette mise à jour.
     """
     started_at = now().astimezone(UTC)
     day = started_at.date()
     paths = snapshot_paths(data_dir, day)
+    source = latest_catalogue(paths.cards.parent, before=day)
     steps = {
         name: skipped_step() for name in ("catalogue", "sets", "new_cards", "prices")
     }
@@ -130,46 +150,75 @@ def collect(
     catalogue_at = now()
     if catalogue:
         steps["catalogue"] = _collect_catalogue(
-            client, paths, languages, catalogue_at, cards
+            client, paths, languages, catalogue_at, cards, source
         )
         checkpoint("sets", *(["prices"] if prices else []))
     steps["sets"] = _collect_sets(client, paths, languages, now())
-    if prices:
+    if not prices:
+        return _write_summary(paths, started_at, now, steps)
+    if steps["catalogue"]["status"] == "ok":
         checkpoint("prices")
-    if prices:
-        if steps["catalogue"]["status"] == "ok":
-            steps["prices"] = _collect_prices(
-                paths,
-                paths.cards,
-                languages,
-                lambda targets: prices_from_cards(cards, targets, catalogue_at),
-                "tirés du catalogue du jour",
-            )
-        else:
-            source = latest_catalogue(paths.cards.parent)
-            new_cards: dict[str, list[dict[str, Any]]] = {}
-            new_table: pa.Table | None = None
-            new_at = now()
-            if source is not None:
-                steps["new_cards"], new_table = _collect_new_cards(
-                    client, paths, languages, source, new_at, new_cards
-                )
-                checkpoint("prices")
+        steps["prices"], _ = _collect_prices(
+            paths,
+            paths.cards.name,
+            read_catalogue(paths.cards),
+            languages,
+            lambda targets: prices_from_cards(cards, targets, catalogue_at),
+            "tirés du catalogue du jour",
+        )
+        return _write_summary(paths, started_at, now, steps)
 
-            def fetch(targets: Sequence[PriceTarget]) -> FetchResult:
-                result = fetch_prices(client, targets, now=now).prices
-                if new_table is None:
-                    return result
-                new_targets = new_card_targets(new_table, targets)
-                logger.info("prix : %d produits de nouvelles cartes", len(new_targets))
-                extra = prices_from_cards(new_cards, new_targets, new_at)
-                return FetchResult(
-                    result.items + extra.items, result.failed + extra.failed
-                )
+    update = not catalogue and source is not None
+    checkpoint("prices", *(["catalogue"] if update else []))
+    previous: pa.Table | None = None
+    base: pa.Table | None = None
+    new_cards: dict[str, list[dict[str, Any]]] = {}
+    new_table: pa.Table | None = None
+    new_at = now()
+    if source is not None:
+        previous = read_catalogue(source)
+        steps["new_cards"], new_table, diff = _collect_new_cards(
+            client, paths, languages, previous, source.name, new_at, new_cards
+        )
+        base = apply_listing(previous, diff, day)
+        checkpoint("prices", *(["catalogue"] if update else []))
+    price_cards: dict[str, list[dict[str, Any]]] = {}
 
-            steps["prices"] = _collect_prices(
-                paths, source, languages, fetch, "à interroger"
-            )
+    def fetch(targets: Sequence[PriceTarget]) -> FetchResult:
+        fetched = fetch_prices(client, targets, now=now)
+        price_cards.update(fetched.cards)
+        if new_table is None:
+            return fetched.prices
+        new_targets = new_card_targets(new_table, targets)
+        logger.info("prix : %d produits de nouvelles cartes", len(new_targets))
+        extra = prices_from_cards(new_cards, new_targets, new_at)
+        return FetchResult(
+            fetched.prices.items + extra.items, fetched.prices.failed + extra.failed
+        )
+
+    prices_at = now()
+    steps["prices"], targets = _collect_prices(
+        paths,
+        None if source is None else source.name,
+        base,
+        languages,
+        fetch,
+        "à interroger",
+    )
+    if update and previous is not None and base is not None and source is not None:
+        checkpoint("catalogue")
+        steps["catalogue"] = _update_catalogue(
+            client,
+            paths,
+            previous,
+            base,
+            source.name,
+            languages,
+            [new_cards, price_cards],
+            targets,
+            rotation,
+            prices_at,
+        )
     return _write_summary(paths, started_at, now, steps)
 
 
@@ -345,6 +394,7 @@ def _collect_catalogue(
     languages: Sequence[str],
     fetched_at: datetime,
     cards: dict[str, list[dict[str, Any]]],
+    source: Path | None,
 ) -> StepSummary:
     """
     Collecte toutes les langues puis écrit le catalogue et son brut.
@@ -361,6 +411,10 @@ def _collect_catalogue(
         Début de l'étape, écrit dans la table.
     cards : dict[str, list[dict[str, Any]]]
         Rempli avec les fiches par langue, pour en tirer les prix.
+    source : Path | None
+        Catalogue précédent : ses lignes sont gardées pour les fiches en échec,
+        les cartes non listées et les langues non collectées, et les
+        changements sont écrits ; ``None`` écrit les seules fiches lues.
 
     Returns
     -------
@@ -382,9 +436,26 @@ def _collect_catalogue(
     report["files"].append(
         _file(paths.raw_cards, report["fetched"], write_json_gz(cards, paths.raw_cards))
     )
-    _write_table(
-        report, paths.cards, lambda: catalogue_table(cards, fetched_at), SORT_BY
+    if source is None:
+        _write_table(
+            report, paths.cards, lambda: catalogue_table(cards, fetched_at), SORT_BY
+        )
+        return report
+    report["source"] = source.name
+    previous = read_catalogue(source)
+    listed = {
+        language: [card["id"] for card in items]
+        + [
+            failed.split("/", 1)[1]
+            for failed in report["failed"]
+            if failed.startswith(f"{language}/")
+        ]
+        for language, items in cards.items()
+    }
+    base = apply_listing(
+        previous, compare_listing(previous, listed), fetched_at.astimezone(UTC).date()
     )
+    _write_catalogue(report, paths, previous, base, cards, fetched_at)
     return report
 
 
@@ -434,12 +505,13 @@ def _collect_new_cards(
     client: TcgdexClient,
     paths: SnapshotPaths,
     languages: Sequence[str],
-    source: Path,
+    base: pa.Table,
+    source_name: str,
     fetched_at: datetime,
     cards: dict[str, list[dict[str, Any]]],
-) -> tuple[StepSummary, pa.Table | None]:
+) -> tuple[StepSummary, pa.Table | None, ListingDiff]:
     """
-    Télécharge les cartes absentes du catalogue ``source`` et les écrit.
+    Compare les listes au catalogue, télécharge les nouvelles cartes et les écrit.
 
     Parameters
     ----------
@@ -449,8 +521,10 @@ def _collect_new_cards(
         Fichiers du jour.
     languages : Sequence[str]
         Langues comparées.
-    source : Path
-        Dernier catalogue complet.
+    base : pa.Table
+        Catalogue de la veille (voir ``read_catalogue``).
+    source_name : str
+        Nom du fichier de ``base``, pour le résumé.
     fetched_at : datetime
         Début de l'étape, écrit dans la table.
     cards : dict[str, list[dict[str, Any]]]
@@ -458,16 +532,17 @@ def _collect_new_cards(
 
     Returns
     -------
-    tuple[StepSummary, pa.Table | None]
+    tuple[StepSummary, pa.Table | None, ListingDiff]
         Bilan, ``ok`` sans fichier s'il n'y a aucune nouvelle carte ;
         ``failed`` si une liste ou la collecte échoue (rien n'est écrit) ou
         si la conversion en table échoue (le brut est conservé). Table écrite,
-        ``None`` sinon.
+        ``None`` sinon. Écarts des listes, vides si une liste a échoué.
     """
     report = skipped_step()
-    report["source"] = source.name
+    report["source"] = source_name
+    diff = ListingDiff(new={}, removed={}, reappeared={})
     try:
-        diff = listing_diff(client, languages, read_catalogue(source))
+        diff = listing_diff(client, languages, base)
         for language, card_ids in diff.new.items():
             if card_ids:
                 result = fetch_catalogue(client, language, card_ids)
@@ -477,11 +552,11 @@ def _collect_new_cards(
     except TcgdexError as error:
         report["status"] = "failed"
         report["error"] = str(error)
-        return report, None
-    logger.info("nouvelles cartes : %d depuis %s", report["fetched"], source.name)
+        return report, None, diff
+    logger.info("nouvelles cartes : %d depuis %s", report["fetched"], source_name)
     if not report["fetched"]:
         report["status"] = "ok"
-        return report, None
+        return report, None, diff
     report["files"].append(
         _file(
             paths.raw_new_cards,
@@ -494,25 +569,28 @@ def _collect_new_cards(
     )
     if table is not None:
         report["skipped_without_id_product"] = table.column("id_product").null_count
-    return report, table
+    return report, table, diff
 
 
 def _collect_prices(
     paths: SnapshotPaths,
-    source: Path | None,
+    source_name: str | None,
+    catalogue: pa.Table | None,
     languages: Sequence[str],
     fetch: Callable[[Sequence[PriceTarget]], FetchResult],
     origin: str,
-) -> StepSummary:
+) -> tuple[StepSummary, list[PriceTarget]]:
     """
-    Récupère les prix des produits du catalogue ``source`` et les écrit.
+    Récupère les prix des produits d'un catalogue et les écrit.
 
     Parameters
     ----------
     paths : SnapshotPaths
         Fichiers du jour.
-    source : Path | None
-        Snapshot du catalogue ; ``None`` fait échouer l'étape.
+    source_name : str | None
+        Nom du fichier du catalogue, pour le résumé.
+    catalogue : pa.Table | None
+        Catalogue au schéma ``CARD_SCHEMA`` ; ``None`` fait échouer l'étape.
     languages : Sequence[str]
         Langues dont les cartes sont retenues.
     fetch : Callable[[Sequence[PriceTarget]], FetchResult]
@@ -523,30 +601,30 @@ def _collect_prices(
 
     Returns
     -------
-    StepSummary
-        ``failed`` sans catalogue, si aucune langue demandée n'y figure, si la
-        collecte s'arrête ou si la conversion en table échoue (le brut est
-        alors conservé).
+    tuple[StepSummary, list[PriceTarget]]
+        Bilan, ``failed`` sans catalogue, si aucune langue demandée n'y
+        figure, si la collecte s'arrête ou si la conversion en table échoue
+        (le brut est alors conservé) ; cibles interrogées.
     """
     report = skipped_step()
-    if source is None:
+    if catalogue is None:
         report["status"] = "failed"
         report["error"] = "aucun catalogue disponible"
-        return report
-    report["source"] = source.name
-    selection = price_targets_from_catalogue(source, languages)
+        return report, []
+    report["source"] = source_name
+    selection = price_targets_from_catalogue(catalogue, languages)
     missing = selection.missing_languages
     report["missing_languages"] = missing
     if missing:
         logger.warning(
             "prix : langues absentes du catalogue %s : %s",
-            source.name,
+            source_name,
             ", ".join(missing),
         )
     if len(missing) == len(languages):
         report["status"] = "failed"
         report["error"] = "aucune langue demandée dans le catalogue"
-        return report
+        return report, []
     targets = selection.targets
     report["skipped_without_id_product"] = selection.skipped_without_id_product
     logger.info(
@@ -560,7 +638,7 @@ def _collect_prices(
     except TcgdexError as error:
         report["status"] = "failed"
         report["error"] = str(error)
-        return report
+        return report, targets
     report["fetched"] = len(result.items)
     report["failed"] = result.failed
     report["files"].append(
@@ -571,7 +649,130 @@ def _collect_prices(
         )
     )
     _write_table(report, paths.prices, lambda: price_table(result.items), SORT_BY)
+    return report, targets
+
+
+def _update_catalogue(
+    client: TcgdexClient,
+    paths: SnapshotPaths,
+    previous: pa.Table,
+    base: pa.Table,
+    source_name: str,
+    languages: Sequence[str],
+    reads: Sequence[dict[str, list[dict[str, Any]]]],
+    targets: Sequence[PriceTarget],
+    rotation: int,
+    read_at: datetime,
+) -> StepSummary:
+    """
+    Relit les fiches de la rotation et écrit le catalogue du jour par fusion.
+
+    Parameters
+    ----------
+    client : TcgdexClient
+        Client de l'API.
+    paths : SnapshotPaths
+        Fichiers du jour.
+    previous : pa.Table
+        Catalogue de la veille tel que lu, référence des changements.
+    base : pa.Table
+        ``previous`` avec ``removed_on`` à jour (voir ``apply_listing``).
+    source_name : str
+        Nom du fichier de ``previous``, pour le résumé.
+    languages : Sequence[str]
+        Langues dont les fiches sont relues.
+    reads : Sequence[dict[str, list[dict[str, Any]]]]
+        Fiches déjà lues dans la journée par langue : nouvelles cartes, prix.
+    targets : Sequence[PriceTarget]
+        Cibles des prix, exclues de la rotation.
+    rotation : int
+        Nombre maximal de fiches relues.
+    read_at : datetime
+        Heure de lecture retenue pour toutes les fiches lues.
+
+    Returns
+    -------
+    StepSummary
+        ``fetched`` : fiches relues par la rotation ; ``changes`` : nombres par
+        type de changement et ``rotated``. ``failed`` si la rotation s'arrête
+        (le catalogue est quand même écrit avec ce qui a été lu) ou si la
+        fusion échoue (rien n'est écrit).
+    """
+    report = skipped_step()
+    report["source"] = source_name
+    candidates = base.filter(
+        pc.is_in(base.column("language"), pa.array(languages, type=pa.string()))
+    )
+    rotated: dict[str, list[dict[str, Any]]] = {}
+    error = None
+    try:
+        for language, card_ids in rotation_ids(candidates, targets, rotation).items():
+            result = fetch_catalogue(client, language, card_ids)
+            rotated[language] = result.items
+            report["fetched"] += len(result.items)
+            report["failed"] += result.failed
+    except TcgdexError as stop:
+        error = str(stop)
+    read: dict[str, list[dict[str, Any]]] = {}
+    for group in [*reads, rotated]:
+        for language, items in group.items():
+            read.setdefault(language, []).extend(items)
+    logger.info("catalogue : %d fiches relues par la rotation", report["fetched"])
+    _write_catalogue(report, paths, previous, base, read, read_at)
+    if "changes" in report:
+        report["changes"]["rotated"] = report["fetched"]
+    if error is not None:
+        report["status"] = "failed"
+        report["error"] = error
     return report
+
+
+def _write_catalogue(
+    report: StepSummary,
+    paths: SnapshotPaths,
+    previous: pa.Table,
+    base: pa.Table,
+    read: dict[str, list[dict[str, Any]]],
+    read_at: datetime,
+) -> None:
+    """
+    Fusionne les fiches lues au catalogue précédent et écrit ses changements.
+
+    Parameters
+    ----------
+    report : StepSummary
+        Bilan de l'étape, complété (``status``, ``files``, ``error``,
+        ``changes``).
+    paths : SnapshotPaths
+        Fichiers du jour.
+    previous : pa.Table
+        Catalogue précédent tel que lu, référence des changements.
+    base : pa.Table
+        ``previous`` avec ``removed_on`` à jour.
+    read : dict[str, list[dict[str, Any]]]
+        Fiches complètes lues, par langue.
+    read_at : datetime
+        Heure de lecture des fiches.
+    """
+    changed, refreshed = changed_cards(base, read)
+    merged = _write_table(
+        report,
+        paths.cards,
+        lambda: merge_catalogue(base, changed, refreshed, read_at),
+        SORT_BY,
+    )
+    if merged is None:
+        return
+    changes = card_changes_table(previous, merged)
+    report["files"].append(
+        _file(
+            paths.card_changes,
+            changes.num_rows,
+            write_parquet(changes, paths.card_changes, SORT_BY),
+        )
+    )
+    report["changes"] = count_changes(changes)
+    logger.info("catalogue : changements %s", report["changes"])
 
 
 def _write_table(

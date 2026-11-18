@@ -3,7 +3,7 @@ Catalogue d'une langue : liste des identifiants (par exemple ``/fr/cards``),
 fiches complètes et écarts entre les listes de l'API et le dernier catalogue.
 """
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from urllib.parse import quote
 
@@ -146,6 +146,46 @@ def listing_diff(
     Une liste vide ne fait disparaître aucune carte : une réponse vide de
     l'API est plus probablement une panne qu'un catalogue vidé.
     """
+    known = set(catalogue.column("language").to_pylist())
+    listed: dict[str, list[str]] = {}
+    for language in languages:
+        check_language(language)
+        listed[language] = list_card_ids(client, language) if language in known else []
+    return compare_listing(catalogue, listed)
+
+
+def compare_listing(
+    catalogue: pa.Table, listed: Mapping[str, Sequence[str]]
+) -> ListingDiff:
+    """
+    Compare des identifiants listés au catalogue, sans appel à l'API.
+
+    Parameters
+    ----------
+    catalogue : pa.Table
+        Catalogue au schéma ``snapshot.CARD_SCHEMA``.
+    listed : Mapping[str, Sequence[str]]
+        Identifiants listés par langue ; une liste vide ne fait disparaître
+        aucune carte.
+
+    Returns
+    -------
+    ListingDiff
+        Une entrée par langue de ``listed``.
+
+    Examples
+    --------
+    >>> import pyarrow as pa
+    >>> empty = pa.table(
+    ...     {
+    ...         "language": pa.array([], pa.string()),
+    ...         "card_id": pa.array([], pa.string()),
+    ...         "removed_on": pa.array([], pa.date32()),
+    ...     }
+    ... )
+    >>> compare_listing(empty, {"fr": ["a"]}).new
+    {'fr': ['a']}
+    """
     active: dict[str, set[str]] = {}
     gone: dict[str, set[str]] = {}
     for language, card_id, removed_on in zip(
@@ -158,24 +198,13 @@ def listing_diff(
             card_id
         )
     diff = ListingDiff(new={}, removed={}, reappeared={})
-    for language in languages:
-        check_language(language)
+    for language, ids in listed.items():
         known = active.get(language, set())
         removed = gone.get(language, set())
-        if not known and not removed:
-            listed: list[str] = []
-        else:
-            listed = list_card_ids(client, language)
-        listed_set = set(listed)
-        diff.new[language] = [
-            card_id
-            for card_id in listed
-            if card_id not in known and card_id not in removed
-        ]
-        diff.removed[language] = sorted(known - listed_set) if listed else []
-        diff.reappeared[language] = [
-            card_id for card_id in listed if card_id in removed
-        ]
+        seen = known | removed
+        diff.new[language] = [card_id for card_id in ids if card_id not in seen]
+        diff.removed[language] = sorted(known - set(ids)) if ids else []
+        diff.reappeared[language] = [card_id for card_id in ids if card_id in removed]
     return diff
 
 

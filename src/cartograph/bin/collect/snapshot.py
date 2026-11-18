@@ -82,6 +82,13 @@ son empreinte (voir ``card_fingerprint``) ; ``removed_on`` la date où la carte 
 quitté les listes de l'API, nulle tant qu'elle y figure.
 """
 
+CHANGE_SCHEMA = pa.schema([("change_type", pa.string()), *CARD_SCHEMA])
+"""
+Schéma des changements du catalogue d'un jour : la ligne du jour de chaque
+carte ``new``, ``updated``, ``removed`` ou ``reappeared`` ; une carte revenue et
+modifiée a deux lignes.
+"""
+
 SET_SCHEMA = pa.schema(
     [
         ("language", pa.string()),
@@ -120,6 +127,8 @@ class SnapshotPaths:
         Sets avec date de sortie, sans prix (Parquet).
     new_cards : Path
         Cartes absentes du dernier catalogue, sans prix (Parquet).
+    card_changes : Path
+        Changements du catalogue du jour, sans prix (Parquet).
     prices : Path
         Prix Cardmarket et TCGplayer (Parquet).
     raw_cards : Path
@@ -135,6 +144,7 @@ class SnapshotPaths:
     cards: Path
     sets: Path
     new_cards: Path
+    card_changes: Path
     prices: Path
     raw_cards: Path
     raw_new_cards: Path
@@ -168,6 +178,7 @@ def snapshot_paths(data_dir: Path, day: date) -> SnapshotPaths:
         cards=data_dir / "snapshots" / f"cards-{stamp}.parquet",
         sets=data_dir / "snapshots" / f"sets-{stamp}.parquet",
         new_cards=data_dir / "snapshots" / f"new-cards-{stamp}.parquet",
+        card_changes=data_dir / "snapshots" / f"card-changes-{stamp}.parquet",
         prices=data_dir / "snapshots" / f"prices-{stamp}.parquet",
         raw_cards=data_dir / "raw" / f"cards-{stamp}.json.gz",
         raw_new_cards=data_dir / "raw" / f"new-cards-{stamp}.json.gz",
@@ -176,7 +187,7 @@ def snapshot_paths(data_dir: Path, day: date) -> SnapshotPaths:
     )
 
 
-def latest_catalogue(snapshots_dir: Path) -> Path | None:
+def latest_catalogue(snapshots_dir: Path, before: date | None = None) -> Path | None:
     """
     Renvoie le snapshot du catalogue le plus récent.
 
@@ -184,14 +195,25 @@ def latest_catalogue(snapshots_dir: Path) -> Path | None:
     ----------
     snapshots_dir : Path
         Dossier des snapshots.
+    before : date | None, optional
+        Jour exclu, avec les suivants : une relance le même jour repart du
+        catalogue de la veille, pas de celui qu'elle remplace.
 
     Returns
     -------
     Path | None
         Dernier ``cards-AAAA-MM-JJ.parquet``, ``None`` s'il n'y en a aucun ;
-        les ``new-cards-*`` ne sont pas des catalogues complets.
+        les ``new-cards-*`` et ``card-changes-*`` ne sont pas des catalogues.
     """
-    return max(snapshots_dir.glob("cards-*.parquet"), default=None)
+    limit = None if before is None else f"cards-{before.isoformat()}.parquet"
+    return max(
+        (
+            path
+            for path in snapshots_dir.glob("cards-*.parquet")
+            if limit is None or path.name < limit
+        ),
+        default=None,
+    )
 
 
 def price_table(records: Sequence[dict[str, Any]]) -> pa.Table:

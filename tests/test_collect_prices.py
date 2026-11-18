@@ -1,5 +1,5 @@
 from collections.abc import Mapping, Sequence
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -20,6 +20,7 @@ from cartograph.bin.collect.snapshot import (
     card_table,
     catalogue_table,
     price_table,
+    read_catalogue,
     write_parquet,
 )
 from tests.conftest import load_fixture
@@ -44,14 +45,14 @@ def price_targets(
 
 def _catalogue_file(
     tmp_path: Path, catalogues: Mapping[str, Sequence[dict[str, Any]]]
-) -> Path:
+) -> pa.Table:
     table = pa.concat_tables(
         card_table(cards, language, FETCHED_AT)
         for language, cards in catalogues.items()
     )
     path = tmp_path / "cards-2026-10-28.parquet"
     write_parquet(table, path, SORT_BY)
-    return path
+    return read_catalogue(path)
 
 
 def test_price_targets_deduplicates_european_products() -> None:
@@ -196,6 +197,26 @@ def test_price_targets_from_catalogue_without_requested_language(
     assert selection == PriceSelection(
         targets=[], missing_languages=["en", "ja"], skipped_without_id_product=0
     )
+
+
+def test_price_targets_from_catalogue_ignores_removed_cards(tmp_path: Path) -> None:
+    catalogue = _catalogue_file(
+        tmp_path,
+        {"fr": [load_fixture("fr_swsh3-136"), load_fixture("fr_pop9-1")]},
+    )
+    removed_on = [
+        date(2026, 11, 17) if card_id == "pop9-1" else None
+        for card_id in catalogue.column("card_id").to_pylist()
+    ]
+    catalogue = catalogue.set_column(
+        catalogue.schema.get_field_index("removed_on"),
+        "removed_on",
+        pa.array(removed_on, pa.date32()),
+    )
+
+    selection = price_targets_from_catalogue(catalogue, ["fr"])
+
+    assert selection.targets == [PriceTarget("fr", "swsh3-136", 483559)]
 
 
 def test_price_targets_from_catalogue_without_languages(tmp_path: Path) -> None:

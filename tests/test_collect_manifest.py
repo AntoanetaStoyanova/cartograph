@@ -162,3 +162,12 @@ def test_new_cards_parquet_is_public_and_raw_is_private(tmp_path: Path) -> None:
     releases = {f["name"]: f["release"] for f in manifest["files"]}
     assert releases[f"new-cards-{DAY}.parquet"] == "cartograph-data/catalogue"
     assert releases[f"new-cards-{DAY}.json.gz"] == "cartograph-prices/data-2026-10"
+
+
+def test_card_changes_parquet_goes_to_public_release(tmp_path: Path) -> None:
+    files = [{"name": f"card-changes-{DAY}.parquet", "rows": 3, "bytes": 5}]
+    summary = make_summary(catalogue=make_step(files=files))
+
+    manifest = build_manifest(summary, _data_dir(tmp_path), DAY, 42, 120)
+
+    assert manifest["files"][0]["release"] == "cartograph-data/catalogue"

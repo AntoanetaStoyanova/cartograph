@@ -375,3 +375,18 @@ def test_read_catalogue_keeps_current_catalogue(tmp_path: Path) -> None:
     pq.write_table(table, path)
 
     assert read_catalogue(path).to_pylist() == table.to_pylist()
+
+
+def test_latest_catalogue_before_day_skips_same_day(tmp_path: Path) -> None:
+    for name in [
+        "cards-2026-11-17.parquet",
+        "cards-2026-11-18.parquet",
+        "card-changes-2026-11-17.parquet",
+    ]:
+        (tmp_path / name).touch()
+
+    latest = latest_catalogue(tmp_path, before=date(2026, 11, 18))
+
+    assert latest == tmp_path / "cards-2026-11-17.parquet"
+    assert latest_catalogue(tmp_path, before=date(2026, 11, 17)) is None
+    assert latest_catalogue(tmp_path) == tmp_path / "cards-2026-11-18.parquet"
