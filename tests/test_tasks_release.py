@@ -26,6 +26,7 @@ PR_CREATE = re.compile(
     r"--body-file \S+$"
 )
 PR_URL = "https://github.com/AntoanetaStoyanova/cartograph/pull/14"
+LS_FILES = "git ls-files"
 CHANGELOG = """## v0.4.0 (2026-11-20)
 
 ### Nouveautés
@@ -57,6 +58,7 @@ JOURNAL = """# Journal — cartograph
 @pytest.fixture(autouse=True)
 def _changelog(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     (tmp_path / "CHANGELOG.md").write_text(CHANGELOG, encoding="utf-8")
+    (tmp_path / ".clean").write_text("docs/_build/\n", encoding="utf-8")
     monkeypatch.chdir(tmp_path)
 
 
@@ -80,6 +82,7 @@ def _context(
     results[VERSION] = Result("0.4.0\n")
     results[PR_LIST] = Result(f"{pr_url}\n")
     results[PR_CREATE] = Result()
+    results[LS_FILES] = Result("CHANGELOG.md\n")
     return MockContext(run=results)
 
 
@@ -91,7 +94,8 @@ def test_release_runs_checks_bump_docs_push_then_opens_pr() -> None:
     c = _context()
     release(c)
     commands = _commands(c)
-    assert commands[:-1] == [
+    assert commands[-1] == LS_FILES
+    assert commands[:-2] == [
         "git branch --show-current",
         "git status --porcelain",
         "git pull --ff-only",
@@ -103,13 +107,13 @@ def test_release_runs_checks_bump_docs_push_then_opens_pr() -> None:
         VERSION,
         PR_LIST,
     ]
-    assert PR_CREATE.match(commands[-1])
+    assert PR_CREATE.match(commands[-2])
 
 
 def test_release_shows_existing_pr(capsys: pytest.CaptureFixture[str]) -> None:
     c = _context(pr_url=PR_URL)
     release(c)
-    assert _commands(c)[-1] == PR_LIST
+    assert _commands(c)[-2:] == [PR_LIST, LS_FILES]
     assert PR_URL in capsys.readouterr().out
 
 

@@ -110,12 +110,14 @@ Avant une pull request, depuis la branche `feature/…` :
 uv run inv finish      # inv ci et inv okflint, push, puis pull request vers develop
 ```
 
-`inv finish` refuse une autre branche qu'une `feature/…` et un arbre de travail non propre ; si la pull request existe déjà, il affiche son lien. Les contrôles se lancent aussi seuls :
+`inv finish` refuse une autre branche qu'une `feature/…` et un arbre de travail non propre ; si la pull request existe déjà, il affiche son lien. Si la branche modifie `src/`, `tasks/`, `dbt/models/` ou `dbt/macros/` sans aucun commit `feat`, `fix`, `refactor` ou `perf` (seuls préfixes qui font monter la version), il affiche les commits et demande confirmation avant le push ; « n » ou Entrée arrête la tâche, le temps d'un `git commit --amend`. Les contrôles se lancent aussi seuls :
 
 ```bash
 uv run inv ci          # pre-commit sur tous les fichiers, mypy, pytest, dbt build sur l'échantillon
 uv run inv okflint     # en-tête et liens des specs et plans locaux de docs/
 ```
+
+`uv run inv clean` supprime les fichiers générés (caches, couverture, `dbt/target/`, base échantillon, `docs/_build/`) déclarés dans `.clean`, à la racine : un motif glob par ligne, relatif à la racine, `/` final pour un dossier, `#` pour un commentaire. Pour nettoyer un nouveau fichier généré, ajouter son motif à `.clean` plutôt qu'écrire un `rm`. La tâche échoue sans rien supprimer si un motif touche un fichier suivi par Git, sort du dépôt ou atteint un chemin protégé (`.env`, `.venv/`, `.git/`, `data/snapshots/`, `data/raw/`, `data/cartograph.duckdb`, `docs/plans/`, `docs/specs/`). `inv finish` et `inv release` la lancent à la fin ; `inv ci` non, pour garder `htmlcov/` et `dbt/target/` après un échec.
 
 Sur GitHub, le workflow `CI` (`.github/workflows/ci.yml`) lance `uv run inv ci` sur chaque pull request vers `develop` et `main` (environ une minute) ; un nouveau push sur la branche annule l'exécution en cours. La variable GitHub Actions `TCGDEX_USER_AGENT` du dépôt doit exister : `cartograph.config` l'exige à l'import.
 
@@ -212,6 +214,8 @@ uv run inv rebuild --skip-download  # dbt build sur les snapshots déjà présen
 - Protection (ruleset `.github/rulesets/develop-main.json`, appliqué par `gh api --method POST repos/AntoanetaStoyanova/cartograph/rulesets --input …`) : sur `develop` et `main`, pull request obligatoire, check `ci` vert requis, merge commit seul, ni force-push ni suppression. Le rôle admin peut passer outre : c'est ce qui laisse `inv release` pousser sur `develop`. Ne jamais cocher « bypass rules » pour fusionner une pull request rouge.
 - Pull requests fusionnées en **merge commit** uniquement : un squash réduirait le changelog à une ligne et, comme un rebase, laisserait le commit tagué hors de `main`
 - Mettre une branche feature à jour après une release : `git fetch origin && git merge origin/develop`
+- Fin de lot : `uv run inv clean-branches` liste les branches locales dont la pull request est fusionnée (`gh pr list --state merged`, qui reconnaît aussi un squash) et, après confirmation (o/N), les supprime en local puis sur `origin` si elles y sont encore, puis `git fetch --prune`. Une seule branche : `uv run inv delete-branch <nom>`, refusée sans pull request fusionnée sauf `--force`. `main`, `develop` et la branche courante ne sont jamais supprimées, même avec `--force`.
+- Le réglage GitHub `delete-branch-on-merge` reste désactivé : une branche fusionnée reste sur `origin`, consultable, jusqu'à `inv clean-branches`. `develop` et `main` sont de toute façon protégées par le ruleset.
 - Les specs et plans de `docs/` ne sont pas suivis par Git : `git clean -fdx` les effacerait, il est interdit
 - Format des commits — **Conventional Commits**, vérifié par le hook `commit-msg`. Chaque message devient une ligne du `CHANGELOG.md` : l'écrire pour être relu.
 

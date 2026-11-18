@@ -1,11 +1,13 @@
 """Tâches d'automatisation — exécutées via `inv <commande>`."""
 
+import os
 import re
 import shlex
+import shutil
 import tempfile
 import time
 from datetime import date
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 import duckdb
 from invoke import Context, Exit, call, task
@@ -178,15 +180,128 @@ def docs(c: Context) -> None:
 
 
 @task
-def docs_clean(c: Context) -> None:
-    """Supprime la documentation générée."""
-    c.run("rm -rf docs/_build")
-
-
-@task
 def okflint(c: Context) -> None:
     """Vérifie le frontmatter et les liens des specs et plans (okf-base.yaml)."""
     c.run("uv run okflint validate --manifest okf-base.yaml")
+
+
+# ---------------------------------------------------------------------------
+# Nettoyage
+# ---------------------------------------------------------------------------
+
+CLEAN_FILE = Path(".clean")
+PROTECTED_PATHS = (
+    ".env",
+    ".venv",
+    ".git",
+    "data/snapshots",
+    "data/raw",
+    "data/cartograph.duckdb",
+    "docs/plans",
+    "docs/specs",
+)
+_WILDCARD = re.compile(r"[*?\[]")
+
+
+@task
+def clean(c: Context) -> None:
+    """Supprime les fichiers générés déclarés dans .clean, jamais le travail."""
+    patterns = _read_clean(CLEAN_FILE)
+    tracked = set(c.run("git ls-files", hide=True).stdout.splitlines())
+    targets = _clean_targets(Path.cwd(), patterns, tracked)
+    for target in targets:
+        if target.is_dir():
+            shutil.rmtree(target)
+        else:
+            target.unlink()
+        print(f"Supprimé : {target.relative_to(Path.cwd()).as_posix()}")
+    if not targets:
+        print("Rien à nettoyer.")
+
+
+def _read_clean(path: Path) -> list[str]:
+    """Motifs de .clean, sans lignes vides ni commentaires."""
+    if not path.exists():
+        raise Exit(f"{path} absent : la liste des fichiers à supprimer y est déclarée.")
+    lines = (line.strip() for line in path.read_text(encoding="utf-8").splitlines())
+    return [line for line in lines if line and not line.startswith("#")]
+
+
+def _clean_targets(root: Path, patterns: list[str], tracked: set[str]) -> list[Path]:
+    """Chemins à supprimer ; Exit avant toute suppression si un motif est dangereux.
+
+    Parameters
+    ----------
+    root : Path
+        Racine du dépôt.
+    patterns : list[str]
+        Motifs glob relatifs à la racine ; ``/`` final : dossiers seulement.
+    tracked : set[str]
+        Fichiers suivis par Git (``git ls-files``).
+
+    Returns
+    -------
+    list[Path]
+        Fichiers et dossiers correspondants, sans descendre dans un dossier retenu
+        ni dans un chemin protégé.
+    """
+    for pattern in patterns:
+        _check_pattern(pattern)
+    found: list[str] = []
+    for dirpath, dirnames, filenames in os.walk(root):
+        base = PurePosixPath(Path(dirpath).relative_to(root).as_posix())
+        for name in list(dirnames):
+            rel = (base / name).as_posix()
+            matched = _clean_match(rel, patterns, is_dir=True)
+            if matched:
+                found.append(rel)
+            if matched or rel in PROTECTED_PATHS:
+                dirnames.remove(name)
+        found += [
+            rel
+            for rel in ((base / name).as_posix() for name in filenames)
+            if _clean_match(rel, patterns, is_dir=False)
+        ]
+    for rel in found:
+        _check_target(rel, tracked)
+    return [root / rel for rel in found]
+
+
+def _check_pattern(pattern: str) -> None:
+    """Refuse un motif hors du dépôt ou dont la partie fixe vise un chemin protégé."""
+    path = PurePosixPath(pattern)
+    if path.is_absolute() or ".." in path.parts:
+        raise Exit(f"Motif {pattern} de .clean hors du dépôt.")
+    fixed: list[str] = []
+    for part in path.parts:
+        if _WILDCARD.search(part):
+            break
+        fixed.append(part)
+    prefix = "/".join(fixed)
+    for protected in PROTECTED_PATHS:
+        if prefix and (prefix == protected or prefix.startswith(protected + "/")):
+            raise Exit(f"Motif {pattern} de .clean : chemin protégé ({protected}).")
+
+
+def _clean_match(rel: str, patterns: list[str], is_dir: bool) -> bool:
+    """Vrai si ``rel`` correspond à un motif (``/`` final : dossiers seulement)."""
+    path = PurePosixPath(rel)
+    for pattern in patterns:
+        if pattern.endswith("/"):
+            if is_dir and path.full_match(pattern.rstrip("/")):
+                return True
+        elif path.full_match(pattern):
+            return True
+    return False
+
+
+def _check_target(rel: str, tracked: set[str]) -> None:
+    """Refuse un chemin protégé, qui en contient un ou qui contient un fichier suivi."""
+    for protected in PROTECTED_PATHS:
+        if rel == protected or protected.startswith(rel + "/"):
+            raise Exit(f"{rel} retenu par .clean : chemin protégé ({protected}).")
+    if rel in tracked or any(path.startswith(rel + "/") for path in tracked):
+        raise Exit(f"{rel} retenu par .clean contient un fichier suivi par Git.")
 
 
 # ---------------------------------------------------------------------------
@@ -201,6 +316,9 @@ LOG_HEADER = (
 )
 _JOURNAL_ENTRY = re.compile(r"^## \[\d{4}-\d{2}-\d{2}\]", re.MULTILINE)
 _LOG_VERSION = re.compile(r"^# v", re.MULTILINE)
+_VERSION_BUMP = re.compile(r"^(feat|fix|refactor|perf)(\([^)]*\))?!?:")
+CODE_PATHS = ("src/", "tasks/", "dbt/models/", "dbt/macros/")
+PROTECTED_BRANCHES = ("main", "develop")
 
 
 @task
@@ -223,6 +341,7 @@ def release(c: Context, dry_run: bool = False) -> None:
     docs(c)
     c.run("git push --follow-tags")
     _open_release_pr(c)
+    clean(c)
 
 
 @task
@@ -232,6 +351,7 @@ def finish(c: Context) -> None:
     if not branch.startswith("feature/"):
         raise Exit(f"inv finish se lance sur une branche feature/, pas sur {branch}.")
     _require_clean(c)
+    _confirm_without_bump(c)
     lint(c)
     typecheck(c)
     test(c)
@@ -241,8 +361,95 @@ def finish(c: Context) -> None:
     existing = c.run("gh pr view --json url --jq .url", hide=True, warn=True)
     if existing.ok and existing.stdout.strip():
         print(f"PR déjà ouverte : {existing.stdout.strip()}")
+    else:
+        c.run("gh pr create --base develop --fill")
+    clean(c)
+
+
+@task
+def delete_branch(c: Context, name: str, force: bool = False) -> None:
+    """Supprime une branche en local et sur origin ; PR fusionnée sauf --force."""
+    _check_deletable(c, name)
+    if not force and not _merged_pr(c, name):
+        raise Exit(f"{name} : aucune PR fusionnée (--force pour supprimer quand même).")
+    _delete_branch(c, name)
+    c.run("git fetch --prune")
+
+
+@task
+def clean_branches(c: Context) -> None:
+    """Supprime, après confirmation, les branches locales dont la PR est fusionnée."""
+    current = _current_branch(c)
+    local = c.run("git for-each-ref --format=%(refname:short) refs/heads/", hide=True)
+    merged = [
+        branch
+        for branch in local.stdout.split()
+        if branch not in (*PROTECTED_BRANCHES, current) and _merged_pr(c, branch)
+    ]
+    if not merged:
+        print("Aucune branche fusionnée à supprimer.")
         return
-    c.run("gh pr create --base develop --fill")
+    print("Branches fusionnées :")
+    for branch in merged:
+        print(f"  {branch}")
+    if input("Supprimer en local et sur origin ? (o/N) ").strip().lower() != "o":
+        return
+    for branch in merged:
+        _delete_branch(c, branch)
+    c.run("git fetch --prune")
+
+
+def _check_deletable(c: Context, branch: str) -> None:
+    """Refuse main, develop et la branche courante, même avec --force."""
+    if branch in PROTECTED_BRANCHES:
+        raise Exit(f"{branch} est protégée : jamais supprimée.")
+    if branch == _current_branch(c):
+        raise Exit(f"{branch} est la branche courante : changer de branche d'abord.")
+
+
+def _merged_pr(c: Context, branch: str) -> bool:
+    """Vrai si une PR de la branche est fusionnée (reconnaît aussi un squash)."""
+    result = c.run(
+        f"gh pr list --head {shlex.quote(branch)} --state merged"
+        " --json number --jq length",
+        hide=True,
+    )
+    return int(result.stdout.strip() or 0) > 0
+
+
+def _delete_branch(c: Context, branch: str) -> None:
+    """Supprime la branche en local, puis sur origin si elle y est encore."""
+    name = shlex.quote(branch)
+    c.run(f"git branch -D {name}")
+    if c.run(f"git ls-remote --heads origin {name}", hide=True).stdout.strip():
+        c.run(f"git push origin --delete {name}")
+
+
+def _bumps_version(subjects: list[str]) -> bool:
+    """Vrai si un sujet de commit fait monter la version (feat, fix, refactor, perf)."""
+    return any(_VERSION_BUMP.match(subject) for subject in subjects)
+
+
+def _touches_code(paths: list[str]) -> bool:
+    """Vrai si un chemin modifié est du code livré (src, tasks, dbt)."""
+    return any(path.startswith(CODE_PATHS) for path in paths)
+
+
+def _confirm_without_bump(c: Context) -> None:
+    """Demande confirmation si la branche modifie du code sans commit de version."""
+    diff = c.run("git diff --name-only origin/develop...HEAD", hide=True)
+    if not _touches_code(diff.stdout.split()):
+        return
+    log = c.run("git log --format=%s origin/develop..HEAD", hide=True)
+    subjects = log.stdout.splitlines()
+    if _bumps_version(subjects):
+        return
+    print("Code modifié sans commit feat, fix, refactor ou perf :")
+    for subject in subjects:
+        print(f"  {subject}")
+    print("inv release ne publiera pas de version (corriger avec git commit --amend).")
+    if input("Continuer quand même ? (o/N) ").strip().lower() != "o":
+        raise Exit("Aucun push : renommer le commit puis relancer inv finish.")
 
 
 def _current_branch(c: Context) -> str:
