@@ -50,13 +50,13 @@
 - COL-05 livré (PR #33, v0.8.0 ; `cartograph-data` envoyé ; branche supprimée). Exécution manuelle du 18/11 (run 44314516180) : « Collecter » 1 h 37 (1 h 44 à 1 h 47 avant), rotation 1 000 fiches en 3 min, 10 `new` (les 10 fiches en échec du 16/11, récupérées), 0 `updated` sur 31 284 fiches lues, `cards-2026-11-18.parquet` 59 410 lignes et 10,1 Mo (+2 Mo pour `fingerprint`), aucun prix publié. Résultats dans la spec ; plan et spec à `fait`.
 - Discussion échecs de collecte : 11 prix en échec en 11 jours (~1 par jour, manifestes du 8 au 18/11). Décision : pas de seconde passe pour l'instant (relevé du lendemain couvert par `cm_avg7`/`cm_avg30`) ; à reprendre si > 50 échecs par jour, ou par un test de couverture des prix en QUA-01.
 - Plan lot-sto-01-manifeste clos : SHA-256 de `cards-2026-11-16.parquet` (Release `catalogue`) identique à celui du manifeste du 16/11 ; dernier critère de la spec coché, plan et spec à `fait`.
+- `/audit` (tout le dépôt) : 26 trouvailles CRITICAL/WARN confirmées, 1 à vérifier (prix perdus après une panne → choix B : écrire le partiel), `clean-branches` sorti du périmètre (commande manuelle). Entrée ajoutée dans `.ai-context/CURRENT.md`. Plan et spec `fix-audit-2026-11-18` rédigés (3 étapes : dbt et `removed_on` avec `union_by_name`, collecte, tests et doc).
 
 ### Reste à faire
 
 - Vérifier le 19/11 que « Nettoyer les anciens catalogues » a supprimé `cards-2026-11-18.parquet` de la Release `catalogue` (seul critère vérifié à blanc).
-- DBT-02 : `stg_tcgdex__cards` devra lire `removed_on` (`union_by_name = true`) : les `cards-*` quotidiens gardent les cartes disparues.
+- Plan `fix-audit-2026-11-18` : Antoaneta crée `feature/fix-audit-2026-11-18` depuis `develop`, puis étape 1 (dbt et `removed_on`, échantillon dbt à régénérer).
 - Planifier DBT-02 (staging des prix) au standard SQL : `/workspace-plan dbt-02`.
-- Corriger le logger de `cartograph.bin.collect.run` (`__name__` vaut `__main__` sous `-m`) : petit `fix` à part.
 - Avant la porte 1 : relire dans un navigateur les conditions de Cardmarket et de TCGplayer (veille).
 - Rapport de novembre à régénérer en fin de mois (`inv suivi --mois 2026-11 --force`, commentaire gardé), puis `statut: fait` ; mettre à jour les chiffres de `docs/gouvernance/green-it.md`. Chaque début de mois : `inv ci` puis `inv suivi`, commentaire.
 - Porte 0 franchie le 15 novembre 2026 (P0-DEC) : neuf tests tranchés dans la spec maîtresse.
@@ -72,3 +72,4 @@
 - docs/plans/fix-fixtures-prix-fictifs.md, docs/specs/fix-fixtures-prix-fictifs.md
 - `tasks/__init__.py`, `tests/test_tasks_finish.py`, `tests/test_tasks_branches.py`, `tests/test_tasks_clean.py`, `.clean`, `CONTRIBUTING.md`
 - docs/plans/roadmap-lots.md (DBT-T1)
+- docs/plans/fix-audit-2026-11-18.md, docs/specs/fix-audit-2026-11-18.md, `.ai-context/CURRENT.md` (audit du 18/11)
