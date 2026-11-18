@@ -20,7 +20,7 @@
 
 ---
 
-## [2026-11-18] — Fixtures livrées, CI-04 livré
+## [2026-11-18] — CI-04 livré, COL-05 planifié
 
 ### Fait
 
@@ -37,10 +37,11 @@
 - Constat : `docs/plans/` et `docs/specs/` sont ignorés par Git (`.gitignore:95`), le commit `docs:` de la ligne DBT-T1 est sans objet.
 - Plan lot-doc-01-readme-licence clos : GitHub affiche MIT pour `cartograph` (`gh repo view --json licenseInfo`) ; plan et spec à `fait`.
 - Plan optimisation-collecte clos (PR, release et exécution `catalogue=oui` faites, confirmé par Antoaneta) ; plan et spec à `fait`.
+- Discussion collecte (catalogues du 9 et du 16/11, API) puis `docs/specs/collecte-incrementale.md` et `docs/plans/collecte-incrementale.md` créés (lot COL-05, 7 étapes). Décisions actées dans la spec : collecte complète du lundi supprimée (manuelle seulement), empreinte SHA-256 sans `pricing` ni `updated`, fiches des prix réutilisées, rotation de 1 000 fiches par jour, `removed_on` sans suppression, fiche en échec = ligne de la veille, cartes sans `idProduct` gardées sans prédiction, Release `catalogue` : dernier `cards-*` et ceux des lundis + `card-changes-*` quotidien.
 
 ### Reste à faire
 
-- Antoaneta : nouvelles informations sur la collecte, plan à rédiger avec elle avant DBT-02.
+- Exécuter docs/plans/collecte-incrementale.md — Étape 1 : Empreinte et schéma du catalogue (branche `feature/col-05-catalogue-incremental`).
 - Planifier DBT-02 (staging des prix) au standard SQL : `/workspace-plan dbt-02`.
 - Décision d'Antoaneta : collecte complète du catalogue gardée le lundi (corrections de fiches, ex. 36 raretés provisoires de M6 corrigées par TCGdex le 12/11) et contrôle quotidien des nouvelles cartes dans COL-04 (3 listes `/<langue>/cards` comparées au dernier catalogue, seules les fiches nouvelles téléchargées, prix dès le jour même). Ordre proposé : DBT-01 → CI-02 → COL-04 → DBT-02 ; à vérifier dans la spec COL-04 : l'API ne donne-t-elle que le prix du jour (premiers jours d'un set irrattrapables) ?
 - Corriger le logger de `cartograph.bin.collect.run` (`__name__` vaut `__main__` sous `-m`) : petit `fix` à part.
@@ -53,6 +54,7 @@
 
 ### Références
 
+- ../docs/specs/collecte-incrementale.md, ../docs/plans/collecte-incrementale.md
 - docs/plans/ci-04-alerte-version-finish.md, docs/specs/ci-04-alerte-version-finish.md
 - docs/plans/fix-fixtures-prix-fictifs.md, docs/specs/fix-fixtures-prix-fictifs.md
 - `tasks/__init__.py`, `tests/test_tasks_finish.py`, `tests/test_tasks_branches.py`, `tests/test_tasks_clean.py`, `.clean`, `CONTRIBUTING.md`
