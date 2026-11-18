@@ -20,7 +20,7 @@
 
 ---
 
-## [2026-11-18] — CI-04 livré, COL-05 Étapes 1-3
+## [2026-11-18] — CI-04 livré, COL-05 Étapes 1-4
 
 ### Fait
 
@@ -43,10 +43,11 @@
 - Retiré du « Reste à faire » : la décision du catalogue complet du lundi (COL-04), remplacée par COL-05.
 - Plan collecte-incrementale — Étape 2 : Listes : nouvelles, disparues, revenues. `catalogue.py` : `ListingDiff` et `listing_diff(client, languages, catalogue: pa.Table)` remplacent `new_card_ids` ; `run._collect_new_cards` lit le catalogue par `read_catalogue` et prend `diff.new`. Tests déplacés de `tests/test_collect_new_cards.py` vers `tests/test_collect_catalogue.py` (5 tests). Décision : une liste vide de l'API ne fait disparaître aucune carte (consignée dans la spec).
 - Plan collecte-incrementale — Étape 3 : Fiches reçues avec les prix. `prices.py` : `PriceFetch` (`prices`, `cards` par langue) renvoyé par `fetch_prices` ; `run.py` n'en prend encore que `.prices` (fusion à l'Étape 5). Nouveau module `incremental.py` : `changed_cards(base, cards)` renvoie les fiches modifiées (ou absentes de la base) et les identifiants des fiches identiques, par langue (dictionnaires plutôt que listes, pour alimenter `catalogue_table`). Tests : `tests/test_collect_prices.py`, `tests/test_collect_failures.py` adaptés, `tests/test_collect_incremental.py` créé.
+- Plan collecte-incrementale — Étape 4 : Rotation. `incremental.py` : `rotation_ids(base, price_targets, size)` (hors cibles de prix et disparues, tri `fetched_at` puis `card_id`, coupe à `size` toutes langues confondues) ; `config` : `ROTATION_SIZE = 1000` ; `run.py` : option `--rotation N` (`_rotation`, entier ≥ 0) passée à `collect(rotation=...)`, encore sans effet jusqu'à l'Étape 5. Tests : `tests/test_collect_incremental.py`, `tests/test_collect_run.py`.
 
 ### Reste à faire
 
-- Exécuter docs/plans/collecte-incrementale.md — Étape 4 : Rotation (branche `feature/col-05-catalogue-incremental`).
+- Exécuter docs/plans/collecte-incrementale.md — Étape 5 : Fusion et collecte quotidienne (branche `feature/col-05-catalogue-incremental`).
 - Planifier DBT-02 (staging des prix) au standard SQL : `/workspace-plan dbt-02`.
 - Corriger le logger de `cartograph.bin.collect.run` (`__name__` vaut `__main__` sous `-m`) : petit `fix` à part.
 - Avant la porte 1 : relire dans un navigateur les conditions de Cardmarket et de TCGplayer (veille).

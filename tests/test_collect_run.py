@@ -13,7 +13,7 @@ from cartograph.bin.collect import batch, run
 from cartograph.bin.collect.client import TcgdexClient
 from cartograph.bin.collect.run import collect, main
 from cartograph.bin.collect.snapshot import snapshot_paths
-from cartograph.config import LANGUAGES
+from cartograph.config import LANGUAGES, ROTATION_SIZE
 from tests.conftest import fixture_route, load_fixture, mock_client, price_values
 
 DAY = date(2026, 10, 28)
@@ -699,9 +699,20 @@ def fake_collect(
 
 
 def test_main_parses_options(fake_collect: dict[str, Any], tmp_path: Path) -> None:
-    code = main(["--catalogue", "--languages", "fr, ja", "--data-dir", str(tmp_path)])
+    code = main(
+        [
+            "--catalogue",
+            "--languages",
+            "fr, ja",
+            "--rotation",
+            "250",
+            "--data-dir",
+            str(tmp_path),
+        ]
+    )
 
     assert code == 0
+    assert fake_collect["rotation"] == 250
     assert fake_collect["catalogue"] is True
     assert fake_collect["prices"] is True
     assert fake_collect["languages"] == ("fr", "ja")
@@ -715,6 +726,7 @@ def test_main_defaults(fake_collect: dict[str, Any]) -> None:
     assert fake_collect["catalogue"] is False
     assert fake_collect["prices"] is True
     assert fake_collect["languages"] == LANGUAGES
+    assert fake_collect["rotation"] == ROTATION_SIZE
     assert fake_collect["data_dir"] == run.DATA_DIR
 
 
@@ -726,7 +738,13 @@ def test_main_returns_one_when_a_step_fails(fake_collect: dict[str, Any]) -> Non
 
 @pytest.mark.parametrize(
     "argv",
-    [["--languages", "fr,de"], ["--languages", ","], ["--no-prices"]],
+    [
+        ["--languages", "fr,de"],
+        ["--languages", ","],
+        ["--no-prices"],
+        ["--rotation", "-1"],
+        ["--rotation", "mille"],
+    ],
 )
 def test_main_rejects_invalid_options(
     fake_collect: dict[str, Any], argv: list[str]

@@ -62,7 +62,7 @@ from cartograph.bin.collect.snapshot import (
     write_json_gz,
     write_parquet,
 )
-from cartograph.config import DATA_DIR, LANGUAGES, LOG_DIR
+from cartograph.config import DATA_DIR, LANGUAGES, LOG_DIR, ROTATION_SIZE
 from cartograph.log import setup_logging
 
 logger = logging.getLogger(__name__)
@@ -75,6 +75,7 @@ def collect(
     prices: bool,
     languages: Sequence[str],
     now: Callable[[], datetime] = lambda: datetime.now(UTC),
+    rotation: int = ROTATION_SIZE,
 ) -> CollectSummary:
     """
     Collecte le catalogue, les sets et les prix, écrit les snapshots et le résumé.
@@ -94,6 +95,8 @@ def collect(
     now : Callable[[], datetime], optional
         Horloge, par défaut l'heure UTC courante ; injectée en test. Le jour
         des fichiers est la date UTC du début.
+    rotation : int, optional
+        Fiches hors prix relues dans la journée, par défaut ``ROTATION_SIZE``.
 
     Returns
     -------
@@ -201,6 +204,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         help=f"langues séparées par des virgules (défaut : {','.join(LANGUAGES)})",
     )
     parser.add_argument(
+        "--rotation",
+        type=_rotation,
+        default=ROTATION_SIZE,
+        help=f"fiches hors prix relues (défaut : {ROTATION_SIZE})",
+    )
+    parser.add_argument(
         "--data-dir", type=Path, default=DATA_DIR, help="dossier des sorties"
     )
     args = parser.parse_args(argv)
@@ -215,6 +224,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             catalogue=args.catalogue,
             prices=not args.no_prices,
             languages=args.languages,
+            rotation=args.rotation,
         )
     statuses = {name: step["status"] for name, step in summary["steps"].items()}
     logger.info("Collecte terminée : %s", statuses)
@@ -247,6 +257,36 @@ def _languages(value: str) -> tuple[str, ...]:
             f"langues inconnues : {value!r} (attendu parmi {','.join(LANGUAGES)})"
         )
     return languages
+
+
+def _rotation(value: str) -> int:
+    """
+    Lit l'option ``--rotation``.
+
+    Parameters
+    ----------
+    value : str
+        Nombre de fiches, entier positif ou nul.
+
+    Returns
+    -------
+    int
+        Nombre de fiches relues.
+
+    Raises
+    ------
+    argparse.ArgumentTypeError
+        Si ``value`` n'est pas un entier positif ou nul.
+    """
+    try:
+        size = int(value)
+    except ValueError:
+        size = -1
+    if size < 0:
+        raise argparse.ArgumentTypeError(
+            f"rotation invalide : {value!r} (entier positif ou nul attendu)"
+        )
+    return size
 
 
 def _interrupted_step() -> StepSummary:
