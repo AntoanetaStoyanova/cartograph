@@ -25,13 +25,7 @@ cards as (
         removed_on,
         is_current
     from {{ ref('stg_tcgdex__cards') }} as cards
-    where not exists (
-        select 1
-        from {{ ref('stg_tcgdex__sets') }} as pocket_sets
-        where
-            pocket_sets.serie_id = 'tcgp'
-            and pocket_sets.set_id = cards.set_id
-    )
+    where {{ not_pocket_set('cards.set_id') }}
 
 ),
 

@@ -13,13 +13,7 @@ cards as (
         on coalesce(cards.rarity, 'None') = rarity_mapping.rarity
     where
         cards.cardmarket_product_id is not null
-        and not exists (
-            select 1
-            from {{ ref('stg_tcgdex__sets') }} as pocket_sets
-            where
-                pocket_sets.serie_id = 'tcgp'
-                and pocket_sets.set_id = cards.set_id
-        )
+        and {{ not_pocket_set('cards.set_id') }}
 
 ),
 

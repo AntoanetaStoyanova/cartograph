@@ -25,9 +25,8 @@ prices as (
     from {{ ref('stg_tcgdex__cardmarket_prices') }}
     {% if is_incremental() %}
         where
-            price_date > (
-                select coalesce(max(loaded.price_date), '1900-01-01')
-                from {{ this }} as loaded
+            price_date not in (
+                select distinct loaded.price_date from {{ this }} as loaded
             )
     {% endif %}
 

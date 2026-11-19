@@ -17,8 +17,8 @@ sets as (
         release_date,
         last_seen_on,
         is_current
-    from {{ ref('stg_tcgdex__sets') }}
-    where serie_id is distinct from 'tcgp'
+    from {{ ref('stg_tcgdex__sets') }} as staged_sets
+    where {{ not_pocket_set('staged_sets.set_id') }}
 
 )
 
