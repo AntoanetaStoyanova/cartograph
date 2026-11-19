@@ -35,7 +35,7 @@ cards as (
 
 ),
 
-rarities as (
+joined as (
 
     select
         cards.card_id,
@@ -60,11 +60,14 @@ rarities as (
         cards.removed_on,
         cards.is_current,
         rarity_mapping.rarity_code,
-        rarity_mapping.rarity_level
+        rarity_mapping.rarity_level,
+        products.is_ambiguous_product
     from cards
     left join {{ ref('int_rarity_mapping') }} as rarity_mapping
         on coalesce(cards.rarity, 'None') = rarity_mapping.rarity
+    left join {{ ref('int_cardmarket_products') }} as products
+        on cards.cardmarket_product_id = products.cardmarket_product_id
 
 )
 
-select * from rarities
+select * from joined

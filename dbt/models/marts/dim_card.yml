@@ -98,13 +98,23 @@ models:
       - name: rarity_level
         data_type: integer
         description: Niveau de 1 à 8, vide pour `none` et `promo`.
+      - name: is_ambiguous_product
+        data_type: boolean
+        description: >
+          Repris de `int_cardmarket_products` : le produit relie plusieurs noms ou codes de
+          rareté dans une langue, son prix n'a pas de carte sûre. Vide sans produit.
+        data_tests:
+          - not_null:
+              config:
+                where: "cardmarket_product_id is not null"
 
 unit_tests:
   - name: dim_card_excludes_pocket_and_maps_rarity
     description: >
       Les cartes d'un set `tcgp` sont écartées, même quand ce set manque dans la langue
       de la carte ; une rareté vide reçoit le code `none` ; une carte retirée est gardée ;
-      une carte sans set dans sa langue (`pl4` en `fr`) est gardée.
+      une carte sans set dans sa langue (`pl4` en `fr`) est gardée ; l'indicateur de produit
+      ambigu est repris, vide sans produit.
     model: dim_card
     given:
       - input: ref('stg_tcgdex__cards')
@@ -116,7 +126,8 @@ unit_tests:
               null::varchar as evolution_stage, null::integer[] as dex_ids,
               null::varchar as illustrator, null::varchar as regulation_mark,
               null::boolean as is_legal_standard, null::boolean as is_legal_expanded,
-              null::varchar as image_url, null::bigint as cardmarket_product_id,
+              null::varchar as image_url,
+              case when card_id = 'swsh11-1' then 1 end::bigint as cardmarket_product_id,
               null::timestamptz as updated_at, null::date as last_seen_on,
               null::date as removed_on, is_current
           from (values
@@ -151,6 +162,12 @@ unit_tests:
               ('None', 'none', null::integer),
               ('Rare', 'rare', 3)
           ) as t (rarity, rarity_code, rarity_level)
+      - input: ref('int_cardmarket_products')
+        format: sql
+        rows: |
+          select
+              1::bigint as cardmarket_product_id, true as has_current_card,
+              1::bigint as card_count, true as is_ambiguous_product
     expect:
       rows:
         - {
@@ -160,6 +177,7 @@ unit_tests:
             rarity_code: rare,
             rarity_level: 3,
             is_current: true,
+            is_ambiguous_product: true,
           }
         - {
             card_id: S12-1,
@@ -168,6 +186,7 @@ unit_tests:
             rarity_code: none,
             rarity_level: null,
             is_current: true,
+            is_ambiguous_product: null,
           }
         - {
             card_id: mep-028,
@@ -176,6 +195,7 @@ unit_tests:
             rarity_code: rare,
             rarity_level: 3,
             is_current: false,
+            is_ambiguous_product: null,
           }
         - {
             card_id: pl4-AR1,
@@ -184,4 +204,5 @@ unit_tests:
             rarity_code: rare,
             rarity_level: 3,
             is_current: true,
+            is_ambiguous_product: null,
           }

@@ -1,0 +1,131 @@
+version: 2
+
+models:
+  - name: int_cardmarket_products
+    config:
+      contract:
+        enforced: true
+    description: >
+      Une ligne par produit Cardmarket porté par une carte hors TCG Pocket, courante ou
+      retirée, avec un indicateur d'ambiguïté calculé une fois. Un produit est ambigu
+      quand, dans une langue au moins, ses cartes courantes ont plusieurs noms ou
+      plusieurs codes de rareté (erreur de correspondance de TCGdex) : son prix n'a pas
+      de carte ni de rareté sûre. DBT-06 exclut ou marque ces produits dans
+      `mart_price_baseline`, sans les compter dans chaque rareté.
+    columns:
+      - name: cardmarket_product_id
+        data_type: bigint
+        description: Produit Cardmarket, clé des prix.
+        data_tests:
+          - unique
+          - not_null
+      - name: has_current_card
+        data_type: boolean
+        description: Au moins une carte courante (`is_current`) porte le produit.
+        data_tests:
+          - not_null
+      - name: card_count
+        data_type: bigint
+        description: Cartes courantes qui portent le produit, toutes langues ; 0 sans carte courante.
+      - name: is_ambiguous_product
+        data_type: boolean
+        description: >
+          Plusieurs `card_name` ou plusieurs `rarity_code` parmi les cartes courantes d'une
+          même langue ; faux aussi quand `has_current_card` est faux, l'ambiguïté n'est
+          alors pas évaluée ; DBT-06 filtre sur `has_current_card` avant de s'y fier.
+        data_tests:
+          - not_null
+
+unit_tests:
+  - name: int_cardmarket_products_flags_ambiguity
+    description: >
+      Deux noms ou deux codes de rareté dans une langue rendent le produit ambigu, même
+      si une seule langue l'est ; des noms différents entre langues, non ; une carte
+      retirée d'un autre nom, non ; un produit porté seulement par une carte retirée
+      garde sa ligne, non évalué ; une carte sans produit ou d'un set `tcgp` ne donne
+      aucune ligne.
+    model: int_cardmarket_products
+    given:
+      - input: ref('stg_tcgdex__cards')
+        format: sql
+        rows: |
+          select
+              card_id, language_code, '1' as local_id, card_name, set_id,
+              'pokemon' as category, rarity, null::varchar[] as pokemon_types, null::integer as hp,
+              null::varchar as evolution_stage, null::integer[] as dex_ids,
+              null::varchar as illustrator, null::varchar as regulation_mark,
+              null::boolean as is_legal_standard, null::boolean as is_legal_expanded,
+              null::varchar as image_url, cardmarket_product_id,
+              null::timestamptz as updated_at, null::date as last_seen_on,
+              null::date as removed_on, is_current
+          from (values
+              ('s-1', 'en', 'Giratina V', 's', 'Rare', 1::bigint, true),
+              ('s-2', 'en', 'Giratina VSTAR', 's', 'Rare', 1, true),
+              ('s-3', 'en', 'Pikachu', 's', 'Rare', 2, true),
+              ('s-4', 'en', 'Pikachu', 's', 'Holo Rare', 2, true),
+              ('s-5', 'fr', 'Dracaufeu', 's', 'Rare', 3, true),
+              ('s-5', 'en', 'Charizard', 's', 'Rare', 3, true),
+              ('s-6', 'fr', 'Mew', 's', 'Rare', 4, true),
+              ('s-6', 'en', 'Mew', 's', 'Rare', 4, true),
+              ('s-7', 'en', 'Mewtwo', 's', 'Rare', 4, true),
+              ('s-8', 'en', 'Évoli', 's', 'Rare', 5, true),
+              ('s-9', 'en', 'Pyroli', 's', 'Rare', 5, false),
+              ('s-10', 'en', 'Aquali', 's', 'Rare', 6, false),
+              ('s-11', 'en', 'Voltali', 's', 'Rare', null::bigint, true),
+              ('A1-1', 'en', 'Pikachu ex', 'A1', 'Rare', 7, true)
+          ) as t (card_id, language_code, card_name, set_id, rarity, cardmarket_product_id, is_current)
+      - input: ref('stg_tcgdex__sets')
+        format: sql
+        rows: |
+          select
+              set_id, 'en' as language_code, 'Set' as set_name, serie_id, 'Série' as serie_name,
+              null::varchar as abbreviation_official, null::varchar as abbreviation_localized,
+              1 as card_count_official, 1 as card_count_total, null::varchar as symbol_url,
+              null::varchar as logo_url, null::date as release_date,
+              '2026-11-19'::date as last_seen_on, true as is_current
+          from (values ('s', 'swsh'), ('A1', 'tcgp')) as t (set_id, serie_id)
+      - input: ref('int_rarity_mapping')
+        format: sql
+        rows: |
+          select * from (values
+              ('Rare', 'rare', 3),
+              ('Holo Rare', 'holo_rare', 4)
+          ) as t (rarity, rarity_code, rarity_level)
+    expect:
+      rows:
+        - {
+            cardmarket_product_id: 1,
+            has_current_card: true,
+            card_count: 2,
+            is_ambiguous_product: true,
+          }
+        - {
+            cardmarket_product_id: 2,
+            has_current_card: true,
+            card_count: 2,
+            is_ambiguous_product: true,
+          }
+        - {
+            cardmarket_product_id: 3,
+            has_current_card: true,
+            card_count: 2,
+            is_ambiguous_product: false,
+          }
+        - {
+            cardmarket_product_id: 4,
+            has_current_card: true,
+            card_count: 3,
+            is_ambiguous_product: true,
+          }
+        - {
+            cardmarket_product_id: 5,
+            has_current_card: true,
+            card_count: 1,
+            is_ambiguous_product: false,
+          }
+        - {
+            cardmarket_product_id: 6,
+            has_current_card: false,
+            card_count: 0,
+            is_ambiguous_product: false,
+          }
