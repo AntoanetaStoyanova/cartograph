@@ -1,0 +1,124 @@
+version: 2
+
+models:
+  - name: stg_tcgdex__tcgplayer_prices
+    config:
+      contract:
+        enforced: true
+    description: >
+      Une ligne par produit Cardmarket, finition TCGplayer et date de snapshot
+      (`prices-*.parquet`), dépliée de `tcgplayer_json` (une clé par finition, hors `unit`
+      et `updated`). `0` est lu comme absent ; une finition sans aucun prix n'a pas de
+      ligne. Sert au lien F26 (`tcgplayer_product_id`), pas au prix de référence.
+    data_tests:
+      - unique:
+          arguments:
+            column_name: "cardmarket_product_id || '|' || finish || '|' || price_date"
+    columns:
+      - name: cardmarket_product_id
+        data_type: bigint
+        description: Produit Cardmarket (`idProduct`) de la ligne de snapshot.
+        data_tests:
+          - not_null
+      - name: finish
+        data_type: varchar
+        description: Finition au sens de TCGplayer ; une finition inconnue arrête le build.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  - normal
+                  - holofoil
+                  - reverse-holofoil
+                  - 1st-edition
+                  - 1st-edition-holofoil
+                  - unlimited
+                  - unlimited-holofoil
+      - name: price_date
+        data_type: date
+        description: Date du snapshot, tirée du nom du fichier.
+        data_tests:
+          - not_null
+      - name: low_price
+        data_type: decimal(10, 2)
+        description: Prix le plus bas proposé, vide si absent.
+      - name: mid_price
+        data_type: decimal(10, 2)
+        description: Prix médian des offres, vide si absent.
+      - name: high_price
+        data_type: decimal(10, 2)
+        description: Prix le plus haut proposé, vide si absent.
+      - name: market_price
+        data_type: decimal(10, 2)
+        description: Prix de marché TCGplayer (ventes récentes), vide si absent.
+      - name: direct_low_price
+        data_type: decimal(10, 2)
+        description: Prix le plus bas TCGplayer Direct, vide si absent.
+      - name: currency_code
+        data_type: varchar
+        description: Devise des prix.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [USD]
+      - name: updated_at
+        data_type: timestamp with time zone
+        description: Mise à jour des prix TCGplayer.
+      - name: tcgplayer_product_id
+        data_type: bigint
+        description: Produit TCGplayer de la finition, pour le lien F26.
+        data_tests:
+          - not_null
+
+unit_tests:
+  - name: stg_tcgdex__tcgplayer_prices_unpivots_finishes
+    description: >
+      Une ligne par clé de finition de `tcgplayer_json`, sans `unit` ni `updated` ; une
+      valeur entière est lue en décimal, `0` devient vide ; une finition sans prix et un
+      `tcgplayer_json` vide ne donnent aucune ligne.
+    model: stg_tcgdex__tcgplayer_prices
+    given:
+      - input: source('tcgdex', 'prices')
+        format: sql
+        rows: |
+          select
+              'fr' as language, 'hgss3-1' as card_id, id_product, null::timestamptz as fetched_at,
+              null::timestamptz as cm_updated, 'EUR' as cm_unit,
+              null::double as cm_avg, null::double as cm_low, null::double as cm_trend,
+              null::double as cm_avg1, null::double as cm_avg7, null::double as cm_avg30,
+              null::double as cm_avg_holo, null::double as cm_low_holo, null::double as cm_trend_holo,
+              null::double as cm_avg1_holo, null::double as cm_avg7_holo, null::double as cm_avg30_holo,
+              tcgplayer_json, filename
+          from (values
+              (1::bigint, '{"holofoil": {"directLowPrice": null, "highPrice": null, "lowPrice": null, "marketPrice": null, "midPrice": null, "productId": 90001}, "normal": {"directLowPrice": 0, "highPrice": 4003.37, "lowPrice": 4000, "marketPrice": 4002.37, "midPrice": 4001.37, "productId": 90001}, "reverse-holofoil": {"directLowPrice": null, "highPrice": null, "lowPrice": 4010.37, "marketPrice": null, "midPrice": null, "productId": 90002}, "unit": "USD", "updated": "2026-11-17T22:16:26.345Z"}', 'snapshots/prices-2026-11-18.parquet'),
+              (2, null, 'snapshots/prices-2026-11-18.parquet')
+          ) as t (id_product, tcgplayer_json, filename)
+    expect:
+      rows:
+        - {
+            cardmarket_product_id: 1,
+            finish: normal,
+            price_date: 2026-11-18,
+            low_price: 4000.00,
+            mid_price: 4001.37,
+            high_price: 4003.37,
+            market_price: 4002.37,
+            direct_low_price: null,
+            currency_code: USD,
+            updated_at: "2026-11-17 22:16:26.345+00",
+            tcgplayer_product_id: 90001,
+          }
+        - {
+            cardmarket_product_id: 1,
+            finish: reverse-holofoil,
+            price_date: 2026-11-18,
+            low_price: 4010.37,
+            mid_price: null,
+            high_price: null,
+            market_price: null,
+            direct_low_price: null,
+            currency_code: USD,
+            updated_at: "2026-11-17 22:16:26.345+00",
+            tcgplayer_product_id: 90002,
+          }

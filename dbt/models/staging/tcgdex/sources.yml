@@ -3,10 +3,11 @@ version: 2
 sources:
   - name: tcgdex
     description: >
-      Snapshots publics de TCGdex, dans le dossier de la variable `snapshot_dir`, un fichier
+      Snapshots de TCGdex, dans le dossier de la variable `snapshot_dir`, un fichier
       `<préfixe>AAAA-MM-JJ.parquet` par jour : catalogue (`cards-`, chaque jour depuis COL-05,
-      le lundi avant), nouvelles cartes (`new-cards-`, s'il y en a), sets (`sets-`, chaque jour).
-      `card-changes-` n'est pas encore lu (DBT-02).
+      le lundi avant), nouvelles cartes (`new-cards-`, s'il y en a), sets (`sets-`, chaque jour),
+      publics ; prix (`prices-`, chaque jour), privés. `card-changes-` n'est pas encore lu
+      (lot à définir quand un modèle en aura besoin).
     tables:
       - name: cards
         description: >
@@ -121,3 +122,75 @@ sources:
           - name: filename
             data_type: varchar
             description: Chemin du fichier lu, ajouté par `read_parquet`.
+      - name: prices
+        description: >
+          Une ligne par produit Cardmarket et par fichier (`prices-AAAA-MM-JJ.parquet`), au schéma
+          `snapshot.PRICE_SCHEMA` : prix Cardmarket en colonnes, TCGplayer en JSON. Privés : jamais
+          versionnés, sauf l'échantillon fictif de `dbt/sample/snapshots/`.
+        meta:
+          external_location: "read_parquet('{{ var('snapshot_dir') }}/prices-*.parquet', filename = true, union_by_name = true)"
+        columns:
+          - name: language
+            data_type: varchar
+            description: Langue de la carte interrogée pour ce produit (`fr`, puis `en`, puis `ja`).
+          - name: card_id
+            data_type: varchar
+            description: Carte interrogée pour ce produit ; plusieurs cartes partagent un produit.
+          - name: id_product
+            data_type: bigint
+            description: Produit Cardmarket, une ligne par produit et par fichier.
+          - name: fetched_at
+            data_type: timestamp with time zone
+            description: Heure de la requête du produit ; la collecte dure plus d'une heure.
+          - name: cm_updated
+            data_type: timestamp with time zone
+            description: Mise à jour du guide de prix Cardmarket.
+          - name: cm_unit
+            data_type: varchar
+            description: Devise Cardmarket (`EUR`).
+          - name: cm_avg
+            data_type: double
+            description: Prix moyen de vente, en `EUR` ; `0` veut dire absent.
+          - name: cm_low
+            data_type: double
+            description: Prix le plus bas proposé, en `EUR` ; `0` veut dire absent.
+          - name: cm_trend
+            data_type: double
+            description: Prix de tendance de Cardmarket, en `EUR` ; `0` veut dire absent.
+          - name: cm_avg1
+            data_type: double
+            description: Moyenne des ventes sur 1 jour, en `EUR` ; `0` veut dire absent.
+          - name: cm_avg7
+            data_type: double
+            description: Moyenne des ventes sur 7 jours, en `EUR` ; `0` veut dire absent.
+          - name: cm_avg30
+            data_type: double
+            description: Moyenne des ventes sur 30 jours, en `EUR` ; `0` veut dire absent.
+          - name: cm_avg_holo
+            data_type: double
+            description: Prix moyen de vente du reverse (`reverseHolo*` de Cardmarket), en `EUR` ; `0` ou vide veut dire absent.
+          - name: cm_low_holo
+            data_type: double
+            description: Prix le plus bas proposé du reverse (`reverseHolo*` de Cardmarket), en `EUR` ; `0` ou vide veut dire absent.
+          - name: cm_trend_holo
+            data_type: double
+            description: Prix de tendance du reverse (`reverseHolo*` de Cardmarket), en `EUR` ; `0` ou vide veut dire absent.
+          - name: cm_avg1_holo
+            data_type: double
+            description: Moyenne des ventes sur 1 jour du reverse (`reverseHolo*` de Cardmarket), en `EUR` ; `0` ou vide veut dire absent.
+          - name: cm_avg7_holo
+            data_type: double
+            description: Moyenne des ventes sur 7 jours du reverse (`reverseHolo*` de Cardmarket), en `EUR` ; `0` ou vide veut dire absent.
+          - name: cm_avg30_holo
+            data_type: double
+            description: Moyenne des ventes sur 30 jours du reverse (`reverseHolo*` de Cardmarket), en `EUR` ; `0` ou vide veut dire absent.
+          - name: tcgplayer_json
+            data_type: varchar
+            description: >
+              Prix TCGplayer en JSON, vide pour environ 40 % des produits : `unit` (`USD`),
+              `updated` (ISO 8601) et une clé par finition (`normal`, `holofoil`,
+              `reverse-holofoil`…) avec `lowPrice`, `midPrice`, `highPrice`, `marketPrice`,
+              `directLowPrice` et `productId`.
+          - name: filename
+            data_type: varchar
+            description: Chemin du fichier lu, ajouté par `read_parquet` ; date du prix tirée de son nom.
