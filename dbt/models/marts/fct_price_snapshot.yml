@@ -1,0 +1,156 @@
+version: 2
+
+models:
+  - name: fct_price_snapshot
+    config:
+      contract:
+        enforced: true
+    description: >
+      Historique complet des prix Cardmarket, une ligne par produit, finition et date,
+      colonnes de `stg_tcgdex__cardmarket_prices`, sans carte : le prix est celui du
+      produit. Incrémentale par ajout : chaque build charge les dates postérieures à la
+      plus récente de la table, donc tous les jours manqués après un build arrêté. Le
+      rattachement aux cartes passe par `dim_card`, non unique sur `cardmarket_product_id` :
+      tout agrégat de prix part de produits distincts. Un fichier `prices-` remplacé pour
+      une date déjà chargée n'est pas relu : `dbt build --full-refresh --select
+      fct_price_snapshot`, ou `inv rebuild`.
+    data_tests:
+      - unique:
+          arguments:
+            column_name: "cardmarket_product_id || '|' || finish || '|' || price_date"
+    columns:
+      - name: cardmarket_product_id
+        data_type: bigint
+        description: >
+          Produit Cardmarket (`idProduct`). Rattaché aux cartes par `dim_card`, qui n'est pas
+          unique sur cette colonne ; ambiguïté dans `int_cardmarket_products`.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('int_cardmarket_products')
+                field: cardmarket_product_id
+              config:
+                severity: error
+      - name: finish
+        data_type: varchar
+        description: Finition au sens de Cardmarket, `base` ou `reverse_holo`.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [base, reverse_holo]
+      - name: price_date
+        data_type: date
+        description: Date du snapshot, tirée du nom du fichier.
+        data_tests:
+          - not_null
+      - name: low_price
+        data_type: decimal(10, 2)
+        description: Prix le plus bas proposé, vide si absent.
+      - name: trend_price
+        data_type: decimal(10, 2)
+        description: Prix de tendance de Cardmarket, vide si absent ; prix de référence (DBT-05).
+      - name: avg_price
+        data_type: decimal(10, 2)
+        description: Prix moyen de vente, vide si absent.
+      - name: avg1_price
+        data_type: decimal(10, 2)
+        description: Moyenne des ventes sur 1 jour, vide si absente.
+      - name: avg7_price
+        data_type: decimal(10, 2)
+        description: Moyenne des ventes sur 7 jours, vide si absente.
+      - name: avg30_price
+        data_type: decimal(10, 2)
+        description: Moyenne des ventes sur 30 jours, vide si absente.
+      - name: currency_code
+        data_type: varchar
+        description: Devise des prix.
+        data_tests:
+          - not_null
+      - name: updated_at
+        data_type: timestamp with time zone
+        description: Mise à jour du guide de prix Cardmarket.
+
+unit_tests:
+  - name: fct_price_snapshot_first_load
+    description: Au premier chargement, toutes les lignes du staging sont reprises.
+    model: fct_price_snapshot
+    overrides:
+      macros:
+        is_incremental: false
+    given:
+      - input: ref('stg_tcgdex__cardmarket_prices')
+        format: sql
+        rows: |
+          select
+              cardmarket_product_id, finish, price_date, null::decimal(10, 2) as low_price,
+              null::decimal(10, 2) as trend_price, null::decimal(10, 2) as avg_price,
+              null::decimal(10, 2) as avg1_price, null::decimal(10, 2) as avg7_price,
+              null::decimal(10, 2) as avg30_price, 'EUR' as currency_code,
+              null::timestamptz as updated_at
+          from (values
+              (1::bigint, 'base', '2026-11-16'::date),
+              (1, 'base', '2026-11-17'),
+              (1, 'reverse_holo', '2026-11-17'),
+              (1, 'base', '2026-11-18'),
+              (2, 'base', '2026-11-19'),
+              (1, 'base', '2026-11-20')
+          ) as t (cardmarket_product_id, finish, price_date)
+    expect:
+      rows:
+        - { cardmarket_product_id: 1, finish: base, price_date: 2026-11-16 }
+        - { cardmarket_product_id: 1, finish: base, price_date: 2026-11-17 }
+        - {
+            cardmarket_product_id: 1,
+            finish: reverse_holo,
+            price_date: 2026-11-17,
+          }
+        - { cardmarket_product_id: 1, finish: base, price_date: 2026-11-18 }
+        - { cardmarket_product_id: 2, finish: base, price_date: 2026-11-19 }
+        - { cardmarket_product_id: 1, finish: base, price_date: 2026-11-20 }
+
+  - name: fct_price_snapshot_catches_up_missed_days
+    description: >
+      Table arrêtée au 17/11 (jour J), staging du 16/11 au 20/11 : seuls les 18, 19 et
+      20/11 sont ajoutés, ni J-1 ni J.
+    model: fct_price_snapshot
+    overrides:
+      macros:
+        is_incremental: true
+    given:
+      - input: ref('stg_tcgdex__cardmarket_prices')
+        format: sql
+        rows: |
+          select
+              cardmarket_product_id, finish, price_date, null::decimal(10, 2) as low_price,
+              null::decimal(10, 2) as trend_price, null::decimal(10, 2) as avg_price,
+              null::decimal(10, 2) as avg1_price, null::decimal(10, 2) as avg7_price,
+              null::decimal(10, 2) as avg30_price, 'EUR' as currency_code,
+              null::timestamptz as updated_at
+          from (values
+              (1::bigint, 'base', '2026-11-16'::date),
+              (1, 'base', '2026-11-17'),
+              (1, 'reverse_holo', '2026-11-17'),
+              (1, 'base', '2026-11-18'),
+              (2, 'base', '2026-11-19'),
+              (1, 'base', '2026-11-20')
+          ) as t (cardmarket_product_id, finish, price_date)
+      - input: this
+        format: sql
+        rows: |
+          select
+              cardmarket_product_id, finish, price_date, null::decimal(10, 2) as low_price,
+              null::decimal(10, 2) as trend_price, null::decimal(10, 2) as avg_price,
+              null::decimal(10, 2) as avg1_price, null::decimal(10, 2) as avg7_price,
+              null::decimal(10, 2) as avg30_price, 'EUR' as currency_code,
+              null::timestamptz as updated_at
+          from (values
+              (1::bigint, 'base', '2026-11-16'::date),
+              (1, 'base', '2026-11-17')
+          ) as t (cardmarket_product_id, finish, price_date)
+    expect:
+      rows:
+        - { cardmarket_product_id: 1, finish: base, price_date: 2026-11-18 }
+        - { cardmarket_product_id: 2, finish: base, price_date: 2026-11-19 }
+        - { cardmarket_product_id: 1, finish: base, price_date: 2026-11-20 }
