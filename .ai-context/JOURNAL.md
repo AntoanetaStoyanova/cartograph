@@ -20,7 +20,7 @@
 
 ---
 
-## [2026-11-19] — Audit clos, v0.8.1, DBT-02 livré
+## [2026-11-19] — Audit clos, v0.8.1, DBT-02 livré, DBT-03 planifié
 
 ### Fait
 
@@ -40,11 +40,12 @@
 - Plan dbt-02-staging-prix — Étape 4 : Vraies données et documentation. `inv rebuild` lancé par Antoaneta (23 fichiers `prices-`) ; tests des deux modèles 15/15 sur la vraie base ; contrôles par nombres notés dans la spec (section « Vérification sur les vrais prix ») : aucune mesure à 0, aucune ligne vide, 7 finitions TCGplayer présentes, 8 689 lignes `base` sans `trend_price` (pour DBT-06 et QUA-01). Mis à jour : roadmap (DBT-02 coché, DBT-04 limité à Cardmarket via `dim_card`, DBT-05 marge sur `trend_price`), spec maîtresse (lignes staging des prix et `fct_price_snapshot`), `cadrage-flux.md` (prix de référence confirmé, finitions de FX7), `CONTRIBUTING.md` (source, modèles, échantillon de prix fictifs, invariant), `README.md` (deux modèles de prix). Critères de la spec cochés sauf « CI sur GitHub », à vérifier sur la PR. `inv ci` et `inv okflint` verts.
 - PR #37 (`feature/dbt-02` → `develop`) fusionnée, CI GitHub verte (run 44508257537) : dernier critère coché, plan et spec dbt-02-staging-prix `statut: fait`.
 - Revue de DBT-02 (`/cr`) : approuvé avec une correction, faite : `not_null` sur `currency_code` dans les deux staging des prix (`accepted_values` laisse passer une devise vide) ; description de `stg_tcgdex__tcgplayer_prices` : un JSON invalide ou un `updated` hors ISO 8601 arrête le build. Tests des deux modèles 17/17 sur la vraie base, `inv ci` vert (dbt 37/37). Gardés en INFO : vues relues à chaque requête (incrémental en DBT-04), non-régression limitée aux colonnes `cm_*` et `tcgplayer_json`.
+- Correction de la revue fusionnée dans `develop` (PR #38, `inv finish`).
+- `docs/specs/dbt-03-intermediate-rarete.md` et `docs/plans/dbt-03-intermediate-rarete.md` créés. Constats sur la vraie base : 72 noms de rareté, 665 vides japonais, traductions fr → en un pour un, 20 noms propres à TCG Pocket (série `tcgp`, aucun produit Cardmarket). Décisions : seed `rarity_levels.csv` (`rarity`, `rarity_code`, `rarity_level`) ; `int_rarity_mapping` construit sur les noms collectés (`coalesce(rarity, 'None')`) en jointure gauche sur le seed, `not_null` sur `rarity_code` en erreur ; codes en anglais `snake_case`, échelle de 8 niveaux, `none`, `promo` et `pocket` hors échelle ; Pocket écarté en aval par `serie_id = 'tcgp'`, sans colonne `is_pocket` ; DBT-04 : incrémental sur `price_date > max(price_date)` pour rattraper les jours sautés après un test en échec.
 
 ### Reste à faire
 
-- `inv finish` pour pousser les derniers ajouts de `feature/dbt-02` vers `develop`.
-- Prochain lot de la chaîne Pipeline de données : DBT-03 (intermediate rareté), à planifier (`/workspace-plan`).
+- Exécuter docs/plans/dbt-03-intermediate-rarete.md — Étape 1 : Seed `rarity_levels`.
 - Avant la porte 1 : relire dans un navigateur les conditions de Cardmarket et de TCGplayer (veille).
 - Rapport de novembre à régénérer en fin de mois (`inv suivi --mois 2026-11 --force`, commentaire gardé), puis `statut: fait` ; mettre à jour les chiffres de `docs/gouvernance/green-it.md`. Chaque début de mois : `inv ci` puis `inv suivi`, commentaire.
 - Antoaneta : avant PRO-02, demander aux testeurs leur logiciel de caisse et un fichier d'import exemple.
@@ -52,6 +53,7 @@
 
 ### Références
 
+- ../docs/specs/dbt-03-intermediate-rarete.md, ../docs/plans/dbt-03-intermediate-rarete.md
 - ../docs/specs/dbt-02-staging-prix.md, ../docs/plans/dbt-02-staging-prix.md
 - dbt/sample/snapshots/prices-2026-11-17.parquet, prices-2026-11-18.parquet, dbt/sample/README.md, dbt/models/staging/tcgdex/sources.yml, tests/test_fixtures_prices.py
 - dbt/models/staging/tcgdex/stg_tcgdex__cardmarket_prices.sql, stg_tcgdex__cardmarket_prices.yml, stg_tcgdex__tcgplayer_prices.sql, stg_tcgdex__tcgplayer_prices.yml
