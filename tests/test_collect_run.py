@@ -1,5 +1,7 @@
 import json
 import logging
+import runpy
+import sys
 from collections.abc import Callable, Iterator, Sequence
 from datetime import UTC, date, datetime, time, timedelta, timezone
 from pathlib import Path
@@ -9,7 +11,8 @@ import httpx
 import pyarrow.parquet as pq
 import pytest
 
-from cartograph.bin.collect import batch, run
+from cartograph import config
+from cartograph.bin.collect import batch, client, run
 from cartograph.bin.collect.client import TcgdexClient
 from cartograph.bin.collect.run import collect, main
 from cartograph.bin.collect.snapshot import snapshot_paths
@@ -571,19 +574,80 @@ def test_collect_day_is_utc_date_of_start(
     assert snapshot_paths(tmp_path, DAY).cards.exists()
 
 
-def test_collect_prices_stopped_by_outage_writes_no_prices(
+def test_collect_prices_stopped_by_outage_writes_prices_received(
     tcgdex_client: TcgdexClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _collect(tcgdex_client, tmp_path, day=date(2026, 10, 25), prices=False)
     monkeypatch.setattr(batch, "MAX_CONSECUTIVE_FAILURES", 2)
+    served: list[str] = []
 
-    with mock_client(lambda _: httpx.Response(500)) as client:
+    def first_card_only(request: httpx.Request) -> httpx.Response:
+        path = request.url.path
+        if "/cards/" not in path:
+            return fixture_route(request)
+        if not served:
+            served.append(path)
+        return fixture_route(request) if path == served[0] else httpx.Response(500)
+
+    with mock_client(first_card_only) as client:
         summary = _collect(client, tmp_path, catalogue=False)
 
+    paths = snapshot_paths(tmp_path, DAY)
     prices = _steps(summary)["prices"]
     assert prices["status"] == "failed"
     assert "2 échecs d'affilée" in str(prices["error"])
-    assert not snapshot_paths(tmp_path, DAY).prices.exists()
+    assert prices["fetched"] == 1
+    assert [f["name"] for f in prices["files"]] == [
+        paths.prices.name,
+        paths.raw_prices.name,
+    ]
+    assert pq.read_table(paths.prices).num_rows == 1
+
+
+def test_collect_interrupted_new_cards_marked_in_summary(
+    tcgdex_client: TcgdexClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _old_catalogue(tmp_path, "SV7-065")
+
+    def interrupted(*args: Any, **kwargs: Any) -> Any:
+        raise RuntimeError("délai dépassé")
+
+    monkeypatch.setattr(run, "_collect_new_cards", interrupted)
+
+    with pytest.raises(RuntimeError):
+        _collect(tcgdex_client, tmp_path, catalogue=False)
+
+    paths = snapshot_paths(tmp_path, DAY)
+    steps = _steps(json.loads(paths.summary.read_text(encoding="utf-8")))
+    assert steps["new_cards"]["status"] == "failed"
+    assert steps["new_cards"]["error"] == "étape interrompue avant la fin"
+
+
+@pytest.mark.filterwarnings("ignore:.*found in sys.modules:RuntimeWarning")
+def test_main_run_as_module_logs_to_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(client, "TcgdexClient", lambda: mock_client(fixture_route))
+    monkeypatch.setattr(config, "LOG_DIR", tmp_path / "logs")
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["run", "--catalogue", "--no-prices", "--languages", "fr"]
+        + ["--data-dir", str(tmp_path)],
+    )
+
+    try:
+        with pytest.raises(SystemExit) as exit_info:
+            runpy.run_module("cartograph.bin.collect.run", run_name="__main__")
+    finally:
+        logger = logging.getLogger("cartograph")
+        for handler in logger.handlers[:]:
+            handler.close()
+            logger.removeHandler(handler)
+
+    assert exit_info.value.code == 0
+    (log_file,) = (tmp_path / "logs").glob("cartograph_*.log")
+    assert "Collecte terminée" in log_file.read_text(encoding="utf-8")
 
 
 def _with_card(

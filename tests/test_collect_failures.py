@@ -95,10 +95,13 @@ def test_fetch_prices_stops_after_consecutive_failures() -> None:
         calls.append(request.url.path)
         return httpx.Response(503)
 
-    with mock_client(handler) as client, pytest.raises(TcgdexError, match="arrêt"):
-        fetch_prices(client, _targets(MAX_CONSECUTIVE_FAILURES + 5))
+    with mock_client(handler) as client:
+        result = fetch_prices(client, _targets(MAX_CONSECUTIVE_FAILURES + 5)).prices
 
     assert len(calls) == MAX_CONSECUTIVE_FAILURES
+    assert result.items == []
+    assert len(result.failed) == MAX_CONSECUTIVE_FAILURES
+    assert "arrêt" in str(result.error)
 
 
 def test_fetch_catalogue_404s_do_not_stop_collection() -> None:

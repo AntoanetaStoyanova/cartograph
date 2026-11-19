@@ -20,6 +20,30 @@
 
 ---
 
+## [2026-11-19] — Audit : collecte sans perte de prix
+
+### Fait
+
+- Session ouverte (`/workspace-init`).
+- Plan fix-audit-2026-11-18 — Étape 2 : Collecte. `FetchResult.error` : `fetch_each` renvoie le partiel au lieu de lever ; prix reçus avant une panne écrits (brut et Parquet, étape `failed`) ; rotation garde les fiches lues de la langue coupée ; catalogue complet, sets et nouvelles cartes restent tout ou rien. `Retry-After` négatif → 0, `nan` → backoff. Logger nommé dans `run.py` (testé par `runpy` en `__main__`). `new_cards` dans le checkpoint. Docstring de `inv collect`. `inv ci` et `inv okflint` verts.
+- Retiré du « Reste à faire » : « Porte 0 franchie le 15/11 » (constat, déjà acquis).
+
+### Reste à faire
+
+- Vérifier le 19/11 que « Nettoyer les anciens catalogues » a supprimé `cards-2026-11-18.parquet` de la Release `catalogue` (seul critère vérifié à blanc).
+- Exécuter docs/plans/fix-audit-2026-11-18.md — Étape 3 : Tests et doc restants.
+- Planifier DBT-02 (staging des prix) au standard SQL : `/workspace-plan dbt-02`.
+- Avant la porte 1 : relire dans un navigateur les conditions de Cardmarket et de TCGplayer (veille).
+- Rapport de novembre à régénérer en fin de mois (`inv suivi --mois 2026-11 --force`, commentaire gardé), puis `statut: fait` ; mettre à jour les chiffres de `docs/gouvernance/green-it.md`. Chaque début de mois : `inv ci` puis `inv suivi`, commentaire.
+- Antoaneta : avant PRO-02, demander aux testeurs leur logiciel de caisse et un fichier d'import exemple.
+- `cadrage-flux.md` : flux d'export pro (FX7 et FX8, écrans) à ajouter quand PRO-01 et PRO-02 seront planifiés.
+
+### Références
+
+- docs/plans/fix-audit-2026-11-18.md, docs/specs/fix-audit-2026-11-18.md
+- src/cartograph/bin/collect/ (`__init__`, `batch`, `client`, `run`, `prices`, `catalogue`, `sets`), tasks/__init__.py
+- tests/test_collect_run.py, tests/test_collect_client.py, tests/test_collect_failures.py
+
 ## [2026-11-18] — CI-04 et COL-05 livrés, audit, removed_on dans dbt
 
 ### Fait
@@ -29,7 +53,7 @@
 - Plan fix-fixtures-prix-fictifs — Étape 2 : `CONTRIBUTING.md`. Règle des fixtures réécrite (structure gardée, prix fictifs `4000 + n + 0.37`) ; section « Invariants » avant « Règles générales » (contrat : `collect.run`, `report`, `manifest`, appelés par `cartograph-data/.github/workflows/collect.yml`). `inv ci` et `inv okflint` verts. Critères de fin et de la spec cochés ; reste la livraison.
 - Branches `feature/ci-02` et `feature/dbt-01` : déjà supprimées (locale et `origin`).
 - Plan fix-fixtures-prix-fictifs livré (PR #28 et #30 fusionnées dans `develop`) : plan et spec passés à `fait`.
-- Plan ci-04-alerte-version-finish — Étape 1 : Alerte dans `inv finish`. `tasks/__init__.py` : `_bumps_version`, `_touches_code` (`CODE_PATHS`), `_confirm_without_bump` appelée après `_require_clean` (`git diff --name-only origin/develop...HEAD`, puis `git log` seulement si du code est touché) ; `tests/test_tasks_finish.py` (« n », Entrée, « N » arrêtent avant les contrôles, « o » continue, `feat` et doc seule sans question) ; `CONTRIBUTING.md` (alerte décrite). Plan et spec passés à `en cours`.
+- Plan ci-04-alerte-version-finish — Étape 1 : Alerte dans `inv finish`. `tasks/__init__.py` : `_bumps_version`, `_touches_code` (`CODE_PATHS`), `_confirm_without_bump` appelée après `_require_clean` (`git diff --name-only origin/develop...HEAD`, puis `git log` seulement si du code est touché) ; `tests/test_tasks_finish.py` (« n », Entrée, « N » arrêtent avant les contrôles, « o » continue, `feat` et doc seule sans question) ; `CONTRIBUTING.md` (alerte décrite). Plan et spec passés à `en cours`. `inv rebuild` et `inv dbt` sur les vraies données lancés par Antoaneta : étape 1 close et commitée.
 - Plan ci-04-alerte-version-finish — Étape 2 : Nettoyage des branches. `tasks/__init__.py` : `PROTECTED_BRANCHES`, `_check_deletable`, `_merged_pr` (`gh pr list --state merged --json number --jq length`), `_delete_branch` (`git branch -D`, puis `git push origin --delete` seulement si `git ls-remote --heads` la trouve) ; tâches `delete-branch` (`--force`) et `clean-branches` (liste, o/N, `git fetch --prune` seulement après suppression). `tests/test_tasks_branches.py` ; `CONTRIBUTING.md` (fin de lot, `delete-branch-on-merge`). Constat : `pre-commit --all-files` ignore les fichiers non suivis, un nouveau fichier de test n'est vérifié par `inv ci` qu'une fois ajouté (`git add`).
 - Plan ci-04-alerte-version-finish — Étape 3 : `inv clean`. `.clean` créé (12 motifs, `logs/` exclu) ; `tasks/__init__.py` : `CLEAN_FILE`, `PROTECTED_PATHS`, `_read_clean`, `_clean_targets(root, patterns, tracked)` (paramètre `tracked` ajouté au plan pour garder la fonction pure : `git ls-files` lu par la tâche), `_check_pattern` (hors dépôt, partie fixe dans un chemin protégé), `_check_target` (chemin protégé ou en contenant un, fichier suivi), parcours `os.walk` qui ne descend ni dans les chemins protégés ni dans un dossier retenu (un `**/__pycache__/` ignore `.venv/`) ; tâche `clean` appelée à la fin de `finish` (PR créée ou déjà ouverte) et de `release` ; `docs-clean` retiré. `tests/test_tasks_clean.py`, tests `finish` et `release` adaptés ; `CONTRIBUTING.md` (« Contrôles »). `inv clean` lancé sur le dépôt : seuls des chemins de `.clean` supprimés, puis `inv ci` vert (337 tests). Critères de la spec et de fin cochés ; reste la livraison. Décision d'Antoaneta : `delete-branch-on-merge` non activé (branches gardées sur GitHub jusqu'à `inv clean-branches`), consigné dans la spec et `CONTRIBUTING.md`.
 - dbt Fusion évalué (discussion, sans code) : adaptateur DuckDB en bêta locale, `external_location` / `read_parquet` à risque, gain faible à 2 modèles. Lot DBT-T1 « Essai de dbt Fusion » (P2, après DBT-02, branche `spike/dbt-fusion` non fusionnée, note versée à GOV-05) ajouté à docs/plans/roadmap-lots.md ; `inv okflint` vert. Non commité.
@@ -56,7 +80,6 @@
 ### Reste à faire
 
 - Vérifier le 19/11 que « Nettoyer les anciens catalogues » a supprimé `cards-2026-11-18.parquet` de la Release `catalogue` (seul critère vérifié à blanc).
-- Étape 1 de fix-audit-2026-11-18, dernier point : `uv run inv rebuild` puis `uv run inv dbt` sur les vraies données (schémas mélangés).
 - Exécuter docs/plans/fix-audit-2026-11-18.md — Étape 2 : Collecte.
 - Planifier DBT-02 (staging des prix) au standard SQL : `/workspace-plan dbt-02`.
 - Avant la porte 1 : relire dans un navigateur les conditions de Cardmarket et de TCGplayer (veille).

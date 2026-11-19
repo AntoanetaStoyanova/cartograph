@@ -2,7 +2,7 @@
 Boucle de collecte commune au catalogue et aux prix.
 - Une carte en échec est notée dans failed et la boucle continue.
 - Après MAX_CONSECUTIVE_FAILURES TcgdexError d'affilée, la collecte s'arrête :
-  l'API est considérée en panne.
+  l'API est considérée en panne ; ce qui a été reçu est renvoyé avec l'erreur.
 - Un message de progression est écrit toutes les PROGRESS_EVERY cartes.
 """
 
@@ -46,13 +46,10 @@ def fetch_each[K](
     Returns
     -------
     FetchResult
-        Enregistrements construits et identifiants en échec.
-
-    Raises
-    ------
-    TcgdexError
-        Après ``MAX_CONSECUTIVE_FAILURES`` cartes en ``TcgdexError`` d'affilée ;
-        les ``NotFoundError`` ne comptent pas.
+        Enregistrements construits et identifiants en échec ; ``error`` est
+        posé après ``MAX_CONSECUTIVE_FAILURES`` cartes en ``TcgdexError``
+        d'affilée (les ``NotFoundError`` ne comptent pas), les clés restantes
+        n'étant pas demandées.
     """
     logger.info("%s : %d cartes à récupérer", label, len(keys))
     items: list[dict[str, Any]] = []
@@ -67,10 +64,9 @@ def fetch_each[K](
             if not isinstance(error, NotFoundError):
                 consecutive += 1
             if consecutive >= MAX_CONSECUTIVE_FAILURES:
-                logger.error("%s : arrêt après %d échecs d'affilée", label, consecutive)
-                raise TcgdexError(
-                    f"{label} : arrêt après {consecutive} échecs d'affilée"
-                ) from error
+                stop = f"{label} : arrêt après {consecutive} échecs d'affilée"
+                logger.error("%s, %d récupérées", stop, len(items))
+                return FetchResult(items=items, failed=failed, error=stop)
         else:
             items.append(build(key, payload))
             consecutive = 0

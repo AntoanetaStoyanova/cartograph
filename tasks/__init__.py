@@ -105,7 +105,10 @@ def collect(
     languages: str = "",
     data_dir: str = "",
 ) -> None:
-    """Collecte les prix du jour (et le catalogue avec --catalogue) dans data/."""
+    """
+    Collecte dans data/ les sets, les nouvelles cartes et les prix, puis met à jour
+    le dernier catalogue ; --catalogue fait une collecte complète du catalogue.
+    """
     args = ["uv run python -m cartograph.bin.collect.run"]
     if catalogue:
         args.append("--catalogue")

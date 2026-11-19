@@ -53,10 +53,14 @@ class FetchResult:
     failed : list[str]
         Cartes en échec, au format ``langue/identifiant`` (une carte peut
         exister dans plusieurs langues).
+    error : str | None
+        Raison de l'arrêt avant la fin (API en panne), ``None`` si toutes les
+        clés ont été demandées ; ``items`` garde alors ce qui a été reçu.
     """
 
     items: list[dict[str, Any]]
     failed: list[str]
+    error: str | None = None
 
 
 class FileSummary(TypedDict):
