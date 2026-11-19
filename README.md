@@ -88,6 +88,8 @@ Les modèles de staging dbt (`dbt/models/staging/tcgdex/`) appliquent ces règle
 
 - `stg_tcgdex__cards` : une ligne par carte et par langue, dans sa version la plus récente, celle du dernier catalogue (`cards-*`) ou d'un `new-cards` plus récent. Une carte est **courante** (`is_current`) si elle figure sans `removed_on` dans le dernier catalogue, ou dans un `new-cards` postérieur ; une carte retirée de TCGdex est gardée, non courante, avec la date de son retrait (`removed_on`). La catégorie est normalisée (`pokemon`, `trainer`, `energy`) ; la rareté reste brute, propre à chaque langue.
 - `stg_tcgdex__sets` : une ligne par set et par langue, avec date de sortie, série et sigles, tirée des `sets-*.parquet` quotidiens ; un set est courant s'il figure dans le dernier.
+- `stg_tcgdex__cardmarket_prices` : une ligne par produit Cardmarket, finition (`base`, ou `reverse_holo` pour le reverse) et date du fichier `prices-*` ; prix en euros, `0` lu comme absent, aucune ligne pour une finition sans prix.
+- `stg_tcgdex__tcgplayer_prices` : même grain, avec les finitions de TCGplayer (`normal`, `holofoil`, `reverse-holofoil`…) ; prix en dollars et identifiant produit TCGplayer, pour le lien vers sa page.
 
 Le détail de chaque colonne et les tests sont dans le `.yml` de chaque modèle (`uv run inv dbt --args "docs generate"`), la construction de la base dans `CONTRIBUTING.md`, section dbt.
 

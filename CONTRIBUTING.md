@@ -102,7 +102,7 @@ uv run inv hooks       # installe le hook pre-commit
 - Si un contrôle corrige un fichier, le commit est refusé : relire la correction, `git add`, recommencer le commit.
 - « Stashing unstaged files » : les modifications hors du commit sont mises de côté pendant les contrôles, puis remises.
 - `git commit --no-verify` saute les contrôles pour un commit de travail ; ils restent dus avant la pull request.
-- Les réponses d'API enregistrées dans `tests/fixtures/` gardent leur structure ; leurs prix sont fictifs (`4000 + n + 0.37`, vérifié par `tests/test_fixtures_prices.py`).
+- Les réponses d'API enregistrées dans `tests/fixtures/` gardent leur structure ; leurs prix sont fictifs (`4000 + n + 0.37`, vérifié par `tests/test_fixtures_prices.py`), comme ceux des `prices-*.parquet` de `dbt/sample/snapshots/` (`0` ou `4000 + n + 0.37`, même test).
 
 Avant une pull request, depuis la branche `feature/…` :
 
@@ -152,7 +152,7 @@ Les transformations dbt (dbt-duckdb) vivent dans `dbt/`, hors du paquet Python :
 dbt/
 ├── dbt_project.yml     # matérialisations par couche, variable snapshot_dir
 ├── profiles.yml        # profil DuckDB versionné, sans secret
-├── sample/snapshots/   # échantillon du catalogue pour la CI (recette dans sample/README.md)
+├── sample/snapshots/   # échantillon du catalogue et prix fictifs pour la CI (recettes dans sample/README.md)
 ├── analyses/           # requêtes lancées à la demande, sans table créée
 ├── macros/             # fonctions Jinja partagées (snapshot_date, is_new_cards)
 └── models/
@@ -161,7 +161,7 @@ dbt/
     └── marts/          # fct_, dim_, mart_ : tables lues par l'application
 ```
 
-Chaque modèle, analyse ou macro `<nom>.sql` a son fichier de propriétés `<nom>.yml` à côté (description, colonnes, tests) ; les sources sont déclarées dans `sources.yml`. Chaque colonne déclare son `data_type` ; les modèles ont un contrat (`contract: enforced: true`) : un type qui ne correspond plus fait échouer `dbt build`. Une règle de calcul (dernière version, `is_current`…) est couverte par un test unitaire dbt (`unit_tests:`, données en `format: sql`, car dbt-duckdb ne lit pas les colonnes d'une source externe). Les modèles de staging du catalogue (`staging/tcgdex/`) sont `stg_tcgdex__cards` (une ligne par carte et par langue, dernière version vue dans un catalogue `cards-*` ou un `new-cards`, `is_current` vrai si la carte est sans `removed_on` dans le dernier catalogue ou dans un `new-cards` postérieur) et `stg_tcgdex__sets` (une ligne par set et par langue, avec date de sortie et série, tirée des `sets-*.parquet`).
+Chaque modèle, analyse ou macro `<nom>.sql` a son fichier de propriétés `<nom>.yml` à côté (description, colonnes, tests) ; les sources sont déclarées dans `sources.yml`. Chaque colonne déclare son `data_type` ; les modèles ont un contrat (`contract: enforced: true`) : un type qui ne correspond plus fait échouer `dbt build`. Une règle de calcul (dernière version, `is_current`…) est couverte par un test unitaire dbt (`unit_tests:`, données en `format: sql`, car dbt-duckdb ne lit pas les colonnes d'une source externe). Les modèles de staging du catalogue (`staging/tcgdex/`) sont `stg_tcgdex__cards` (une ligne par carte et par langue, dernière version vue dans un catalogue `cards-*` ou un `new-cards`, `is_current` vrai si la carte est sans `removed_on` dans le dernier catalogue ou dans un `new-cards` postérieur) et `stg_tcgdex__sets` (une ligne par set et par langue, avec date de sortie et série, tirée des `sets-*.parquet`) ; ceux des prix, un par marché, `stg_tcgdex__cardmarket_prices` (finitions `base` et `reverse_holo`, colonnes `cm_*` et `cm_*_holo`) et `stg_tcgdex__tcgplayer_prices` (finitions dépliées de `tcgplayer_json`, liste fermée), au grain produit Cardmarket × finition × date, `0` lu comme absent et sans ligne pour une finition sans prix.
 
 ### Standard SQL
 
@@ -189,7 +189,7 @@ uv run inv dbt --args debug       # autre commande dbt (debug, docs generate…)
 uv run inv dbt --args "show --select catalogue_changes"  # changements entre catalogues successifs
 ```
 
-La source `tcgdex.cards` lit `*cards-*.parquet` (catalogues complets `cards-` et nouvelles cartes `new-cards-`, distingués par la macro `is_new_cards`) et la source `tcgdex.sets` lit `sets-*.parquet`, dans le dossier de la variable dbt `snapshot_dir` (`data/snapshots` par défaut) ; la date du snapshot vient de la fin du nom du fichier (macro `snapshot_date`). Chaque motif doit trouver au moins un fichier, sinon `read_parquet` échoue. `inv dbt --sample` la fait pointer vers `dbt/sample/snapshots/` et écrit dans `data/cartograph.sample.duckdb` : c'est ce que lancent `inv ci`, `inv finish` et `inv release`, sans `data/snapshots/` ni appel aux APIs, et sans toucher à `data/cartograph.duckdb`. L'échantillon ne contient que du catalogue public, jamais de prix ; si le schéma des snapshots change, le régénérer avec la recette de `dbt/sample/README.md`.
+La source `tcgdex.cards` lit `*cards-*.parquet` (catalogues complets `cards-` et nouvelles cartes `new-cards-`, distingués par la macro `is_new_cards`) la source `tcgdex.sets` lit `sets-*.parquet` et la source `tcgdex.prices` lit `prices-*.parquet` (un staging par marché : `stg_tcgdex__cardmarket_prices`, `stg_tcgdex__tcgplayer_prices`), dans le dossier de la variable dbt `snapshot_dir` (`data/snapshots` par défaut) ; la date du snapshot vient de la fin du nom du fichier (macro `snapshot_date`). Chaque motif doit trouver au moins un fichier, sinon `read_parquet` échoue. `inv dbt --sample` la fait pointer vers `dbt/sample/snapshots/` et écrit dans `data/cartograph.sample.duckdb` : c'est ce que lancent `inv ci`, `inv finish` et `inv release`, sans `data/snapshots/` ni appel aux APIs, et sans toucher à `data/cartograph.duckdb`. L'échantillon contient du catalogue public et des prix fictifs, jamais de vrais prix ; si le schéma des snapshots change, le régénérer avec les recettes de `dbt/sample/README.md`.
 
 La base est `data/cartograph.duckdb` (jamais versionnée, reconstruite à la demande) ; la variable `CARTOGRAPH_DUCKDB` en désigne une autre. `dbt/target/` et `dbt/logs/` sont recréés à chaque commande et ignorés par Git.
 
@@ -237,7 +237,7 @@ uv run inv rebuild --skip-download  # dbt build sur les snapshots déjà présen
 
 ## Invariants
 
-- Aucun prix réel dans un fichier commité : les fixtures publiques n'ont que des prix fictifs.
+- Aucun prix réel dans un fichier commité : les fixtures publiques et l'échantillon dbt n'ont que des prix fictifs.
 - Aucun prix dans le résumé de collecte ni dans les logs : seulement identifiants, nombres et messages d'erreur, comme `run.py` et `client.py`.
 - Les options de `cartograph.bin.collect.run`, `report` et `manifest`, et le format du résumé et du manifeste, sont un contrat avec le workflow `Collecte` de `cartograph-data` : vérifier les commandes de `../cartograph-data/.github/workflows/collect.yml` avant de les changer.
 
