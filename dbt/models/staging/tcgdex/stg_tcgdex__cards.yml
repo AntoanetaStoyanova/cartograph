@@ -50,7 +50,7 @@ models:
                 values: [pokemon, trainer, energy]
       - name: rarity
         data_type: varchar
-        description: Rareté brute, propre à chaque langue, parfois vide (normalisée par DBT-03).
+        description: Rareté brute, propre à chaque langue, parfois vide ; code et niveau dans `int_rarity_mapping` (joindre sur `coalesce(rarity, 'None')`).
       - name: pokemon_types
         data_type: varchar[]
         description: Types d'énergie du Pokémon, dans la langue de la fiche.

@@ -1,0 +1,73 @@
+rarity,rarity_code,rarity_level
+ACE SPEC Rare,ace_spec_rare,5
+Amazing Rare,amazing_rare,5
+Black White Rare,black_white_rare,5
+Character Rare,character_rare,5
+Character Super Rare,character_super_rare,6
+Chromatique ultra rare,shiny_ultra_rare,6
+Classic Collection,classic_collection,5
+Collection Classique,classic_collection,5
+Common,common,1
+Commune,common,1
+Couronne,pocket,
+Crown,pocket,
+Deux Chromatiques,pocket,
+Deux Diamants,pocket,
+Deux Étoiles,pocket,
+Double rare,double_rare,5
+Dresseur Full Art,full_art_trainer,6
+Four Diamond,pocket,
+Full Art Trainer,full_art_trainer,6
+Futuristic Rare,futuristic_rare,5
+HIGH-TECH rare,ace_spec_rare,5
+Holo Rare,holo_rare,4
+Holo Rare V,holo_rare_v,5
+Holo Rare VMAX,holo_rare_vmax,5
+Holo Rare VSTAR,holo_rare_vstar,5
+Hyper rare,hyper_rare,8
+Illustration rare,illustration_rare,7
+Illustration spéciale rare,special_illustration_rare,8
+LEGEND,legend,5
+LÉGENDE,legend,5
+Magnifique,amazing_rare,5
+Magnifique rare,secret_rare,8
+Mega Attack Rare,mega_attack_rare,5
+Mega Hyper Rare,mega_hyper_rare,8
+Méga Hyper Rare,mega_hyper_rare,8
+None,none,
+One Diamond,pocket,
+One Shiny,pocket,
+One Star,pocket,
+Peu Commune,uncommon,2
+Pikachu Rare,pikachu_rare,5
+Promo,promo,
+Quatre Diamants,pocket,
+RGB Rare,rgb_rare,5
+Radiant Rare,radiant_rare,5
+Radieux Rare,radiant_rare,5
+Rare,rare,3
+Rare Holo,holo_rare,4
+Rare Holo LV.X,rare_holo_lv_x,5
+Rare Noir Blanc,black_white_rare,5
+Rare PRIME,rare_prime,5
+Rare Prime,rare_prime,5
+Sans Rareté,none,
+Secret Rare,secret_rare,8
+Shiny Ultra Rare,shiny_ultra_rare,6
+Shiny rare,shiny_rare,5
+Shiny rare V,shiny_rare_v,5
+Shiny rare VMAX,shiny_rare_vmax,5
+Special illustration rare,special_illustration_rare,8
+Three Diamond,pocket,
+Three Star,pocket,
+Triple Rare,triple_rare,5
+Trois Diamants,pocket,
+Trois Étoiles,pocket,
+Two Diamond,pocket,
+Two Shiny,pocket,
+Two Star,pocket,
+Ultra Rare,ultra_rare,6
+Un Chromatique,pocket,
+Un Diamant,pocket,
+Uncommon,uncommon,2
+Une Étoile,pocket,

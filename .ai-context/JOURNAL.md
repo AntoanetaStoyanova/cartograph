@@ -20,7 +20,7 @@
 
 ---
 
-## [2026-11-19] — Audit clos, v0.8.1, DBT-02 livré
+## [2026-11-19] — Audit clos, v0.8.1, DBT-02 livré, DBT-03 étapes 1-3
 
 ### Fait
 
@@ -40,11 +40,17 @@
 - Plan dbt-02-staging-prix — Étape 4 : Vraies données et documentation. `inv rebuild` lancé par Antoaneta (23 fichiers `prices-`) ; tests des deux modèles 15/15 sur la vraie base ; contrôles par nombres notés dans la spec (section « Vérification sur les vrais prix ») : aucune mesure à 0, aucune ligne vide, 7 finitions TCGplayer présentes, 8 689 lignes `base` sans `trend_price` (pour DBT-06 et QUA-01). Mis à jour : roadmap (DBT-02 coché, DBT-04 limité à Cardmarket via `dim_card`, DBT-05 marge sur `trend_price`), spec maîtresse (lignes staging des prix et `fct_price_snapshot`), `cadrage-flux.md` (prix de référence confirmé, finitions de FX7), `CONTRIBUTING.md` (source, modèles, échantillon de prix fictifs, invariant), `README.md` (deux modèles de prix). Critères de la spec cochés sauf « CI sur GitHub », à vérifier sur la PR. `inv ci` et `inv okflint` verts.
 - PR #37 (`feature/dbt-02` → `develop`) fusionnée, CI GitHub verte (run 44508257537) : dernier critère coché, plan et spec dbt-02-staging-prix `statut: fait`.
 - Revue de DBT-02 (`/cr`) : approuvé avec une correction, faite : `not_null` sur `currency_code` dans les deux staging des prix (`accepted_values` laisse passer une devise vide) ; description de `stg_tcgdex__tcgplayer_prices` : un JSON invalide ou un `updated` hors ISO 8601 arrête le build. Tests des deux modèles 17/17 sur la vraie base, `inv ci` vert (dbt 37/37). Gardés en INFO : vues relues à chaque requête (incrémental en DBT-04), non-régression limitée aux colonnes `cm_*` et `tcgplayer_json`.
+- Correction de la revue fusionnée dans `develop` (PR #38, `inv finish`).
+- `docs/specs/dbt-03-intermediate-rarete.md` et `docs/plans/dbt-03-intermediate-rarete.md` créés. Constats sur la vraie base : 72 noms de rareté, 665 vides japonais, traductions fr → en un pour un, 20 noms propres à TCG Pocket (série `tcgp`, aucun produit Cardmarket). Décisions : seed `rarity_levels.csv` (`rarity`, `rarity_code`, `rarity_level`) ; `int_rarity_mapping` construit sur les noms collectés (`coalesce(rarity, 'None')`) en jointure gauche sur le seed, `not_null` sur `rarity_code` en erreur ; codes en anglais `snake_case`, échelle de 8 niveaux, `none`, `promo` et `pocket` hors échelle ; Pocket écarté en aval par `serie_id = 'tcgp'`, sans colonne `is_pocket` ; DBT-04 : incrémental sur `price_date > max(price_date)` pour rattraper les jours sautés après un test en échec.
+- Spec et plan DBT-03 corrigés : `Holo Rare` et `Rare Holo` → un seul code `holo_rare` (niveau 4) ; test singulier précisé (`count(distinct coalesce(rarity_level, -1)) > 1`) ; contrôle de l'ordre sur les cartes `is_current`, `distinct cardmarket_product_id, rarity_level` avant la médiane ; étape 1 ouverte par la spec passée à `en cours` et la création de `dbt/tests/`.
+- Plan dbt-03-intermediate-rarete — Étape 1 : Seed `rarity_levels`. Spec passée à `en cours`. `dbt/dbt_project.yml` : `+column_types` du seed. `dbt/seeds/rarity_levels.csv` : 72 noms tirés de la vraie base (20 `pocket`, `None` et `Sans Rareté` en `none`, `Promo` en `promo`, 49 niveaux renseignés) ; `dbt/seeds/rarity_levels.yml` (`unique`/`not_null` sur `rarity`, `not_null` sur `rarity_code`, `accepted_values` 1 à 8) ; `dbt/tests/assert_rarity_code_single_level.sql`. `inv dbt --sample` (43/43), `inv ci` et `inv okflint` verts.
+- Plan dbt-03-intermediate-rarete — Étape 2 : `int_rarity_mapping`. `.yml` d'abord : contrat, `data_type`, `unique`/`not_null` sur `rarity`, `not_null` en erreur sur `rarity_code`, test unitaire `int_rarity_mapping_one_row_per_collected_name` (vide et `None` → une ligne `None`, `Rare` fr/en/ja → une ligne, nom absent du seed → code et niveau vides), rouge sans modèle puis vert ; échoue bien si le `coalesce` est retiré. `.sql` : `collected` (`distinct coalesce(rarity, 'None')`) → `mapped` (jointure gauche sur `rarity_levels`). `inv ci` (395 tests, dbt 48/48) et `inv okflint` verts.
+- Plan dbt-03-intermediate-rarete — Étape 3 : Vraie base et documentation. `build --select +int_rarity_mapping` vert sur la vraie base : 72 lignes, 72 codes, 49 niveaux. Contrôle de l'ordre (rangs seulement, noté dans la spec) : niveaux 4 et 5 inversés, 6 et 7 aussi ; 291 produits à deux niveaux selon la langue (pour DBT-06). Mis à jour : roadmap (DBT-03 coché ; DBT-04 : `coalesce(rarity, 'None')`, exclusion `tcgp`, 9 cartes sans set, incrémental sur `price_date > max(price_date)` ; DBT-06 : écarts de l'échelle), spec maîtresse (ligne `int_rarity_mapping`), `CONTRIBUTING.md` (`dbt/seeds/` et `dbt/tests/` dans l'arborescence, seed, conduite à tenir quand le test de couverture échoue), description de `rarity` dans `stg_tcgdex__cards.yml`. Critères de la spec cochés sauf « CI GitHub verte », à vérifier sur la PR. `inv ci` et `inv okflint` verts.
+- Revue de DBT-03 (`/cr`) : approuvé avec corrections mineures, faites : test singulier `assert_rarity_level_empty_iff_off_scale.sql` (niveau vide si et seulement si `none`, `promo` ou `pocket` ; échoue bien si `Rare` perd son niveau), `+column_types` limité au seed `rarity_levels` dans `dbt_project.yml`, `CONTRIBUTING.md` à jour. Gardés en INFO : pas de liste fermée des codes, `severity: error` explicite. `inv ci` (dbt 49/49), `inv okflint` et vraie base (12/12) verts.
 
 ### Reste à faire
 
-- `inv finish` pour pousser les derniers ajouts de `feature/dbt-02` vers `develop`.
-- Prochain lot de la chaîne Pipeline de données : DBT-03 (intermediate rareté), à planifier (`/workspace-plan`).
+- DBT-03 : `inv finish`, puis vérifier la CI GitHub sur la PR et cocher le dernier critère (plan et spec à passer `statut: fait`).
 - Avant la porte 1 : relire dans un navigateur les conditions de Cardmarket et de TCGplayer (veille).
 - Rapport de novembre à régénérer en fin de mois (`inv suivi --mois 2026-11 --force`, commentaire gardé), puis `statut: fait` ; mettre à jour les chiffres de `docs/gouvernance/green-it.md`. Chaque début de mois : `inv ci` puis `inv suivi`, commentaire.
 - Antoaneta : avant PRO-02, demander aux testeurs leur logiciel de caisse et un fichier d'import exemple.
@@ -52,6 +58,8 @@
 
 ### Références
 
+- ../docs/specs/dbt-03-intermediate-rarete.md, ../docs/plans/dbt-03-intermediate-rarete.md
+- dbt/seeds/rarity_levels.csv, dbt/seeds/rarity_levels.yml, dbt/tests/assert_rarity_code_single_level.sql, assert_rarity_level_empty_iff_off_scale.sql, dbt/dbt_project.yml, dbt/models/intermediate/int_rarity_mapping.sql, int_rarity_mapping.yml, docs/plans/roadmap-lots.md, CONTRIBUTING.md, dbt/models/staging/tcgdex/stg_tcgdex__cards.yml
 - ../docs/specs/dbt-02-staging-prix.md, ../docs/plans/dbt-02-staging-prix.md
 - dbt/sample/snapshots/prices-2026-11-17.parquet, prices-2026-11-18.parquet, dbt/sample/README.md, dbt/models/staging/tcgdex/sources.yml, tests/test_fixtures_prices.py
 - dbt/models/staging/tcgdex/stg_tcgdex__cardmarket_prices.sql, stg_tcgdex__cardmarket_prices.yml, stg_tcgdex__tcgplayer_prices.sql, stg_tcgdex__tcgplayer_prices.yml
