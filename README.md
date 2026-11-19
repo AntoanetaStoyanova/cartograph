@@ -86,7 +86,7 @@ uv run inv rebuild    # fichiers des Releases, puis dbt build dans data/cartogra
 
 Les modèles de staging dbt (`dbt/models/staging/tcgdex/`) appliquent ces règles :
 
-- `stg_tcgdex__cards` : une ligne par carte et par langue, dans sa version la plus récente, celle du catalogue complet du lundi ou d'un `new-cards` plus récent. Une carte est **courante** (`is_current`) si elle figure dans le dernier catalogue complet ou dans un `new-cards` postérieur ; une carte retirée de TCGdex est gardée, non courante. La catégorie est normalisée (`pokemon`, `trainer`, `energy`) ; la rareté reste brute, propre à chaque langue.
+- `stg_tcgdex__cards` : une ligne par carte et par langue, dans sa version la plus récente, celle du dernier catalogue (`cards-*`) ou d'un `new-cards` plus récent. Une carte est **courante** (`is_current`) si elle figure sans `removed_on` dans le dernier catalogue, ou dans un `new-cards` postérieur ; une carte retirée de TCGdex est gardée, non courante, avec la date de son retrait (`removed_on`). La catégorie est normalisée (`pokemon`, `trainer`, `energy`) ; la rareté reste brute, propre à chaque langue.
 - `stg_tcgdex__sets` : une ligne par set et par langue, avec date de sortie, série et sigles, tirée des `sets-*.parquet` quotidiens ; un set est courant s'il figure dans le dernier.
 
 Le détail de chaque colonne et les tests sont dans le `.yml` de chaque modèle (`uv run inv dbt --args "docs generate"`), la construction de la base dans `CONTRIBUTING.md`, section dbt.

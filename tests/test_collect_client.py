@@ -167,3 +167,16 @@ def test_get_json_retry_after_date_falls_back_to_backoff() -> None:
     with _client(handler, sleeps) as client:
         client.get_json("/a")
     assert sleeps == [1.0]
+
+
+@pytest.mark.parametrize("value", ["-5", "nan", "0"])
+def test_get_json_unusable_retry_after_falls_back_to_backoff(value: str) -> None:
+    handler, _ = _responses(
+        httpx.Response(429, headers={"Retry-After": value}),
+        httpx.Response(200, json={}),
+    )
+    sleeps: list[float] = []
+
+    with _client(handler, sleeps) as client:
+        client.get_json("/a")
+    assert sleeps == [1.0]

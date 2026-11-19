@@ -82,7 +82,8 @@ from cartograph.bin.collect.snapshot import (
 from cartograph.config import DATA_DIR, LANGUAGES, LOG_DIR, ROTATION_SIZE
 from cartograph.log import setup_logging
 
-logger = logging.getLogger(__name__)
+# Nom fixe : lancé par `-m`, `__name__` vaut `__main__`, hors du logger `cartograph`.
+logger = logging.getLogger("cartograph.bin.collect.run")
 
 
 def collect(
@@ -125,7 +126,8 @@ def collect(
     Le résumé est écrit après chaque étape suivie d'une autre, les étapes
     restantes à ``failed``, puis remplacé à la fin : une collecte coupée
     pendant les sets, les nouvelles cartes ou les prix laisse publiables les
-    fichiers déjà écrits. Les sets sont collectés à chaque exécution. Si le
+    fichiers déjà écrits. Des prix arrêtés par une panne de l'API sont écrits
+    jusqu'à l'arrêt, étape ``failed``. Les sets sont collectés à chaque exécution. Si le
     catalogue du jour est ``ok``, les prix sont tirés de ses fiches sans
     nouvel appel à l'API ; sinon ils sont demandés pour les produits du
     dernier catalogue du dossier antérieur au jour, et ceux des nouvelles
@@ -169,7 +171,11 @@ def collect(
         return _write_summary(paths, started_at, now, steps)
 
     update = not catalogue and source is not None
-    checkpoint("prices", *(["catalogue"] if update else []))
+    checkpoint(
+        *(["new_cards"] if source is not None else []),
+        "prices",
+        *(["catalogue"] if update else []),
+    )
     previous: pa.Table | None = None
     base: pa.Table | None = None
     new_cards: dict[str, list[dict[str, Any]]] = {}
@@ -193,7 +199,9 @@ def collect(
         logger.info("prix : %d produits de nouvelles cartes", len(new_targets))
         extra = prices_from_cards(new_cards, new_targets, new_at)
         return FetchResult(
-            fetched.prices.items + extra.items, fetched.prices.failed + extra.failed
+            fetched.prices.items + extra.items,
+            fetched.prices.failed + extra.failed,
+            fetched.prices.error,
         )
 
     prices_at = now()
@@ -426,6 +434,8 @@ def _collect_catalogue(
     try:
         for language in languages:
             result = fetch_catalogue(client, language)
+            if result.error is not None:
+                raise TcgdexError(result.error)
             cards[language] = result.items
             report["fetched"] += len(result.items)
             report["failed"] += result.failed
@@ -490,6 +500,8 @@ def _collect_sets(
     try:
         for language in languages:
             result = fetch_sets(client, language)
+            if result.error is not None:
+                raise TcgdexError(result.error)
             sets[language] = result.items
             report["fetched"] += len(result.items)
             report["failed"] += result.failed
@@ -546,6 +558,8 @@ def _collect_new_cards(
         for language, card_ids in diff.new.items():
             if card_ids:
                 result = fetch_catalogue(client, language, card_ids)
+                if result.error is not None:
+                    raise TcgdexError(result.error)
                 cards[language] = result.items
                 report["fetched"] += len(result.items)
                 report["failed"] += result.failed
@@ -603,8 +617,9 @@ def _collect_prices(
     -------
     tuple[StepSummary, list[PriceTarget]]
         Bilan, ``failed`` sans catalogue, si aucune langue demandée n'y
-        figure, si la collecte s'arrête ou si la conversion en table échoue
-        (le brut est alors conservé) ; cibles interrogées.
+        figure, si la collecte s'arrête (les prix reçus sont quand même
+        écrits) ou si la conversion en table échoue (le brut est alors
+        conservé) ; cibles interrogées.
     """
     report = skipped_step()
     if catalogue is None:
@@ -633,12 +648,7 @@ def _collect_prices(
         origin,
         report["skipped_without_id_product"],
     )
-    try:
-        result = fetch(targets)
-    except TcgdexError as error:
-        report["status"] = "failed"
-        report["error"] = str(error)
-        return report, targets
+    result = fetch(targets)
     report["fetched"] = len(result.items)
     report["failed"] = result.failed
     report["files"].append(
@@ -649,6 +659,9 @@ def _collect_prices(
         )
     )
     _write_table(report, paths.prices, lambda: price_table(result.items), SORT_BY)
+    if result.error is not None:
+        report["status"] = "failed"
+        report["error"] = result.error
     return report, targets
 
 
@@ -705,14 +718,14 @@ def _update_catalogue(
     )
     rotated: dict[str, list[dict[str, Any]]] = {}
     error = None
-    try:
-        for language, card_ids in rotation_ids(candidates, targets, rotation).items():
-            result = fetch_catalogue(client, language, card_ids)
-            rotated[language] = result.items
-            report["fetched"] += len(result.items)
-            report["failed"] += result.failed
-    except TcgdexError as stop:
-        error = str(stop)
+    for language, card_ids in rotation_ids(candidates, targets, rotation).items():
+        result = fetch_catalogue(client, language, card_ids)
+        rotated[language] = result.items
+        report["fetched"] += len(result.items)
+        report["failed"] += result.failed
+        error = result.error
+        if error is not None:
+            break
     read: dict[str, list[dict[str, Any]]] = {}
     for group in [*reads, rotated]:
         for language, items in group.items():

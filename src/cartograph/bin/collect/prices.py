@@ -225,13 +225,9 @@ def fetch_prices(
         ``prices`` : un enregistrement ``{"language", "card_id", "id_product",
         "fetched_at", "pricing"}`` par cible, ``fetched_at`` en UTC
         ISO 8601 et ``pricing`` brut, et les cibles en échec au format
-        ``langue/identifiant`` (une carte peut exister dans plusieurs langues) ;
-        ``cards`` : les fiches reçues.
-
-    Raises
-    ------
-    TcgdexError
-        Après ``MAX_CONSECUTIVE_FAILURES`` cartes en échec d'affilée.
+        ``langue/identifiant`` (une carte peut exister dans plusieurs langues),
+        ``error`` posé après ``MAX_CONSECUTIVE_FAILURES`` cartes en échec
+        d'affilée avec les prix reçus jusque-là ; ``cards`` : les fiches reçues.
 
     Notes
     -----

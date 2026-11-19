@@ -57,6 +57,8 @@ def test_render_a_full_month() -> None:
         "| Couverture | 97,5 % (812 instructions, mesurée le 14 novembre 2026) |"
         in text
     )
+    assert "| Énergie des minutes Actions | 0,57 kWh |" in text
+    assert "| Émissions | 0,22 kg CO₂e |" in text
     assert "## Commentaire" in text
 
 

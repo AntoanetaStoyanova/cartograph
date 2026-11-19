@@ -3,8 +3,9 @@ version: 2
 analyses:
   - name: catalogue_changes
     description: >
-      Par catalogue complet (`cards-*`, les `new-cards-*` exclus) et par langue, cartes ajoutées, retirées et modifiées
-      par rapport au snapshot précédent (fiche complète comparée sans le champ `updated`).
+      Par catalogue (`cards-*`, les `new-cards-*` exclus) et par langue, cartes ajoutées, retirées et modifiées
+      par rapport au snapshot précédent (fiche complète comparée sans le champ `updated`). Une carte
+      retirée est absente du suivant avant COL-05, marquée `removed_on` après.
       Sert à choisir le rythme de collecte du catalogue ; lancer avec
       `uv run inv dbt --args "show --select catalogue_changes --limit 100"`.
     columns:
@@ -19,10 +20,10 @@ analyses:
         description: Langue.
       - name: added
         data_type: bigint
-        description: Cartes présentes dans ce snapshot, absentes du précédent.
+        description: Cartes présentes dans ce snapshot, absentes du précédent ou revenues (`removed_on` effacé).
       - name: removed
         data_type: bigint
-        description: Cartes du précédent absentes de ce snapshot.
+        description: Cartes présentes dans le précédent, absentes de ce snapshot ou marquées `removed_on`.
       - name: modified
         data_type: bigint
         description: Cartes présentes dans les deux, fiche différente hors `updated`.

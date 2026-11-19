@@ -39,8 +39,12 @@ renamed as (
         image as image_url,
         id_product as cardmarket_product_id,
         updated as updated_at,
-        snapshot_date as last_seen_on,
-        snapshot_date >= max(
+        max(snapshot_date) filter (where removed_on is null) over (
+            partition by card_id, language
+        ) as last_seen_on,
+        removed_on,
+        removed_on is null
+        and snapshot_date >= max(
             case when not is_new_cards then snapshot_date end
         ) over () as is_current
     from source

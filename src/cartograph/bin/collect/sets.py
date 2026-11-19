@@ -52,15 +52,16 @@ def fetch_sets(client: TcgdexClient, language: str) -> FetchResult:
     Returns
     -------
     FetchResult
-        Fiches récupérées et sets en échec (``langue/identifiant``).
+        Fiches récupérées et sets en échec (``langue/identifiant``) ;
+        ``error`` posé après ``MAX_CONSECUTIVE_FAILURES`` sets en échec
+        d'affilée.
 
     Raises
     ------
     ValueError
         Si ``language`` n'appartient pas à ``LANGUAGES``, avant tout appel.
     TcgdexError
-        Si la liste des sets ne peut pas être récupérée, ou après
-        ``MAX_CONSECUTIVE_FAILURES`` sets en échec d'affilée.
+        Si la liste des sets ne peut pas être récupérée.
     """
     return fetch_each(
         client,
