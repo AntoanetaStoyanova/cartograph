@@ -20,7 +20,7 @@
 
 ---
 
-## [2026-11-19] — Audit clos, v0.8.1, DBT-02 étapes 1-2
+## [2026-11-19] — Audit clos, v0.8.1, DBT-02 étapes 1-3
 
 ### Fait
 
@@ -36,10 +36,11 @@
 - Spec et plan DBT-02 : mesures suffixées `_price` (`low_price`, `trend_price`, `avg_price`… ; TCGplayer `mid_price`, `market_price`, `direct_low_price`…) ; correspondance des finitions de FX7 tranchée en DBT-05 (`fct_collection`, marge sur `trend_price` de la finition possédée), DBT-05 ajouté aux mises à jour de la roadmap.
 - Plan dbt-02-staging-prix — Étape 1 : Source et échantillon fictif. Spec passée à `en cours`. `tests/test_fixtures_prices.py` : non-régression sur `dbt/sample/snapshots/prices-*.parquet` (`cm_*` et nombres de `tcgplayer_json` hors `productId` : `0` ou `n + 0.37`), cas négatifs Cardmarket, TCGplayer décimal et entier, présence de prix. `prices-2026-11-17.parquet` (20 produits) et `prices-2026-11-18.parquet` (191) générés depuis les `id_product` du catalogue du 16, recette DuckDB + pyarrow (cast à `PRICE_SCHEMA`, DuckDB écrit des colonnes non nullables) déterministe, dans `dbt/sample/README.md` avec le tableau des cas. Décision : la valeur TCGplayer entière de l'échantillon est `0` (un entier ≥ 4000 sortirait de l'ensemble fictif) ; l'entier non nul sera couvert par les tests unitaires de l'étape 3. Source `tcgdex.prices` dans `sources.yml`, description de la source mise à jour. `inv dbt --sample` vert.
 - Plan dbt-02-staging-prix — Étape 2 : `stg_tcgdex__cardmarket_prices`. `.sql` (`source` → `unpivoted` en `union all` `base` / `reverse_holo` → `renamed`, lignes sans aucune mesure filtrées) et `.yml` (contrat, `data_type`, `unique` sur le grain, `not_null`, `accepted_values` sur `finish` et `currency_code`, test unitaire `stg_tcgdex__cardmarket_prices_unpivots_finishes`). Décision : `nullif` appliqué après le `decimal(10, 2)`, pour qu'un prix arrondi à 0,00 devienne vide. Échantillon : 20 + 191 lignes `base`, 13 + 127 `reverse_holo`. `inv ci` (395 tests, dbt 26/26) et `inv okflint` verts.
+- Plan dbt-02-staging-prix — Étape 3 : `stg_tcgdex__tcgplayer_prices`. `.sql` (`source` en `json`, `keyed` par `unnest(json_keys(…))`, `unpivoted` hors `unit` et `updated`, `renamed` : mesures `->>` en `decimal(10, 2)` puis `nullif`, `updated_at` en `timestamptz`, `tcgplayer_product_id` en `bigint` ; lignes sans aucune mesure filtrées) et `.yml` (contrat, `accepted_values` sur les 7 finitions et `USD`, `not_null` sur le grain et `tcgplayer_product_id`, test unitaire `stg_tcgdex__tcgplayer_prices_unpivots_finishes` : entier `4000` lu en décimal, `0` vide, finition nulle et JSON vide sans ligne). Échantillon : 10 + 96 `normal`, 1 + 1 `reverse-holofoil`. `inv ci` (395 tests, dbt 35/35) et `inv okflint` verts.
 
 ### Reste à faire
 
-- Exécuter docs/plans/dbt-02-staging-prix.md — Étape 3 : `stg_tcgdex__tcgplayer_prices`.
+- Exécuter docs/plans/dbt-02-staging-prix.md — Étape 4 : Vraies données et documentation.
 - Avant la porte 1 : relire dans un navigateur les conditions de Cardmarket et de TCGplayer (veille).
 - Rapport de novembre à régénérer en fin de mois (`inv suivi --mois 2026-11 --force`, commentaire gardé), puis `statut: fait` ; mettre à jour les chiffres de `docs/gouvernance/green-it.md`. Chaque début de mois : `inv ci` puis `inv suivi`, commentaire.
 - Antoaneta : avant PRO-02, demander aux testeurs leur logiciel de caisse et un fichier d'import exemple.
@@ -49,7 +50,7 @@
 
 - ../docs/specs/dbt-02-staging-prix.md, ../docs/plans/dbt-02-staging-prix.md
 - dbt/sample/snapshots/prices-2026-11-17.parquet, prices-2026-11-18.parquet, dbt/sample/README.md, dbt/models/staging/tcgdex/sources.yml, tests/test_fixtures_prices.py
-- dbt/models/staging/tcgdex/stg_tcgdex__cardmarket_prices.sql, stg_tcgdex__cardmarket_prices.yml
+- dbt/models/staging/tcgdex/stg_tcgdex__cardmarket_prices.sql, stg_tcgdex__cardmarket_prices.yml, stg_tcgdex__tcgplayer_prices.sql, stg_tcgdex__tcgplayer_prices.yml
 - docs/plans/fix-audit-2026-11-18.md, docs/specs/fix-audit-2026-11-18.md
 - src/cartograph/bin/collect/ (`__init__`, `batch`, `client`, `run`, `prices`, `catalogue`, `sets`), tasks/__init__.py
 - tests/test_collect_run.py, tests/test_collect_client.py, tests/test_collect_failures.py
