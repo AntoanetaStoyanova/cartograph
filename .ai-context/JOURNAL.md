@@ -20,7 +20,7 @@
 
 ---
 
-## [2026-11-19] — Audit clos, v0.8.1, DBT-02, DBT-03 et DBT-04 livrés
+## [2026-11-19] — Audit clos, v0.8.1, DBT-02 à DBT-04 livrés, GOV-06 commencé
 
 ### Fait
 
@@ -57,9 +57,14 @@
 - Plan dbt-04-marts-catalogue-prix — Étape 3 : `fct_price_snapshot` incrémentale. Créés : `dbt/models/marts/fct_price_snapshot.sql` (`incremental`, `append`, `on_schema_change: fail`, filtre `price_date > coalesce(max(price_date), '1900-01-01')` de la table) et `.yml` (contrat, `unique` sur le grain, `not_null`, `accepted_values` `base` / `reverse_holo`, `relationships` vers `int_cardmarket_products` en erreur). Tests unitaires : premier chargement (`is_incremental: false`, override obligatoire dès qu'un test du modèle le force) et rattrapage J+1 à J+3 sans J-1 ni J ; mutation `>=` : le test de rattrapage échoue. Échantillon : base supprimée puis trois builds, 351 lignes chaque fois, égal au staging, sans doublon. `inv ci` (dbt 79/79) et `inv okflint` verts.
 - Plan dbt-04-marts-catalogue-prix — Étape 4 : Vraie base et documentation. `inv dbt --args "build"` sans sélection vert deux fois (78 succès, 1 avertissement : 442 produits ambigus), second passage sans ligne ajoutée. Comptes notés dans la spec : `dim_set` 206 `en` / 188 `fr` / 204 `ja`, `dim_card` 21 432 / 20 227 / 13 156, `int_cardmarket_products` 30 279 (aucun sans carte courante), `fct_price_snapshot` 1 095 848 lignes, 23 dates, 30 272 produits. Mis à jour : roadmap (DBT-04 coché ; DBT-06 produits distincts, `is_ambiguous_product` après `has_current_card` ; QUA-01 en produits distincts), spec maîtresse (ligne `int_cardmarket_products`, grains des marts), `CONTRIBUTING.md` (marts, exclusion `pl4` / `fr`, incrémental et `--full-refresh`). Critères de la spec cochés sauf « CI GitHub verte », à vérifier sur la PR. `inv ci` et `inv okflint` verts.
 
+- `docs/specs/gov-06-regles-metier.md` et `docs/plans/gov-06-regles-metier.md` créés. Décisions : catalogue des règles métier de la collecte et de dbt dans `docs/gouvernance/regles-metier.md` (versionné, `type: reference`), une table par famille (COL, CAT, PRX, RAR, HIS, QUA) avec `ID`, `Règle`, `Appliquée dans`, `Garantie par`, `Origine` ; règles vérifiées dans le code, pas recopiées des specs ; section « À venir » (DBT-05, DBT-06, QUA-01, QUA-02) et « Règles retirées » (collecte du lundi) ; lien aux tests par colonne seulement, sans `meta` dbt ; README renvoie au document ; validation par Antoaneta à la clôture de DBT-06 ; lot GOV-06 entre DBT-04 et QUA-01.
+
+- Plan gov-06-regles-metier — Étape 1 : Squelette et règles de la collecte (COL). Branche `feature/gov-06` créée depuis `develop` (journal pas encore commité). `docs/gouvernance/regles-metier.md` créé (`statut: en cours`) : mode d'emploi, table COL de 26 règles vérifiées dans `src/cartograph/bin/collect/`, chaque test cité retrouvé dans `tests/`. Deux règles sans test : déclenchement par cron-job.org (COL-01) et rétention de la Release `catalogue` (COL-26), toutes deux dans le workflow de `cartograph-data`. Origine « Optimisation de la collecte (9 novembre 2026) » pour COL-15 et COL-20, spec sans identifiant de lot. Collecte du lundi dans « Règles retirées ». Spec passée à `en cours`. `inv ci` et `inv okflint` verts.
+
 ### Reste à faire
 
-- Planifier QUA-01, tests dbt (`/workspace-plan qua-01`), suivant de la roadmap après DBT-04 ; complétude et couverture en produits distincts.
+- Exécuter docs/plans/gov-06-regles-metier.md — Étape 2 : Catalogue et prix (CAT, PRX).
+- Planifier QUA-01, tests dbt (`/workspace-plan qua-01`), après GOV-06 ; complétude et couverture en produits distincts, règles dbt sans test relevées par GOV-06.
 - Avant la porte 1 : relire dans un navigateur les conditions de Cardmarket et de TCGplayer (veille).
 - Rapport de novembre à régénérer en fin de mois (`inv suivi --mois 2026-11 --force`, commentaire gardé), puis `statut: fait` ; mettre à jour les chiffres de `docs/gouvernance/green-it.md`. Chaque début de mois : `inv ci` puis `inv suivi`, commentaire.
 - Antoaneta : avant PRO-02, demander aux testeurs leur logiciel de caisse et un fichier d'import exemple.
@@ -67,6 +72,8 @@
 
 ### Références
 
+- ../docs/specs/gov-06-regles-metier.md, ../docs/plans/gov-06-regles-metier.md
+- ../docs/gouvernance/regles-metier.md, src/cartograph/bin/collect/, tests/test_collect_*.py
 - ../docs/specs/dbt-04-marts-catalogue-prix.md, ../docs/plans/dbt-04-marts-catalogue-prix.md
 - dbt/models/marts/dim_set.sql, dim_set.yml, dim_card.sql, dim_card.yml, dbt/tests/assert_card_set_exists.sql, dbt/models/intermediate/int_cardmarket_products.sql, int_cardmarket_products.yml, dbt/tests/assert_no_ambiguous_product.sql, dbt/models/marts/fct_price_snapshot.sql, fct_price_snapshot.yml, dbt/macros/not_pocket_set.sql, not_pocket_set.yml, docs/plans/roadmap-lots.md, spec maîtresse, CONTRIBUTING.md
 - ../docs/specs/dbt-03-intermediate-rarete.md, ../docs/plans/dbt-03-intermediate-rarete.md
