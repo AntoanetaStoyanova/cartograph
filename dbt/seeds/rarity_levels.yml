@@ -1,0 +1,27 @@
+version: 2
+
+seeds:
+  - name: rarity_levels
+    description: >
+      Correspondance relue à la main entre chaque nom de rareté collecté (toutes langues)
+      et un code canonique commun aux langues, avec son niveau ordonné. Un nom collecté
+      absent de ce fichier arrête le build (`int_rarity_mapping`) : l'ajouter ici.
+    columns:
+      - name: rarity
+        description: Nom de rareté tel que collecté par TCGdex ; `None` couvre aussi la rareté vide.
+        data_tests:
+          - unique
+          - not_null
+      - name: rarity_code
+        description: >
+          Code canonique, nom anglais en `snake_case`, partagé par les traductions et les
+          variantes d'écriture ; `pocket` pour TCG Pocket, `none` et `promo` hors échelle.
+        data_tests:
+          - not_null
+      - name: rarity_level
+        description: Niveau de 1 (`common`) à 8 (`secret_rare`…), vide pour `none`, `promo` et `pocket`.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [1, 2, 3, 4, 5, 6, 7, 8]
+                quote: false

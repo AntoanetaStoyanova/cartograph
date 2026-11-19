@@ -21,5 +21,12 @@ models:
     marts:
       +materialized: table
 
+seeds:
+  cartograph:
+    +column_types:
+      rarity: varchar
+      rarity_code: varchar
+      rarity_level: integer
+
 vars:
   snapshot_dir: data/snapshots

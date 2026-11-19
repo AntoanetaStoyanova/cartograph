@@ -20,7 +20,7 @@
 
 ---
 
-## [2026-11-19] — Audit clos, v0.8.1, DBT-02 livré, DBT-03 planifié
+## [2026-11-19] — Audit clos, v0.8.1, DBT-02 livré, DBT-03 étape 1
 
 ### Fait
 
@@ -42,10 +42,12 @@
 - Revue de DBT-02 (`/cr`) : approuvé avec une correction, faite : `not_null` sur `currency_code` dans les deux staging des prix (`accepted_values` laisse passer une devise vide) ; description de `stg_tcgdex__tcgplayer_prices` : un JSON invalide ou un `updated` hors ISO 8601 arrête le build. Tests des deux modèles 17/17 sur la vraie base, `inv ci` vert (dbt 37/37). Gardés en INFO : vues relues à chaque requête (incrémental en DBT-04), non-régression limitée aux colonnes `cm_*` et `tcgplayer_json`.
 - Correction de la revue fusionnée dans `develop` (PR #38, `inv finish`).
 - `docs/specs/dbt-03-intermediate-rarete.md` et `docs/plans/dbt-03-intermediate-rarete.md` créés. Constats sur la vraie base : 72 noms de rareté, 665 vides japonais, traductions fr → en un pour un, 20 noms propres à TCG Pocket (série `tcgp`, aucun produit Cardmarket). Décisions : seed `rarity_levels.csv` (`rarity`, `rarity_code`, `rarity_level`) ; `int_rarity_mapping` construit sur les noms collectés (`coalesce(rarity, 'None')`) en jointure gauche sur le seed, `not_null` sur `rarity_code` en erreur ; codes en anglais `snake_case`, échelle de 8 niveaux, `none`, `promo` et `pocket` hors échelle ; Pocket écarté en aval par `serie_id = 'tcgp'`, sans colonne `is_pocket` ; DBT-04 : incrémental sur `price_date > max(price_date)` pour rattraper les jours sautés après un test en échec.
+- Spec et plan DBT-03 corrigés : `Holo Rare` et `Rare Holo` → un seul code `holo_rare` (niveau 4) ; test singulier précisé (`count(distinct coalesce(rarity_level, -1)) > 1`) ; contrôle de l'ordre sur les cartes `is_current`, `distinct cardmarket_product_id, rarity_level` avant la médiane ; étape 1 ouverte par la spec passée à `en cours` et la création de `dbt/tests/`.
+- Plan dbt-03-intermediate-rarete — Étape 1 : Seed `rarity_levels`. Spec passée à `en cours`. `dbt/dbt_project.yml` : `+column_types` du seed. `dbt/seeds/rarity_levels.csv` : 72 noms tirés de la vraie base (20 `pocket`, `None` et `Sans Rareté` en `none`, `Promo` en `promo`, 49 niveaux renseignés) ; `dbt/seeds/rarity_levels.yml` (`unique`/`not_null` sur `rarity`, `not_null` sur `rarity_code`, `accepted_values` 1 à 8) ; `dbt/tests/assert_rarity_code_single_level.sql`. `inv dbt --sample` (43/43), `inv ci` et `inv okflint` verts.
 
 ### Reste à faire
 
-- Exécuter docs/plans/dbt-03-intermediate-rarete.md — Étape 1 : Seed `rarity_levels`.
+- Exécuter docs/plans/dbt-03-intermediate-rarete.md — Étape 2 : `int_rarity_mapping`.
 - Avant la porte 1 : relire dans un navigateur les conditions de Cardmarket et de TCGplayer (veille).
 - Rapport de novembre à régénérer en fin de mois (`inv suivi --mois 2026-11 --force`, commentaire gardé), puis `statut: fait` ; mettre à jour les chiffres de `docs/gouvernance/green-it.md`. Chaque début de mois : `inv ci` puis `inv suivi`, commentaire.
 - Antoaneta : avant PRO-02, demander aux testeurs leur logiciel de caisse et un fichier d'import exemple.
@@ -54,6 +56,7 @@
 ### Références
 
 - ../docs/specs/dbt-03-intermediate-rarete.md, ../docs/plans/dbt-03-intermediate-rarete.md
+- dbt/seeds/rarity_levels.csv, dbt/seeds/rarity_levels.yml, dbt/tests/assert_rarity_code_single_level.sql, dbt/dbt_project.yml
 - ../docs/specs/dbt-02-staging-prix.md, ../docs/plans/dbt-02-staging-prix.md
 - dbt/sample/snapshots/prices-2026-11-17.parquet, prices-2026-11-18.parquet, dbt/sample/README.md, dbt/models/staging/tcgdex/sources.yml, tests/test_fixtures_prices.py
 - dbt/models/staging/tcgdex/stg_tcgdex__cardmarket_prices.sql, stg_tcgdex__cardmarket_prices.yml, stg_tcgdex__tcgplayer_prices.sql, stg_tcgdex__tcgplayer_prices.yml
