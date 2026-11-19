@@ -20,7 +20,7 @@
 
 ---
 
-## [2026-11-19] — Audit clos, v0.8.1, DBT-02 et DBT-03 livrés, DBT-04 livré
+## [2026-11-19] — Audit clos, v0.8.1, DBT-02, DBT-03 et DBT-04 livrés
 
 ### Fait
 
@@ -47,6 +47,7 @@
 - Plan dbt-03-intermediate-rarete — Étape 2 : `int_rarity_mapping`. `.yml` d'abord : contrat, `data_type`, `unique`/`not_null` sur `rarity`, `not_null` en erreur sur `rarity_code`, test unitaire `int_rarity_mapping_one_row_per_collected_name` (vide et `None` → une ligne `None`, `Rare` fr/en/ja → une ligne, nom absent du seed → code et niveau vides), rouge sans modèle puis vert ; échoue bien si le `coalesce` est retiré. `.sql` : `collected` (`distinct coalesce(rarity, 'None')`) → `mapped` (jointure gauche sur `rarity_levels`). `inv ci` (395 tests, dbt 48/48) et `inv okflint` verts.
 - Plan dbt-03-intermediate-rarete — Étape 3 : Vraie base et documentation. `build --select +int_rarity_mapping` vert sur la vraie base : 72 lignes, 72 codes, 49 niveaux. Contrôle de l'ordre (rangs seulement, noté dans la spec) : niveaux 4 et 5 inversés, 6 et 7 aussi ; 291 produits à deux niveaux selon la langue (pour DBT-06). Mis à jour : roadmap (DBT-03 coché ; DBT-04 : `coalesce(rarity, 'None')`, exclusion `tcgp`, 9 cartes sans set, incrémental sur `price_date > max(price_date)` ; DBT-06 : écarts de l'échelle), spec maîtresse (ligne `int_rarity_mapping`), `CONTRIBUTING.md` (`dbt/seeds/` et `dbt/tests/` dans l'arborescence, seed, conduite à tenir quand le test de couverture échoue), description de `rarity` dans `stg_tcgdex__cards.yml`. Critères de la spec cochés sauf « CI GitHub verte », à vérifier sur la PR. `inv ci` et `inv okflint` verts.
 - Revue de DBT-04 (`/cr`) : approuvé avec une correction mineure et deux INFO, tous corrigés. `fct_price_snapshot` filtre sur `price_date not in` les dates de la table au lieu de `> max(price_date)`, qui sautait pour toujours un fichier plus ancien arrivé après coup ; test unitaire `fct_price_snapshot_loads_late_dates` (échoue avec l'ancien filtre). Exclusion de Pocket écrite une fois, macro `dbt/macros/not_pocket_set.sql` (et `.yml`), utilisée par `dim_set`, `dim_card` et `int_cardmarket_products` ; `dim_set` exclut désormais un set `tcgp` dans toutes ses langues (test unitaire étendu). Vraie base : build vert, comptes inchangés. Spec, plan, spec maîtresse, roadmap et `CONTRIBUTING.md` à jour.
+- PR #40 (`feature/dbt-04` → `develop`) fusionnée, CI GitHub verte (run 44553184677) : dernier critère coché, plan et spec dbt-04-marts-catalogue-prix `statut: fait`.
 - Revue de DBT-03 (`/cr`) : approuvé avec corrections mineures, faites : test singulier `assert_rarity_level_empty_iff_off_scale.sql` (niveau vide si et seulement si `none`, `promo` ou `pocket` ; échoue bien si `Rare` perd son niveau), `+column_types` limité au seed `rarity_levels` dans `dbt_project.yml`, `CONTRIBUTING.md` à jour. Gardés en INFO : pas de liste fermée des codes, `severity: error` explicite. `inv ci` (dbt 49/49), `inv okflint` et vraie base (12/12) verts.
 - PR #39 (`feature/dbt-03` → `develop`) fusionnée, CI GitHub verte (run 44530060911), branche supprimée : dernier critère coché, plan et spec dbt-03-intermediate-rarete `statut: fait`.
 - `docs/specs/dbt-04-marts-catalogue-prix.md` et `docs/plans/dbt-04-marts-catalogue-prix.md` créés. Constats (comptes) : Pocket 2 480 `en` / 2 116 `fr` sans produit ; 9 `pl4-AR*` `fr` sans set dans leur langue, produit `278861` ; 30 279 produits tous rattachés ; produits partagés 757 `en`, 724 `fr`, 3 `ja`, dont 439 / 413 / 3 à plusieurs noms ou raretés (erreurs de correspondance TCGdex, ex. `swsh11-130` / `swsh11-201`). Décisions : `dim_set` et `dim_card` par langue, hors sets `tcgp` (toutes langues) ; `pl4` / `fr` gardé, test singulier `assert_card_set_exists` sur (`set_id`, `language_code`) avec exclusion nommée (pas de dbt_utils) ; `fct_price_snapshot` au grain produit, incrémentale `append` sur `price_date > max(price_date)`, `on_schema_change: fail` ; `int_cardmarket_products` avec `is_ambiguous_product` (plusieurs noms ou codes de rareté dans une langue), test `warn` seulement ; DBT-06 exclut ou marque les produits ambigus et agrège par produits distincts.
@@ -58,7 +59,7 @@
 
 ### Reste à faire
 
-- DBT-04 : ouvrir la PR (`inv finish`), vérifier la CI GitHub, cocher le dernier critère et passer plan et spec à `statut: fait`.
+- Planifier QUA-01, tests dbt (`/workspace-plan qua-01`), suivant de la roadmap après DBT-04 ; complétude et couverture en produits distincts.
 - Avant la porte 1 : relire dans un navigateur les conditions de Cardmarket et de TCGplayer (veille).
 - Rapport de novembre à régénérer en fin de mois (`inv suivi --mois 2026-11 --force`, commentaire gardé), puis `statut: fait` ; mettre à jour les chiffres de `docs/gouvernance/green-it.md`. Chaque début de mois : `inv ci` puis `inv suivi`, commentaire.
 - Antoaneta : avant PRO-02, demander aux testeurs leur logiciel de caisse et un fichier d'import exemple.
