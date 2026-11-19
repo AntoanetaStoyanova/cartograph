@@ -1,3 +1,25 @@
+## v0.8.1 (2026-11-19)
+
+### Corrections
+
+- collecte qui garde les prix reçus avant une panne et journalise sous cartograph
+- dbt lit removed_on, une carte retirée n'est plus courante
+
+### Documentation
+
+- suppression de l'ancien catalogue vérifiée, audit du 18 novembre clos
+- aaudit du projet plus correction
+- lot STO-01 clos, empreintes du catalogue vérifiées
+- COL-05 livré et vérifié sur une exécution réelle
+
+### Tests
+
+- couverture des trouvailles de l'audit, logs des tests isolés
+
+### Maintenance
+
+- **journal**: archive avant v0.8.1
+
 ## v0.8.0 (2026-11-18)
 
 ### Nouveautés
