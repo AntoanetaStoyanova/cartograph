@@ -20,7 +20,7 @@
 
 ---
 
-## [2026-11-19] — Audit clos, v0.8.1, DBT-02 livré en local
+## [2026-11-19] — Audit clos, v0.8.1, DBT-02 livré
 
 ### Fait
 
@@ -38,10 +38,13 @@
 - Plan dbt-02-staging-prix — Étape 2 : `stg_tcgdex__cardmarket_prices`. `.sql` (`source` → `unpivoted` en `union all` `base` / `reverse_holo` → `renamed`, lignes sans aucune mesure filtrées) et `.yml` (contrat, `data_type`, `unique` sur le grain, `not_null`, `accepted_values` sur `finish` et `currency_code`, test unitaire `stg_tcgdex__cardmarket_prices_unpivots_finishes`). Décision : `nullif` appliqué après le `decimal(10, 2)`, pour qu'un prix arrondi à 0,00 devienne vide. Échantillon : 20 + 191 lignes `base`, 13 + 127 `reverse_holo`. `inv ci` (395 tests, dbt 26/26) et `inv okflint` verts.
 - Plan dbt-02-staging-prix — Étape 3 : `stg_tcgdex__tcgplayer_prices`. `.sql` (`source` en `json`, `keyed` par `unnest(json_keys(…))`, `unpivoted` hors `unit` et `updated`, `renamed` : mesures `->>` en `decimal(10, 2)` puis `nullif`, `updated_at` en `timestamptz`, `tcgplayer_product_id` en `bigint` ; lignes sans aucune mesure filtrées) et `.yml` (contrat, `accepted_values` sur les 7 finitions et `USD`, `not_null` sur le grain et `tcgplayer_product_id`, test unitaire `stg_tcgdex__tcgplayer_prices_unpivots_finishes` : entier `4000` lu en décimal, `0` vide, finition nulle et JSON vide sans ligne). Échantillon : 10 + 96 `normal`, 1 + 1 `reverse-holofoil`. `inv ci` (395 tests, dbt 35/35) et `inv okflint` verts.
 - Plan dbt-02-staging-prix — Étape 4 : Vraies données et documentation. `inv rebuild` lancé par Antoaneta (23 fichiers `prices-`) ; tests des deux modèles 15/15 sur la vraie base ; contrôles par nombres notés dans la spec (section « Vérification sur les vrais prix ») : aucune mesure à 0, aucune ligne vide, 7 finitions TCGplayer présentes, 8 689 lignes `base` sans `trend_price` (pour DBT-06 et QUA-01). Mis à jour : roadmap (DBT-02 coché, DBT-04 limité à Cardmarket via `dim_card`, DBT-05 marge sur `trend_price`), spec maîtresse (lignes staging des prix et `fct_price_snapshot`), `cadrage-flux.md` (prix de référence confirmé, finitions de FX7), `CONTRIBUTING.md` (source, modèles, échantillon de prix fictifs, invariant), `README.md` (deux modèles de prix). Critères de la spec cochés sauf « CI sur GitHub », à vérifier sur la PR. `inv ci` et `inv okflint` verts.
+- PR #37 (`feature/dbt-02` → `develop`) fusionnée, CI GitHub verte (run 44508257537) : dernier critère coché, plan et spec dbt-02-staging-prix `statut: fait`.
+- Revue de DBT-02 (`/cr`) : approuvé avec une correction, faite : `not_null` sur `currency_code` dans les deux staging des prix (`accepted_values` laisse passer une devise vide) ; description de `stg_tcgdex__tcgplayer_prices` : un JSON invalide ou un `updated` hors ISO 8601 arrête le build. Tests des deux modèles 17/17 sur la vraie base, `inv ci` vert (dbt 37/37). Gardés en INFO : vues relues à chaque requête (incrémental en DBT-04), non-régression limitée aux colonnes `cm_*` et `tcgplayer_json`.
 
 ### Reste à faire
 
-- DBT-02 : vérifier la CI GitHub sur la PR de `feature/dbt-02`, puis cocher le dernier critère de la spec et passer plan et spec à `statut: fait`.
+- `inv finish` pour pousser les derniers ajouts de `feature/dbt-02` vers `develop`.
+- Prochain lot de la chaîne Pipeline de données : DBT-03 (intermediate rareté), à planifier (`/workspace-plan`).
 - Avant la porte 1 : relire dans un navigateur les conditions de Cardmarket et de TCGplayer (veille).
 - Rapport de novembre à régénérer en fin de mois (`inv suivi --mois 2026-11 --force`, commentaire gardé), puis `statut: fait` ; mettre à jour les chiffres de `docs/gouvernance/green-it.md`. Chaque début de mois : `inv ci` puis `inv suivi`, commentaire.
 - Antoaneta : avant PRO-02, demander aux testeurs leur logiciel de caisse et un fichier d'import exemple.
