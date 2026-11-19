@@ -61,9 +61,11 @@
 
 - Plan gov-06-regles-metier — Étape 1 : Squelette et règles de la collecte (COL). Branche `feature/gov-06` créée depuis `develop` (journal pas encore commité). `docs/gouvernance/regles-metier.md` créé (`statut: en cours`) : mode d'emploi, table COL de 26 règles vérifiées dans `src/cartograph/bin/collect/`, chaque test cité retrouvé dans `tests/`. Deux règles sans test : déclenchement par cron-job.org (COL-01) et rétention de la Release `catalogue` (COL-26), toutes deux dans le workflow de `cartograph-data`. Origine « Optimisation de la collecte (9 novembre 2026) » pour COL-15 et COL-20, spec sans identifiant de lot. Collecte du lundi dans « Règles retirées ». Spec passée à `en cours`. `inv ci` et `inv okflint` verts.
 
+- Plan gov-06-regles-metier — Étape 2 : Catalogue et prix (CAT, PRX). `docs/gouvernance/regles-metier.md` : tables CAT (9 règles) et PRX (12 règles), vérifiées dans les modèles, macros et tests dbt ; chaque test unitaire cité retrouvé dans les `.yml`. Sans test : variantes non filtrées (PRX-08), TCGplayer hors prix de référence (PRX-07), agrégats en produits distincts (PRX-12), JSON et date TCGplayer invalides (conversions seulement). Finitions de la collection (normale, holo → `base`, reverse → `reverse_holo`) et prix de référence `trend_price` : appliqués nulle part dans le code, placés dans « À venir » (DBT-05) à l'étape 3. `.pre-commit-config.yaml` : `default_language_version: node: 22.12.0` (Node 12 de WSL trop ancien pour markdownlint-cli2). `inv ci` et `inv okflint` verts.
+
 ### Reste à faire
 
-- Exécuter docs/plans/gov-06-regles-metier.md — Étape 2 : Catalogue et prix (CAT, PRX).
+- Exécuter docs/plans/gov-06-regles-metier.md — Étape 3 : Rareté, historique, qualité et règles à venir (RAR, HIS, QUA).
 - Planifier QUA-01, tests dbt (`/workspace-plan qua-01`), après GOV-06 ; complétude et couverture en produits distincts, règles dbt sans test relevées par GOV-06.
 - Avant la porte 1 : relire dans un navigateur les conditions de Cardmarket et de TCGplayer (veille).
 - Rapport de novembre à régénérer en fin de mois (`inv suivi --mois 2026-11 --force`, commentaire gardé), puis `statut: fait` ; mettre à jour les chiffres de `docs/gouvernance/green-it.md`. Chaque début de mois : `inv ci` puis `inv suivi`, commentaire.
@@ -73,7 +75,7 @@
 ### Références
 
 - ../docs/specs/gov-06-regles-metier.md, ../docs/plans/gov-06-regles-metier.md
-- ../docs/gouvernance/regles-metier.md, src/cartograph/bin/collect/, tests/test_collect_*.py
+- ../docs/gouvernance/regles-metier.md, src/cartograph/bin/collect/, tests/test_collect_*.py, dbt/models/, dbt/macros/, dbt/tests/, .pre-commit-config.yaml
 - ../docs/specs/dbt-04-marts-catalogue-prix.md, ../docs/plans/dbt-04-marts-catalogue-prix.md
 - dbt/models/marts/dim_set.sql, dim_set.yml, dim_card.sql, dim_card.yml, dbt/tests/assert_card_set_exists.sql, dbt/models/intermediate/int_cardmarket_products.sql, int_cardmarket_products.yml, dbt/tests/assert_no_ambiguous_product.sql, dbt/models/marts/fct_price_snapshot.sql, fct_price_snapshot.yml, dbt/macros/not_pocket_set.sql, not_pocket_set.yml, docs/plans/roadmap-lots.md, spec maîtresse, CONTRIBUTING.md
 - ../docs/specs/dbt-03-intermediate-rarete.md, ../docs/plans/dbt-03-intermediate-rarete.md

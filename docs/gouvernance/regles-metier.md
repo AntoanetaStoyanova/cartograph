@@ -57,6 +57,39 @@ Code dans `src/cartograph/bin/collect/`, tests dans `tests/test_collect_*.py`. L
 | COL-25 | Un manifeste est commité chaque jour dans `cartograph-data`, même si la collecte échoue : statut des étapes, lignes, octets et SHA-256 de chaque fichier envoyé. | `manifest.build_manifest`, workflow `Collecte` | `tests/test_collect_manifest.py::test_successful_collection_lists_files_with_release_and_sha256`, `tests/test_collect_manifest.py::test_no_summary_gives_empty_steps_and_files` | STO-01 |
 | COL-26 | La Release `catalogue` ne garde que le `cards-*` le plus récent et ceux des lundis. | workflow `Collecte` de `cartograph-data` | aucun | COL-05 |
 
+## CAT — Catalogue
+
+Modèles dans `dbt/models/`, macros dans `dbt/macros/`. Un test unitaire dbt est nommé par son `name` dans le `.yml` du modèle ; un test générique par `<modèle>.<colonne>` et son type ; l'unicité d'une clé à plusieurs colonnes est testée sur leur concaténation (`a || '|' || b`).
+
+| ID | Règle | Appliquée dans | Garantie par | Origine |
+| -- | ----- | -------------- | ------------ | ------- |
+| CAT-01 | La date d'un snapshot est tirée du nom du fichier (`cards-AAAA-MM-JJ.parquet`), pas de son contenu. | macro `snapshot_date` | test unitaire `stg_tcgdex__cards_keeps_latest_version`, `stg_tcgdex__cardmarket_prices_unpivots_finishes` | DBT-01 |
+| CAT-02 | Une carte a une seule ligne par langue, dans sa version la plus récente ; le même jour, le catalogue l'emporte sur `new-cards`. | `stg_tcgdex__cards` | `unique` sur `card_id \|\| '\|' \|\| language_code` de `stg_tcgdex__cards` ; test unitaire `stg_tcgdex__cards_keeps_latest_version` | DBT-01, COL-04 |
+| CAT-03 | Une carte est courante si elle figure sans `removed_on` dans le dernier catalogue, ou dans un `new-cards` plus récent que lui. | `stg_tcgdex__cards` (`is_current`), macro `is_new_cards` | tests unitaires `stg_tcgdex__cards_counts_new_cards`, `stg_tcgdex__cards_reads_removed_on` | DBT-01, COL-04, COL-05 |
+| CAT-04 | Une carte retirée de TCGdex reste dans la base, non courante, avec sa date de retrait et la date du dernier fichier où elle était présente (`last_seen_on`). | `stg_tcgdex__cards`, `dim_card` | test unitaire `stg_tcgdex__cards_reads_removed_on`, `dim_card_excludes_pocket_and_maps_rarity` | DBT-01, COL-05 |
+| CAT-05 | La catégorie est ramenée à `pokemon`, `trainer` ou `energy`, quelle que soit la langue ; une autre valeur arrête le build. | `stg_tcgdex__cards` | `stg_tcgdex__cards.category` `accepted_values` ; test unitaire `stg_tcgdex__cards_keeps_latest_version` | DBT-01 |
+| CAT-06 | Seules les langues `fr`, `en` et `ja` sont acceptées dans la base. | `stg_tcgdex__cards`, `stg_tcgdex__sets` | `stg_tcgdex__cards.language_code` et `stg_tcgdex__sets.language_code` `accepted_values` | DBT-01 |
+| CAT-07 | Un set a une seule ligne par langue, tirée du dernier fichier `sets-*` où il figure ; il est courant s'il figure dans le dernier. | `stg_tcgdex__sets` | `unique` sur `set_id \|\| '\|' \|\| language_code` de `stg_tcgdex__sets` ; test unitaire `stg_tcgdex__sets_keeps_latest_version` | DBT-01, COL-04 |
+| CAT-08 | TCG Pocket (jeu numérique, sans prix) est écarté : un set classé dans la série `tcgp` dans une langue l'est dans toutes, avec ses cartes et ses produits. | macro `not_pocket_set`, `dim_set`, `dim_card`, `int_cardmarket_products` | tests unitaires `dim_set_excludes_pocket`, `dim_card_excludes_pocket_and_maps_rarity` | DBT-04 |
+| CAT-09 | Une carte doit avoir son set dans sa langue ; seule exception, les 9 cartes `pl4-AR*` en `fr`, qui ont un prix mais pas de set chez TCGdex, sont gardées sans set. | `dim_card` | test singulier `assert_card_set_exists` | DBT-04 |
+
+## PRX — Prix
+
+| ID | Règle | Appliquée dans | Garantie par | Origine |
+| -- | ----- | -------------- | ------------ | ------- |
+| PRX-01 | Le prix appartient au produit Cardmarket, pas à la carte : plusieurs cartes (une par langue, parfois plusieurs dans une langue) partagent un produit et son prix. | `stg_tcgdex__cardmarket_prices`, `fct_price_snapshot` (sans `card_id`) | `unique` sur `cardmarket_product_id \|\| '\|' \|\| finish \|\| '\|' \|\| price_date` de `stg_tcgdex__cardmarket_prices` et de `fct_price_snapshot` | COL-01, DBT-02 |
+| PRX-02 | Cardmarket et TCGplayer ont chacun leur modèle, avec leurs finitions et leur devise ; ils ne sont pas mélangés. | `stg_tcgdex__cardmarket_prices`, `stg_tcgdex__tcgplayer_prices` | `stg_tcgdex__cardmarket_prices.currency_code` `accepted_values` (`EUR`), `stg_tcgdex__tcgplayer_prices.currency_code` `accepted_values` (`USD`) | DBT-02 |
+| PRX-03 | Cardmarket a deux finitions : `base`, et `reverse_holo` pour le reverse ; le « holo » des colonnes TCGdex (`cm_*_holo`) est le reverse de Cardmarket, pas une carte holo. | `stg_tcgdex__cardmarket_prices` | `stg_tcgdex__cardmarket_prices.finish` et `fct_price_snapshot.finish` `accepted_values` ; test unitaire `stg_tcgdex__cardmarket_prices_unpivots_finishes` | DBT-02 |
+| PRX-04 | Un prix à `0` est lu comme absent. | `stg_tcgdex__cardmarket_prices`, `stg_tcgdex__tcgplayer_prices` (`nullif`) | tests unitaires `stg_tcgdex__cardmarket_prices_unpivots_finishes`, `stg_tcgdex__tcgplayer_prices_unpivots_finishes` | DBT-02 |
+| PRX-05 | Une finition sans aucun prix ne donne pas de ligne. | `stg_tcgdex__cardmarket_prices`, `stg_tcgdex__tcgplayer_prices` | tests unitaires `stg_tcgdex__cardmarket_prices_unpivots_finishes`, `stg_tcgdex__tcgplayer_prices_unpivots_finishes` | DBT-02 |
+| PRX-06 | Une finition TCGplayer inconnue, un JSON TCGplayer invalide ou une date hors ISO 8601 arrêtent le build plutôt que de produire une valeur fausse. | `stg_tcgdex__tcgplayer_prices` | `stg_tcgdex__tcgplayer_prices.finish` `accepted_values` pour la finition ; aucun pour le JSON et la date (conversions du modèle) | DBT-02 |
+| PRX-07 | TCGplayer sert au lien vers la page du produit (`tcgplayer_product_id`), pas au prix de référence. | `stg_tcgdex__tcgplayer_prices` | aucun | DBT-02 |
+| PRX-08 | Aucun filtre sur les variantes déclarées d'une carte (`variants`) : une finition a une ligne dès qu'elle a un prix. | `stg_tcgdex__cardmarket_prices` | aucun | DBT-02 |
+| PRX-09 | Tout produit de l'historique des prix est connu du catalogue (hors Pocket). | `fct_price_snapshot` | `fct_price_snapshot.cardmarket_product_id` `relationships` vers `int_cardmarket_products` (erreur) | DBT-04 |
+| PRX-10 | Un produit est ambigu quand, dans une langue, ses cartes courantes ont plusieurs noms ou plusieurs codes de rareté : son prix n'a pas de carte sûre. Des noms différents entre langues ou une carte retirée ne le rendent pas ambigu. | `int_cardmarket_products`, repris dans `dim_card` | test unitaire `int_cardmarket_products_flags_ambiguity` ; test singulier `assert_no_ambiguous_product` (avertissement) | DBT-04 |
+| PRX-11 | L'ambiguïté n'est évaluée que pour un produit qui a une carte courante (`has_current_card`) ; sinon elle vaut faux sans avoir été évaluée. | `int_cardmarket_products` | test unitaire `int_cardmarket_products_flags_ambiguity` | DBT-04 |
+| PRX-12 | Un produit pouvant porter plusieurs cartes, tout agrégat de prix compte des produits distincts, pas des cartes. | description de `dim_card` et `fct_price_snapshot` | aucun | DBT-04 |
+
 ## Règles retirées
 
 | ID | Règle | Retirée le | Remplacée par |
