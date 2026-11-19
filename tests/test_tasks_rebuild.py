@@ -3,7 +3,7 @@ from typing import Any
 
 import duckdb
 import pytest
-from invoke import Exit, MockContext, Result
+from invoke import Exit, MockContext, Result, UnexpectedExit
 
 from tasks import rebuild
 
@@ -73,4 +73,19 @@ def test_rebuild_keeps_database_when_dbt_fails() -> None:
         rebuild(_context(build_exit=1))
     assert DB.read_bytes() == b"old"
     assert Path(f"{DB}.wal").exists()
+    assert not TMP.exists()
+
+
+def test_rebuild_stops_before_dbt_when_download_fails() -> None:
+    c = _context()
+
+    def run(command: str, **kwargs: Any) -> Result:
+        raise UnexpectedExit(Result(command=command, exited=1))
+
+    c.run.side_effect = run
+
+    with pytest.raises(UnexpectedExit):
+        rebuild(c)
+    assert _commands(c) == [SYNC]
+    assert DB.read_bytes() == b"old"
     assert not TMP.exists()

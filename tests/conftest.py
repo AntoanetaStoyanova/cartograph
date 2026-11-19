@@ -1,4 +1,5 @@
 import json
+import logging
 import re
 from collections.abc import Callable, Iterator
 from pathlib import Path
@@ -7,7 +8,12 @@ from typing import Any
 import httpx
 import pytest
 
+import cartograph.__main__ as entry
+from cartograph import config
+from cartograph.bin import rebuild
+from cartograph.bin.collect import run as collect_run
 from cartograph.bin.collect.client import TcgdexClient
+from cartograph.bin.suivi import run as suivi_run
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures" / "tcgdex"
 REAL_SUMMARY = Path(__file__).parent / "fixtures" / "collect-summary.json"
@@ -43,6 +49,20 @@ def mock_client(handler: Callable[[httpx.Request], httpx.Response]) -> TcgdexCli
 
 
 @pytest.fixture
+def isolated_logs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
+    log_dir = tmp_path / "logs"
+    for module in (config, entry, rebuild, collect_run, suivi_run):
+        monkeypatch.setattr(module, "LOG_DIR", log_dir)
+    yield log_dir
+    # setup_logging ne réattache rien à un logger déjà configuré : sans ce
+    # nettoyage, le test suivant écrirait dans le dossier de celui-ci.
+    logger = logging.getLogger("cartograph")
+    for handler in logger.handlers[:]:
+        handler.close()
+        logger.removeHandler(handler)
+
+
+@pytest.fixture
 def tcgdex_client() -> Iterator[TcgdexClient]:
     with TcgdexClient(
         transport=httpx.MockTransport(fixture_route), sleep=lambda _: None
@@ -59,7 +79,9 @@ def price_values(node: Any) -> set[str]:
                 values |= {
                     str(v)
                     for k, v in cardmarket.items()
-                    if isinstance(v, float) and k != "idProduct"
+                    if isinstance(v, (int, float))
+                    and not isinstance(v, bool)
+                    and k != "idProduct"
                 }
             values |= price_values(value)
         return values

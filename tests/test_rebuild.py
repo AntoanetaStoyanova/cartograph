@@ -188,14 +188,15 @@ def test_sync_second_run_downloads_nothing(
     assert downloaded == ["a.parquet"]
 
 
+@pytest.mark.usefixtures("isolated_logs")
 def test_main_returns_0_on_success(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    monkeypatch.setattr(rebuild, "LOG_DIR", tmp_path / "logs")
     monkeypatch.setattr(rebuild, "sync", lambda folder: 0)
     assert rebuild.main(["--snapshot-dir", str(tmp_path)]) == 0
 
 
+@pytest.mark.usefixtures("isolated_logs")
 def test_main_returns_1_and_logs_error(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -204,7 +205,6 @@ def test_main_returns_1_and_logs_error(
     def fail(folder: Path) -> int:
         raise RuntimeError("gh release list cartograph-prices : HTTP 404")
 
-    monkeypatch.setattr(rebuild, "LOG_DIR", tmp_path / "logs")
     monkeypatch.setattr(rebuild, "sync", fail)
     assert rebuild.main(["--snapshot-dir", str(tmp_path)]) == 1
     assert "cartograph-prices : HTTP 404" in caplog.text

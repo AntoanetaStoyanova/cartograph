@@ -138,7 +138,7 @@ lot: CI-00             # facultatif
 
 ```text
 src/cartograph/
-├── __main__.py     # uniquement : from . import main; main()
+├── __main__.py     # python -m cartograph : journalise le démarrage et les langues
 ├── bin/            # modules métier (fonctions), importés en cartograph.bin.<module>
 ├── config/         # constantes et paramètres
 ├── data/           # chargement / sauvegarde de données
