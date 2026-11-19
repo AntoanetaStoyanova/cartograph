@@ -1,0 +1,86 @@
+version: 2
+
+models:
+  - name: dim_set
+    config:
+      contract:
+        enforced: true
+    description: >
+      Une ligne par set et par langue, colonnes de `stg_tcgdex__sets`, sans les sets de
+      TCG Pocket (`serie_id = 'tcgp'`, jeu numérique sans prix). Le nom et le sigle
+      dépendent de la langue.
+    data_tests:
+      - unique:
+          arguments:
+            column_name: "set_id || '|' || language_code"
+    columns:
+      - name: set_id
+        data_type: varchar
+        description: Identifiant TCGdex du set, commun aux langues.
+        data_tests:
+          - not_null
+      - name: language_code
+        data_type: varchar
+        description: Langue du set.
+        data_tests:
+          - not_null
+      - name: set_name
+        data_type: varchar
+        description: Nom du set dans sa langue.
+      - name: serie_id
+        data_type: varchar
+        description: Identifiant TCGdex de la série (`swsh`, `SV`), jamais `tcgp`.
+      - name: serie_name
+        data_type: varchar
+        description: Nom de la série dans la langue du set.
+      - name: abbreviation_official
+        data_type: varchar
+        description: Sigle officiel (`DAA`), absent pour certains sets.
+      - name: abbreviation_localized
+        data_type: varchar
+        description: Sigle dans la langue du set (`TEM`), absent pour certains sets.
+      - name: card_count_official
+        data_type: integer
+        description: Nombre de cartes annoncé (numérotation officielle, hors cartes secrètes).
+      - name: card_count_total
+        data_type: integer
+        description: Nombre total de cartes du set, cartes secrètes comprises.
+      - name: symbol_url
+        data_type: varchar
+        description: URL de base du symbole du set.
+      - name: logo_url
+        data_type: varchar
+        description: URL de base du logo, absente pour certains sets.
+      - name: release_date
+        data_type: date
+        description: Date de sortie dans la langue du set.
+      - name: last_seen_on
+        data_type: date
+        description: Date du dernier snapshot où le set figure.
+      - name: is_current
+        data_type: boolean
+        description: Présent dans le dernier snapshot des sets.
+
+unit_tests:
+  - name: dim_set_excludes_pocket
+    description: Un set de la série `tcgp` est écarté ; un set sans série est gardé.
+    model: dim_set
+    given:
+      - input: ref('stg_tcgdex__sets')
+        format: sql
+        rows: |
+          select
+              set_id, language_code, 'Set' as set_name, serie_id, 'Série' as serie_name,
+              null::varchar as abbreviation_official, null::varchar as abbreviation_localized,
+              1 as card_count_official, 1 as card_count_total, null::varchar as symbol_url,
+              null::varchar as logo_url, null::date as release_date,
+              '2026-11-19'::date as last_seen_on, true as is_current
+          from (values
+              ('swsh11', 'fr', 'swsh'),
+              ('A1', 'fr', 'tcgp'),
+              ('misc', 'en', null::varchar)
+          ) as t (set_id, language_code, serie_id)
+    expect:
+      rows:
+        - { set_id: swsh11, language_code: fr, serie_id: swsh }
+        - { set_id: misc, language_code: en, serie_id: null }
