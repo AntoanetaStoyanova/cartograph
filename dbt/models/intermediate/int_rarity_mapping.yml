@@ -1,0 +1,74 @@
+version: 2
+
+models:
+  - name: int_rarity_mapping
+    config:
+      contract:
+        enforced: true
+    description: >
+      Une ligne par nom de rareté collecté dans `stg_tcgdex__cards` (toutes langues, rareté
+      vide lue comme `None`), avec son code canonique et son niveau tirés du seed
+      `rarity_levels`. Un nom absent du seed a un `rarity_code` vide et arrête le build :
+      l'ajouter au seed avec son code et son niveau. En aval, joindre sur
+      `coalesce(rarity, 'None')`.
+    columns:
+      - name: rarity
+        data_type: varchar
+        description: Nom de rareté tel que collecté ; `None` couvre aussi la rareté vide.
+        data_tests:
+          - unique
+          - not_null
+      - name: rarity_code
+        data_type: varchar
+        description: >
+          Code canonique commun aux langues (`common`, `secret_rare`…) ; `pocket` pour TCG
+          Pocket, `none` et `promo` hors échelle. Vide si le nom manque au seed.
+        data_tests:
+          - not_null:
+              config:
+                severity: error
+      - name: rarity_level
+        data_type: integer
+        description: Niveau de 1 (`common`) à 8 (`secret_rare`…), vide pour `none`, `promo` et `pocket`.
+
+unit_tests:
+  - name: int_rarity_mapping_one_row_per_collected_name
+    description: >
+      Une rareté vide et `None` donnent la seule ligne `None` ; `Rare` en `fr`, `en` et `ja`
+      donne une seule ligne ; un nom absent du seed donne un `rarity_code` et un
+      `rarity_level` vides.
+    model: int_rarity_mapping
+    given:
+      - input: ref('stg_tcgdex__cards')
+        format: sql
+        rows: |
+          select
+              card_id, language_code, '1' as local_id, 'Carte' as card_name, 'set' as set_id,
+              'pokemon' as category, rarity, null::varchar[] as pokemon_types, null::integer as hp,
+              null::varchar as evolution_stage, null::integer[] as dex_ids,
+              null::varchar as illustrator, null::varchar as regulation_mark,
+              null::boolean as is_legal_standard, null::boolean as is_legal_expanded,
+              null::varchar as image_url, null::bigint as cardmarket_product_id,
+              null::timestamptz as updated_at, null::date as last_seen_on,
+              null::date as removed_on, true as is_current
+          from (values
+              ('c1', 'ja', null::varchar),
+              ('c2', 'en', 'None'),
+              ('c3', 'fr', 'Rare'),
+              ('c4', 'en', 'Rare'),
+              ('c5', 'ja', 'Rare'),
+              ('c6', 'en', 'Nouvelle rareté')
+          ) as t (card_id, language_code, rarity)
+      - input: ref('rarity_levels')
+        format: sql
+        rows: |
+          select * from (values
+              ('None', 'none', null::integer),
+              ('Rare', 'rare', 3),
+              ('Common', 'common', 1)
+          ) as t (rarity, rarity_code, rarity_level)
+    expect:
+      rows:
+        - { rarity: None, rarity_code: none, rarity_level: null }
+        - { rarity: Rare, rarity_code: rare, rarity_level: 3 }
+        - { rarity: Nouvelle rareté, rarity_code: null, rarity_level: null }
