@@ -9,7 +9,9 @@ models:
       Une ligne par produit Cardmarket, finition TCGplayer et date de snapshot
       (`prices-*.parquet`), dépliée de `tcgplayer_json` (une clé par finition, hors `unit`
       et `updated`). `0` est lu comme absent ; une finition sans aucun prix n'a pas de
-      ligne. Sert au lien F26 (`tcgplayer_product_id`), pas au prix de référence.
+      ligne. Un JSON invalide ou un `updated` hors ISO 8601 arrête le build plutôt que de
+      produire une valeur fausse. Sert au lien F26 (`tcgplayer_product_id`), pas au prix de
+      référence.
     data_tests:
       - unique:
           arguments:
@@ -59,6 +61,7 @@ models:
         data_type: varchar
         description: Devise des prix.
         data_tests:
+          - not_null
           - accepted_values:
               arguments:
                 values: [USD]
