@@ -20,7 +20,7 @@
 
 ---
 
-## [2026-11-19] — Audit clos, v0.8.1, DBT-02 et DBT-03 livrés
+## [2026-11-19] — Audit clos, v0.8.1, DBT-02 et DBT-03 livrés, DBT-04 planifié
 
 ### Fait
 
@@ -48,10 +48,13 @@
 - Plan dbt-03-intermediate-rarete — Étape 3 : Vraie base et documentation. `build --select +int_rarity_mapping` vert sur la vraie base : 72 lignes, 72 codes, 49 niveaux. Contrôle de l'ordre (rangs seulement, noté dans la spec) : niveaux 4 et 5 inversés, 6 et 7 aussi ; 291 produits à deux niveaux selon la langue (pour DBT-06). Mis à jour : roadmap (DBT-03 coché ; DBT-04 : `coalesce(rarity, 'None')`, exclusion `tcgp`, 9 cartes sans set, incrémental sur `price_date > max(price_date)` ; DBT-06 : écarts de l'échelle), spec maîtresse (ligne `int_rarity_mapping`), `CONTRIBUTING.md` (`dbt/seeds/` et `dbt/tests/` dans l'arborescence, seed, conduite à tenir quand le test de couverture échoue), description de `rarity` dans `stg_tcgdex__cards.yml`. Critères de la spec cochés sauf « CI GitHub verte », à vérifier sur la PR. `inv ci` et `inv okflint` verts.
 - Revue de DBT-03 (`/cr`) : approuvé avec corrections mineures, faites : test singulier `assert_rarity_level_empty_iff_off_scale.sql` (niveau vide si et seulement si `none`, `promo` ou `pocket` ; échoue bien si `Rare` perd son niveau), `+column_types` limité au seed `rarity_levels` dans `dbt_project.yml`, `CONTRIBUTING.md` à jour. Gardés en INFO : pas de liste fermée des codes, `severity: error` explicite. `inv ci` (dbt 49/49), `inv okflint` et vraie base (12/12) verts.
 - PR #39 (`feature/dbt-03` → `develop`) fusionnée, CI GitHub verte (run 44530060911), branche supprimée : dernier critère coché, plan et spec dbt-03-intermediate-rarete `statut: fait`.
+- `docs/specs/dbt-04-marts-catalogue-prix.md` et `docs/plans/dbt-04-marts-catalogue-prix.md` créés. Constats (comptes) : Pocket 2 480 `en` / 2 116 `fr` sans produit ; 9 `pl4-AR*` `fr` sans set dans leur langue, produit `278861` ; 30 279 produits tous rattachés ; produits partagés 757 `en`, 724 `fr`, 3 `ja`, dont 439 / 413 / 3 à plusieurs noms ou raretés (erreurs de correspondance TCGdex, ex. `swsh11-130` / `swsh11-201`). Décisions : `dim_set` et `dim_card` par langue, hors sets `tcgp` (toutes langues) ; `pl4` / `fr` gardé, test singulier `assert_card_set_exists` sur (`set_id`, `language_code`) avec exclusion nommée (pas de dbt_utils) ; `fct_price_snapshot` au grain produit, incrémentale `append` sur `price_date > max(price_date)`, `on_schema_change: fail` ; `int_cardmarket_products` avec `is_ambiguous_product` (plusieurs noms ou codes de rareté dans une langue), test `warn` seulement ; DBT-06 exclut ou marque les produits ambigus et agrège par produits distincts.
+- Spec et plan DBT-04 corrigés : build sans sélection à l'étape 4 ; vraie base requise dès l'étape 1 ; `assert_card_set_exists` vérifié par mutation seulement ; `int_cardmarket_products` sur les cartes `is_current` (test : carte non courante d'un autre nom) ; `not_null` de `dim_card.is_ambiguous_product` avec `where: "cardmarket_product_id is not null"` ; `accepted_values` `base` / `reverse_holo` ; Pocket par `not exists` ; filtre incrémental `coalesce(max(price_date), '1900-01-01')`.
 
 ### Reste à faire
 
-- Planifier DBT-04 (`/workspace-plan dbt-04`) : marts du catalogue et des prix.
+- Exécuter docs/plans/dbt-04-marts-catalogue-prix.md — Étape 1 : `dim_set` et `dim_card`.
+- DBT-04 : trancher le cas d'un produit porté seulement par des cartes retirées (absent de `int_cardmarket_products`, ferait échouer `relationships` de `fct_price_snapshot` et le `not_null` de `dim_card.is_ambiguous_product` ; 0 cas le 19/11).
 - Avant la porte 1 : relire dans un navigateur les conditions de Cardmarket et de TCGplayer (veille).
 - Rapport de novembre à régénérer en fin de mois (`inv suivi --mois 2026-11 --force`, commentaire gardé), puis `statut: fait` ; mettre à jour les chiffres de `docs/gouvernance/green-it.md`. Chaque début de mois : `inv ci` puis `inv suivi`, commentaire.
 - Antoaneta : avant PRO-02, demander aux testeurs leur logiciel de caisse et un fichier d'import exemple.
@@ -59,6 +62,7 @@
 
 ### Références
 
+- ../docs/specs/dbt-04-marts-catalogue-prix.md, ../docs/plans/dbt-04-marts-catalogue-prix.md
 - ../docs/specs/dbt-03-intermediate-rarete.md, ../docs/plans/dbt-03-intermediate-rarete.md
 - dbt/seeds/rarity_levels.csv, dbt/seeds/rarity_levels.yml, dbt/tests/assert_rarity_code_single_level.sql, assert_rarity_level_empty_iff_off_scale.sql, dbt/dbt_project.yml, dbt/models/intermediate/int_rarity_mapping.sql, int_rarity_mapping.yml, docs/plans/roadmap-lots.md, CONTRIBUTING.md, dbt/models/staging/tcgdex/stg_tcgdex__cards.yml
 - ../docs/specs/dbt-02-staging-prix.md, ../docs/plans/dbt-02-staging-prix.md
