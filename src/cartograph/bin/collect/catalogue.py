@@ -63,15 +63,16 @@ def fetch_catalogue(
     Returns
     -------
     FetchResult
-        Fiches récupérées et cartes en échec (``langue/identifiant``).
+        Fiches récupérées et cartes en échec (``langue/identifiant``) ;
+        ``error`` posé après ``MAX_CONSECUTIVE_FAILURES`` cartes en échec
+        d'affilée.
 
     Raises
     ------
     ValueError
         Si ``language`` n'appartient pas à ``LANGUAGES``, avant tout appel.
     TcgdexError
-        Si la liste des identifiants ne peut pas être récupérée, ou après
-        ``MAX_CONSECUTIVE_FAILURES`` cartes en échec d'affilée.
+        Si la liste des identifiants ne peut pas être récupérée.
 
     Notes
     -----

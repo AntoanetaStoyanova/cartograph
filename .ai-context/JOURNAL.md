@@ -20,7 +20,34 @@
 
 ---
 
-## [2026-11-18] — CI-04 livré, COL-05 Étapes 1-7
+## [2026-11-19] — Audit : collecte sans perte de prix, tests restants
+
+### Fait
+
+- Session ouverte (`/workspace-init`).
+- Plan fix-audit-2026-11-18 — Étape 2 : Collecte. `FetchResult.error` : `fetch_each` renvoie le partiel au lieu de lever ; prix reçus avant une panne écrits (brut et Parquet, étape `failed`) ; rotation garde les fiches lues de la langue coupée ; catalogue complet, sets et nouvelles cartes restent tout ou rien. `Retry-After` négatif → 0, `nan` → backoff. Logger nommé dans `run.py` (testé par `runpy` en `__main__`). `new_cards` dans le checkpoint. Docstring de `inv collect`. `inv ci` et `inv okflint` verts.
+- Plan fix-audit-2026-11-18 — Étape 3 : Tests et doc restants. Fixture `isolated_logs` dans `conftest.py` (`LOG_DIR` patché dans `config`, `__main__`, `rebuild`, `collect.run`, `suivi.run`, handlers fermés) : `test_suivi_run` n'écrit plus dans `logs/` du dépôt. Tests ajoutés : rotation coupée par une panne via `main`, carte disparue puis revenue en collecte complète, `--catalogue --no-prices`, ensemble exact des fiches de la rotation (`raw_path`, l'ancienne assertion `%253F` ne pouvait pas échouer), prix entiers dans les fixtures, échec du téléchargement dans `inv rebuild`, vrai `.clean` sur le dépôt, lignes Énergie et Émissions. `CONTRIBUTING.md:141` corrigé. Test `-m` : client remplacé par une sous-classe (une lambda fait échouer beartype sur les annotations). `inv ci` (389 tests, 99,4 %) et `inv okflint` verts.
+- Vérifié : la collecte du 19/11 (run 44450348025, succès) a supprimé `cards-2026-11-18.parquet` de la Release `catalogue` (« Supprimé de catalogue » dans le log) ; restent les `cards-` des lundis 02, 09, 16/11 et `cards-2026-11-19`.
+- fix-audit-2026-11-18 clos : critères de fin cochés, entrée de l'audit complétée dans `CURRENT.md`, plan et spec `statut: fait`.
+- Retiré du « Reste à faire » : « Porte 0 franchie le 15/11 » (constat, déjà acquis).
+
+### Reste à faire
+
+- Antoaneta : fusionner la PR `feature/fix-audit-2026-11-18` → `develop`, puis `inv release` (v0.8.1).
+- Planifier DBT-02 (staging des prix) au standard SQL : `/workspace-plan dbt-02`.
+- Avant la porte 1 : relire dans un navigateur les conditions de Cardmarket et de TCGplayer (veille).
+- Rapport de novembre à régénérer en fin de mois (`inv suivi --mois 2026-11 --force`, commentaire gardé), puis `statut: fait` ; mettre à jour les chiffres de `docs/gouvernance/green-it.md`. Chaque début de mois : `inv ci` puis `inv suivi`, commentaire.
+- Antoaneta : avant PRO-02, demander aux testeurs leur logiciel de caisse et un fichier d'import exemple.
+- `cadrage-flux.md` : flux d'export pro (FX7 et FX8, écrans) à ajouter quand PRO-01 et PRO-02 seront planifiés.
+
+### Références
+
+- docs/plans/fix-audit-2026-11-18.md, docs/specs/fix-audit-2026-11-18.md
+- src/cartograph/bin/collect/ (`__init__`, `batch`, `client`, `run`, `prices`, `catalogue`, `sets`), tasks/__init__.py
+- tests/test_collect_run.py, tests/test_collect_client.py, tests/test_collect_failures.py
+- tests/conftest.py, test_main.py, test_rebuild.py, test_suivi_run.py, test_fixtures_prices.py, test_tasks_rebuild.py, test_tasks_clean.py, test_suivi_report.py, CONTRIBUTING.md
+
+## [2026-11-18] — CI-04 et COL-05 livrés, audit, removed_on dans dbt
 
 ### Fait
 
@@ -29,7 +56,7 @@
 - Plan fix-fixtures-prix-fictifs — Étape 2 : `CONTRIBUTING.md`. Règle des fixtures réécrite (structure gardée, prix fictifs `4000 + n + 0.37`) ; section « Invariants » avant « Règles générales » (contrat : `collect.run`, `report`, `manifest`, appelés par `cartograph-data/.github/workflows/collect.yml`). `inv ci` et `inv okflint` verts. Critères de fin et de la spec cochés ; reste la livraison.
 - Branches `feature/ci-02` et `feature/dbt-01` : déjà supprimées (locale et `origin`).
 - Plan fix-fixtures-prix-fictifs livré (PR #28 et #30 fusionnées dans `develop`) : plan et spec passés à `fait`.
-- Plan ci-04-alerte-version-finish — Étape 1 : Alerte dans `inv finish`. `tasks/__init__.py` : `_bumps_version`, `_touches_code` (`CODE_PATHS`), `_confirm_without_bump` appelée après `_require_clean` (`git diff --name-only origin/develop...HEAD`, puis `git log` seulement si du code est touché) ; `tests/test_tasks_finish.py` (« n », Entrée, « N » arrêtent avant les contrôles, « o » continue, `feat` et doc seule sans question) ; `CONTRIBUTING.md` (alerte décrite). Plan et spec passés à `en cours`.
+- Plan ci-04-alerte-version-finish — Étape 1 : Alerte dans `inv finish`. `tasks/__init__.py` : `_bumps_version`, `_touches_code` (`CODE_PATHS`), `_confirm_without_bump` appelée après `_require_clean` (`git diff --name-only origin/develop...HEAD`, puis `git log` seulement si du code est touché) ; `tests/test_tasks_finish.py` (« n », Entrée, « N » arrêtent avant les contrôles, « o » continue, `feat` et doc seule sans question) ; `CONTRIBUTING.md` (alerte décrite). Plan et spec passés à `en cours`. `inv rebuild` et `inv dbt` sur les vraies données lancés par Antoaneta : étape 1 close et commitée.
 - Plan ci-04-alerte-version-finish — Étape 2 : Nettoyage des branches. `tasks/__init__.py` : `PROTECTED_BRANCHES`, `_check_deletable`, `_merged_pr` (`gh pr list --state merged --json number --jq length`), `_delete_branch` (`git branch -D`, puis `git push origin --delete` seulement si `git ls-remote --heads` la trouve) ; tâches `delete-branch` (`--force`) et `clean-branches` (liste, o/N, `git fetch --prune` seulement après suppression). `tests/test_tasks_branches.py` ; `CONTRIBUTING.md` (fin de lot, `delete-branch-on-merge`). Constat : `pre-commit --all-files` ignore les fichiers non suivis, un nouveau fichier de test n'est vérifié par `inv ci` qu'une fois ajouté (`git add`).
 - Plan ci-04-alerte-version-finish — Étape 3 : `inv clean`. `.clean` créé (12 motifs, `logs/` exclu) ; `tasks/__init__.py` : `CLEAN_FILE`, `PROTECTED_PATHS`, `_read_clean`, `_clean_targets(root, patterns, tracked)` (paramètre `tracked` ajouté au plan pour garder la fonction pure : `git ls-files` lu par la tâche), `_check_pattern` (hors dépôt, partie fixe dans un chemin protégé), `_check_target` (chemin protégé ou en contenant un, fichier suivi), parcours `os.walk` qui ne descend ni dans les chemins protégés ni dans un dossier retenu (un `**/__pycache__/` ignore `.venv/`) ; tâche `clean` appelée à la fin de `finish` (PR créée ou déjà ouverte) et de `release` ; `docs-clean` retiré. `tests/test_tasks_clean.py`, tests `finish` et `release` adaptés ; `CONTRIBUTING.md` (« Contrôles »). `inv clean` lancé sur le dépôt : seuls des chemins de `.clean` supprimés, puis `inv ci` vert (337 tests). Critères de la spec et de fin cochés ; reste la livraison. Décision d'Antoaneta : `delete-branch-on-merge` non activé (branches gardées sur GitHub jusqu'à `inv clean-branches`), consigné dans la spec et `CONTRIBUTING.md`.
 - dbt Fusion évalué (discussion, sans code) : adaptateur DuckDB en bêta locale, `external_location` / `read_parquet` à risque, gain faible à 2 modèles. Lot DBT-T1 « Essai de dbt Fusion » (P2, après DBT-02, branche `spike/dbt-fusion` non fusionnée, note versée à GOV-05) ajouté à docs/plans/roadmap-lots.md ; `inv okflint` vert. Non commité.
@@ -47,16 +74,19 @@
 - Plan collecte-incrementale — Étape 5 : Fusion et collecte quotidienne. `incremental.py` : `apply_listing`, `merge_catalogue`, `card_changes_table`, `count_changes` ; `snapshot.py` : `CHANGE_SCHEMA`, `SnapshotPaths.card_changes`, `latest_catalogue(before=day)` ; `catalogue.py` : `compare_listing` (partagé avec la collecte complète) ; `prices.py` : `price_targets_from_catalogue(table, ...)` ignore les cartes disparues ; `run.py` : étape `catalogue` quotidienne (`_update_catalogue`, `_write_catalogue`), collecte complète avec lignes de la veille pour les fiches en échec ; `__init__.py` : `StepSummary.changes` ; `report.py` : tableau « Changements du catalogue » ; `manifest.py` : `card-changes-*` public. Bug trouvé et corrigé en test : changements calculés contre le catalogue déjà marqué (pas de `removed`). Mesure sur `cards-2026-11-16.parquet` : 31 000 fiches comparées en 2,4 s, fusion 0,7 s, 0 fausse modification. Décisions consignées dans la spec (source antérieure au jour, `apply_listing` avant les prix, échecs de prix et de rotation, `read_at` unique).
 - Plan collecte-incrementale — Étape 6 : Workflow de `cartograph-data`. `collect.yml` : `catalogue` = `non` (défaut) ou `oui`, plus de lundi automatique ; « Télécharger le dernier catalogue » sans condition, dernier `cards-*` antérieur au jour (`awk '$0 < limit'`) ; notes de la Release (`cards-*` quotidien avec `removed_on`, `card-changes-*`) ; nouvelle étape « Nettoyer les anciens catalogues » (non bloquante, après « Publier le catalogue » réussie : garde le plus récent, ceux des lundis et celui du jour). actionlint et zizmor verts ; logique vérifiée à blanc. Non commité.
 - Plan collecte-incrementale — Étape 7 : Documentation (part de Claude). `README.md` de `cartograph` (état, collecte, collecte automatique, relance) et de `cartograph-data` (fichiers publiés, `card-changes-*`, rétention, paramètres, relance) ; `dbt/models/staging/tcgdex/sources.yml` (description) ; docs/plans/roadmap-lots.md : COL-05 ajouté et coché, COL-02 et COL-04 annotés, ordre « … CI-04 → COL-05 → DBT-02 ». `CONTRIBUTING.md` inchangé (invariant général).
+- COL-05 livré (PR #33, v0.8.0 ; `cartograph-data` envoyé ; branche supprimée). Exécution manuelle du 18/11 (run 44314516180) : « Collecter » 1 h 37 (1 h 44 à 1 h 47 avant), rotation 1 000 fiches en 3 min, 10 `new` (les 10 fiches en échec du 16/11, récupérées), 0 `updated` sur 31 284 fiches lues, `cards-2026-11-18.parquet` 59 410 lignes et 10,1 Mo (+2 Mo pour `fingerprint`), aucun prix publié. Résultats dans la spec ; plan et spec à `fait`.
+- Discussion échecs de collecte : 11 prix en échec en 11 jours (~1 par jour, manifestes du 8 au 18/11). Décision : pas de seconde passe pour l'instant (relevé du lendemain couvert par `cm_avg7`/`cm_avg30`) ; à reprendre si > 50 échecs par jour, ou par un test de couverture des prix en QUA-01.
+- Plan lot-sto-01-manifeste clos : SHA-256 de `cards-2026-11-16.parquet` (Release `catalogue`) identique à celui du manifeste du 16/11 ; dernier critère de la spec coché, plan et spec à `fait`.
+- `/audit` (tout le dépôt) : 26 trouvailles CRITICAL/WARN confirmées, 1 à vérifier (prix perdus après une panne → choix B : écrire le partiel), `clean-branches` sorti du périmètre (commande manuelle). Entrée ajoutée dans `.ai-context/CURRENT.md`. Plan et spec `fix-audit-2026-11-18` rédigés (3 étapes : dbt et `removed_on` avec `union_by_name`, collecte, tests et doc).
 
+- Plan fix-audit-2026-11-18 — Étape 1 : dbt et `removed_on`. `sources.yml` (`union_by_name = true`, `fingerprint`, `removed_on`, `fetched_at`, `raw_json`) ; `stg_tcgdex__cards` (`is_current` exige `removed_on is null`, `last_seen_on` = dernier fichier où la carte est présente, colonne `removed_on`, test unitaire `reads_removed_on`) ; `catalogue_changes` (retraits et retours par `removed_on`, juste avant et après COL-05) ; doc README, CONTRIBUTING, `.yml`. Échantillon : `dbt/sample/snapshots/cards-2026-11-18.parquet` construit (aucun `cards-*` post-COL-05 en local), `removed_on` posé sur `fr` `hgss3-1` ; décision dans la spec. `inv ci` (378 tests, dbt 18/18) et `inv okflint` verts. Plan et spec passés à `en cours`.
 ### Reste à faire
 
-- Livrer COL-05 (Antoaneta, docs/plans/collecte-incrementale.md Étape 7) : commits de `cartograph`, `inv finish`, PR vers `develop`, `inv release`, PR vers `main` ; puis seulement commit de `collect.yml` et du README dans `cartograph-data` et `git envoyer` ; puis exécution manuelle (`catalogue=non`, prix) : durée de « Collecter », changements et relues, `cards-*` et `card-changes-*` publiés, ancien `cards-*` non-lundi supprimé, à noter dans la spec. Première exécution : catalogue du 16/11 sans empreintes (~7 s) et nouvelles cartes du 17 et du 18 reprises.
-- DBT-02 : `stg_tcgdex__cards` devra lire `removed_on` (`union_by_name = true`) : les `cards-*` quotidiens gardent les cartes disparues.
+- Vérifier le 19/11 que « Nettoyer les anciens catalogues » a supprimé `cards-2026-11-18.parquet` de la Release `catalogue` (seul critère vérifié à blanc).
+- Exécuter docs/plans/fix-audit-2026-11-18.md — Étape 2 : Collecte.
 - Planifier DBT-02 (staging des prix) au standard SQL : `/workspace-plan dbt-02`.
-- Corriger le logger de `cartograph.bin.collect.run` (`__name__` vaut `__main__` sous `-m`) : petit `fix` à part.
 - Avant la porte 1 : relire dans un navigateur les conditions de Cardmarket et de TCGplayer (veille).
 - Rapport de novembre à régénérer en fin de mois (`inv suivi --mois 2026-11 --force`, commentaire gardé), puis `statut: fait` ; mettre à jour les chiffres de `docs/gouvernance/green-it.md`. Chaque début de mois : `inv ci` puis `inv suivi`, commentaire.
-- Clore docs/plans/lot-sto-01-manifeste.md : après l'exécution `catalogue=oui`, comparer le SHA-256 du catalogue (`gh release download catalogue`) au manifeste, cocher le dernier critère de la spec, passer plan et spec à `fait`.
 - Porte 0 franchie le 15 novembre 2026 (P0-DEC) : neuf tests tranchés dans la spec maîtresse.
 - Antoaneta : avant PRO-02, demander aux testeurs leur logiciel de caisse et un fichier d'import exemple.
 - `cadrage-flux.md` : flux d'export pro (FX7 et FX8, écrans) à ajouter quand PRO-01 et PRO-02 seront planifiés.
@@ -70,3 +100,5 @@
 - docs/plans/fix-fixtures-prix-fictifs.md, docs/specs/fix-fixtures-prix-fictifs.md
 - `tasks/__init__.py`, `tests/test_tasks_finish.py`, `tests/test_tasks_branches.py`, `tests/test_tasks_clean.py`, `.clean`, `CONTRIBUTING.md`
 - docs/plans/roadmap-lots.md (DBT-T1)
+- docs/plans/fix-audit-2026-11-18.md, docs/specs/fix-audit-2026-11-18.md, `.ai-context/CURRENT.md` (audit du 18/11)
+- `dbt/models/staging/tcgdex/sources.yml`, `stg_tcgdex__cards.sql`, `stg_tcgdex__cards.yml`, `dbt/analyses/catalogue_changes.{sql,yml}`, `dbt/sample/`

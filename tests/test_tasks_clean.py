@@ -1,3 +1,4 @@
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -155,3 +156,14 @@ def test_real_clean_file_is_accepted() -> None:
 
     assert "**/__pycache__/" in patterns
     assert "logs/" not in patterns
+
+
+def test_real_clean_file_targets_no_tracked_or_protected_path() -> None:
+    root = Path(__file__).parents[1]
+    tracked = subprocess.run(
+        ["git", "ls-files"], cwd=root, capture_output=True, text=True, check=True
+    ).stdout.splitlines()
+
+    targets = _clean_targets(root, _read_clean(root / ".clean"), set(tracked))
+
+    assert all(path.is_relative_to(root) for path in targets)

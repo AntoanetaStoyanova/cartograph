@@ -7,8 +7,8 @@ models:
         enforced: true
     description: >
       Une ligne par carte et par langue, dans sa version du dernier fichier où elle
-      figure, catalogue complet ou nouvelles cartes ; une carte retirée de l'API est
-      gardée avec `is_current = false`.
+      figure, catalogue ou nouvelles cartes ; une carte retirée de l'API (`removed_on`,
+      ou absente du dernier catalogue avant COL-05) est gardée avec `is_current = false`.
     data_tests:
       - unique:
           arguments:
@@ -86,11 +86,17 @@ models:
         description: Dernière mise à jour de la fiche chez TCGdex.
       - name: last_seen_on
         data_type: date
-        description: Date du dernier fichier (`cards-` ou `new-cards-`) où la carte figure.
+        description: >
+          Date du dernier fichier (`cards-` ou `new-cards-`) où la carte figure sans
+          `removed_on` ; vide si aucun fichier conservé ne la montre présente.
+      - name: removed_on
+        data_type: date
+        description: Jour où la carte a disparu de la liste de l'API, vide si elle y figure.
       - name: is_current
         data_type: boolean
         description: >
-          Présente dans le dernier catalogue complet ou dans un `new-cards` postérieur.
+          Sans `removed_on`, dans le dernier catalogue (`cards-`) ou dans un `new-cards`
+          postérieur.
 
 unit_tests:
   - name: stg_tcgdex__cards_keeps_latest_version
@@ -103,11 +109,11 @@ unit_tests:
         format: sql
         rows: |
           select * from (values
-              ('ja', 'M6-077', '077', 'a', 'M6', 'M6', 'Mega Hyper Rare', 'Pokemon', null, null, null::bigint, null::timestamptz, null::timestamptz, '{}', 'snapshots/cards-2026-11-09.parquet'),
-              ('ja', 'M6-077', '077', 'a', 'M6', 'M6', 'Illustration rare', 'Pokemon', null, null, null, null, null, '{}', 'snapshots/cards-2026-11-16.parquet'),
-              ('en', 'tk-xy-su-26', '26', 'b', 'tk-xy-su', 'tk', 'Common', 'Trainer', null, null, null, null, null, '{}', 'snapshots/cards-2026-11-09.parquet'),
-              ('fr', 'hgss3-1', '1', 'c', 'hgss3', 'Indomptable', 'Rare', 'Dresseur', null, null, null, null, null, '{}', 'snapshots/cards-2026-11-16.parquet')
-          ) as t (language, card_id, local_id, name, set_id, set_name, rarity, category, illustrator, image, id_product, updated, fetched_at, raw_json, filename)
+              ('ja', 'M6-077', '077', 'a', 'M6', 'M6', 'Mega Hyper Rare', 'Pokemon', null, null, null::bigint, null::timestamptz, null::timestamptz, null::varchar, null::date, '{}', 'snapshots/cards-2026-11-09.parquet'),
+              ('ja', 'M6-077', '077', 'a', 'M6', 'M6', 'Illustration rare', 'Pokemon', null, null, null, null, null, null, null, '{}', 'snapshots/cards-2026-11-16.parquet'),
+              ('en', 'tk-xy-su-26', '26', 'b', 'tk-xy-su', 'tk', 'Common', 'Trainer', null, null, null, null, null, null, null, '{}', 'snapshots/cards-2026-11-09.parquet'),
+              ('fr', 'hgss3-1', '1', 'c', 'hgss3', 'Indomptable', 'Rare', 'Dresseur', null, null, null, null, null, null, null, '{}', 'snapshots/cards-2026-11-16.parquet')
+          ) as t (language, card_id, local_id, name, set_id, set_name, rarity, category, illustrator, image, id_product, updated, fetched_at, fingerprint, removed_on, raw_json, filename)
     expect:
       rows:
         - {
@@ -146,13 +152,13 @@ unit_tests:
         format: sql
         rows: |
           select * from (values
-              ('ja', 'M7-001', '001', 'a', 'M7', 'M7', 'Common', 'Pokemon', null, null, null::bigint, null::timestamptz, null::timestamptz, '{}', 'snapshots/new-cards-2026-11-17.parquet'),
-              ('en', 'tk-xy-su-26', '26', 'b', 'tk-xy-su', 'tk', 'Common', 'Pokemon', null, null, null, null, null, '{}', 'snapshots/cards-2026-11-09.parquet'),
-              ('en', 'tk-xy-su-26', '26', 'b', 'tk-xy-su', 'tk', 'Common', 'Pokemon', null, null, null, null, null, '{}', 'snapshots/new-cards-2026-11-17.parquet'),
-              ('fr', 'sv10-001', '001', 'c', 'sv10', 'sv10', null, 'Pokémon', null, null, null, null, null, '{}', 'snapshots/new-cards-2026-11-12.parquet'),
-              ('fr', 'sv10-001', '001', 'c', 'sv10', 'sv10', 'Commune', 'Pokémon', null, null, null, null, null, '{}', 'snapshots/cards-2026-11-16.parquet'),
-              ('fr', 'sv10-099', '099', 'd', 'sv10', 'sv10', null, 'Pokémon', null, null, null, null, null, '{}', 'snapshots/new-cards-2026-11-12.parquet')
-          ) as t (language, card_id, local_id, name, set_id, set_name, rarity, category, illustrator, image, id_product, updated, fetched_at, raw_json, filename)
+              ('ja', 'M7-001', '001', 'a', 'M7', 'M7', 'Common', 'Pokemon', null, null, null::bigint, null::timestamptz, null::timestamptz, null::varchar, null::date, '{}', 'snapshots/new-cards-2026-11-17.parquet'),
+              ('en', 'tk-xy-su-26', '26', 'b', 'tk-xy-su', 'tk', 'Common', 'Pokemon', null, null, null, null, null, null, null, '{}', 'snapshots/cards-2026-11-09.parquet'),
+              ('en', 'tk-xy-su-26', '26', 'b', 'tk-xy-su', 'tk', 'Common', 'Pokemon', null, null, null, null, null, null, null, '{}', 'snapshots/new-cards-2026-11-17.parquet'),
+              ('fr', 'sv10-001', '001', 'c', 'sv10', 'sv10', null, 'Pokémon', null, null, null, null, null, null, null, '{}', 'snapshots/new-cards-2026-11-12.parquet'),
+              ('fr', 'sv10-001', '001', 'c', 'sv10', 'sv10', 'Commune', 'Pokémon', null, null, null, null, null, null, null, '{}', 'snapshots/cards-2026-11-16.parquet'),
+              ('fr', 'sv10-099', '099', 'd', 'sv10', 'sv10', null, 'Pokémon', null, null, null, null, null, null, null, '{}', 'snapshots/new-cards-2026-11-12.parquet')
+          ) as t (language, card_id, local_id, name, set_id, set_name, rarity, category, illustrator, image, id_product, updated, fetched_at, fingerprint, removed_on, raw_json, filename)
     expect:
       rows:
         - {
@@ -182,4 +188,45 @@ unit_tests:
             rarity: null,
             last_seen_on: 2026-11-12,
             is_current: false,
+          }
+
+  - name: stg_tcgdex__cards_reads_removed_on
+    description: >
+      Une carte marquée `removed_on` dans le dernier catalogue n'est plus courante et
+      garde la date du dernier fichier où elle était présente ; une carte revenue
+      (`removed_on` effacé) est courante.
+    model: stg_tcgdex__cards
+    given:
+      - input: source('tcgdex', 'cards')
+        format: sql
+        rows: |
+          select * from (values
+              ('fr', 'hgss3-1', '1', 'a', 'hgss3', 'Indomptable', 'Rare', 'Pokémon', null, null, null::bigint, null::timestamptz, null::timestamptz, null::varchar, null::date, '{}', 'snapshots/cards-2026-11-16.parquet'),
+              ('fr', 'hgss3-1', '1', 'a', 'hgss3', 'Indomptable', 'Rare', 'Pokémon', null, null, null, null, null, 'f1', '2026-11-18', '{}', 'snapshots/cards-2026-11-18.parquet'),
+              ('en', 'tk-xy-su-26', '26', 'b', 'tk-xy-su', 'tk', 'Common', 'Trainer', null, null, null, null, null, 'f2', '2026-11-17', '{}', 'snapshots/cards-2026-11-17.parquet'),
+              ('en', 'tk-xy-su-26', '26', 'b', 'tk-xy-su', 'tk', 'Common', 'Trainer', null, null, null, null, null, 'f2', null, '{}', 'snapshots/cards-2026-11-18.parquet'),
+              ('ja', 'SV2P-001', '001', 'c', 'SV2P', 'SV2P', null, 'Pokemon', null, null, null, null, null, 'f3', null, '{}', 'snapshots/cards-2026-11-18.parquet')
+          ) as t (language, card_id, local_id, name, set_id, set_name, rarity, category, illustrator, image, id_product, updated, fetched_at, fingerprint, removed_on, raw_json, filename)
+    expect:
+      rows:
+        - {
+            card_id: hgss3-1,
+            language_code: fr,
+            last_seen_on: 2026-11-16,
+            removed_on: 2026-11-18,
+            is_current: false,
+          }
+        - {
+            card_id: tk-xy-su-26,
+            language_code: en,
+            last_seen_on: 2026-11-18,
+            removed_on: null,
+            is_current: true,
+          }
+        - {
+            card_id: SV2P-001,
+            language_code: ja,
+            last_seen_on: 2026-11-18,
+            removed_on: null,
+            is_current: true,
           }

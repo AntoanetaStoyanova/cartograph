@@ -1,6 +1,8 @@
 import json
 import logging
-from collections.abc import Callable, Iterator, Sequence
+import runpy
+import sys
+from collections.abc import Callable, Sequence
 from datetime import UTC, date, datetime, time, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -9,7 +11,8 @@ import httpx
 import pyarrow.parquet as pq
 import pytest
 
-from cartograph.bin.collect import batch, run
+from cartograph.bin.collect import batch, client, run
+from cartograph.bin.collect.catalogue import card_path
 from cartograph.bin.collect.client import TcgdexClient
 from cartograph.bin.collect.run import collect, main
 from cartograph.bin.collect.snapshot import snapshot_paths
@@ -26,6 +29,12 @@ CARDS = {
 
 def _clock(day: date = DAY) -> Callable[[], datetime]:
     return lambda: datetime.combine(day, time(9, 30), UTC)
+
+
+class _FrozenDatetime(datetime):
+    @classmethod
+    def now(cls, tz: Any = None) -> "_FrozenDatetime":
+        return cls.combine(DAY, time(9, 30), tz)
 
 
 def _collect(
@@ -368,22 +377,14 @@ def test_collect_failed_card_list_keeps_prices(tmp_path: Path) -> None:
     assert not snapshot_paths(tmp_path, DAY).new_cards.exists()
 
 
+@pytest.mark.usefixtures("isolated_logs")
 def test_main_returns_one_when_new_cards_fail(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _old_catalogue(tmp_path, "SV7-065")
     monkeypatch.setattr(run, "TcgdexClient", lambda: mock_client(_down("/v2/ja/cards")))
-    monkeypatch.setattr(run, "LOG_DIR", tmp_path / "logs")
 
-    try:
-        code = main(["--data-dir", str(tmp_path)])
-    finally:
-        logger = logging.getLogger("cartograph")
-        for handler in logger.handlers[:]:
-            handler.close()
-            logger.removeHandler(handler)
-
-    assert code == 1
+    assert main(["--data-dir", str(tmp_path)]) == 1
 
 
 def test_collect_bad_new_card_keeps_raw_and_catalogue_prices(tmp_path: Path) -> None:
@@ -571,19 +572,82 @@ def test_collect_day_is_utc_date_of_start(
     assert snapshot_paths(tmp_path, DAY).cards.exists()
 
 
-def test_collect_prices_stopped_by_outage_writes_no_prices(
+def test_collect_prices_stopped_by_outage_writes_prices_received(
     tcgdex_client: TcgdexClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _collect(tcgdex_client, tmp_path, day=date(2026, 10, 25), prices=False)
     monkeypatch.setattr(batch, "MAX_CONSECUTIVE_FAILURES", 2)
+    served: list[str] = []
 
-    with mock_client(lambda _: httpx.Response(500)) as client:
+    def first_card_only(request: httpx.Request) -> httpx.Response:
+        path = request.url.path
+        if "/cards/" not in path:
+            return fixture_route(request)
+        if not served:
+            served.append(path)
+        return fixture_route(request) if path == served[0] else httpx.Response(500)
+
+    with mock_client(first_card_only) as client:
         summary = _collect(client, tmp_path, catalogue=False)
 
+    paths = snapshot_paths(tmp_path, DAY)
     prices = _steps(summary)["prices"]
     assert prices["status"] == "failed"
     assert "2 échecs d'affilée" in str(prices["error"])
-    assert not snapshot_paths(tmp_path, DAY).prices.exists()
+    assert prices["fetched"] == 1
+    assert [f["name"] for f in prices["files"]] == [
+        paths.prices.name,
+        paths.raw_prices.name,
+    ]
+    assert pq.read_table(paths.prices).num_rows == 1
+
+
+def test_collect_interrupted_new_cards_marked_in_summary(
+    tcgdex_client: TcgdexClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _old_catalogue(tmp_path, "SV7-065")
+
+    def interrupted(*args: Any, **kwargs: Any) -> Any:
+        raise RuntimeError("délai dépassé")
+
+    monkeypatch.setattr(run, "_collect_new_cards", interrupted)
+
+    with pytest.raises(RuntimeError):
+        _collect(tcgdex_client, tmp_path, catalogue=False)
+
+    paths = snapshot_paths(tmp_path, DAY)
+    steps = _steps(json.loads(paths.summary.read_text(encoding="utf-8")))
+    assert steps["new_cards"]["status"] == "failed"
+    assert steps["new_cards"]["error"] == "étape interrompue avant la fin"
+
+
+@pytest.mark.filterwarnings("ignore:.*found in sys.modules:RuntimeWarning")
+def test_main_run_as_module_logs_to_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, isolated_logs: Path
+) -> None:
+    class FixtureClient(TcgdexClient):
+        def __init__(self) -> None:
+            super().__init__(
+                transport=httpx.MockTransport(fixture_route),
+                max_retries=0,
+                sleep=lambda _: None,
+            )
+
+    # Une sous-classe, pas une fonction : beartype lit l'annotation au chargement.
+    monkeypatch.setattr(client, "TcgdexClient", FixtureClient)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["run", "--catalogue", "--no-prices", "--languages", "fr"]
+        + ["--data-dir", str(tmp_path)],
+    )
+
+    with pytest.raises(SystemExit) as exit_info:
+        runpy.run_module("cartograph.bin.collect.run", run_name="__main__")
+
+    assert exit_info.value.code == 0
+    (log_file,) = isolated_logs.glob("cartograph_*.log")
+    assert "Collecte terminée" in log_file.read_text(encoding="utf-8")
 
 
 def _with_card(
@@ -682,8 +746,8 @@ def test_collect_prices_fails_when_no_requested_language(
 
 @pytest.fixture
 def fake_collect(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> Iterator[dict[str, Any]]:
+    monkeypatch: pytest.MonkeyPatch, isolated_logs: Path
+) -> dict[str, Any]:
     calls: dict[str, Any] = {"status": "ok"}
 
     def fake(client: TcgdexClient, data_dir: Path, **kwargs: Any) -> dict[str, Any]:
@@ -691,12 +755,7 @@ def fake_collect(
         return {"steps": {"catalogue": {"status": "skipped"}, "prices": calls}}
 
     monkeypatch.setattr(run, "collect", fake)
-    monkeypatch.setattr(run, "LOG_DIR", tmp_path / "logs")
-    yield calls
-    logger = logging.getLogger("cartograph")
-    for handler in logger.handlers[:]:
-        handler.close()
-        logger.removeHandler(handler)
+    return calls
 
 
 def test_main_parses_options(fake_collect: dict[str, Any], tmp_path: Path) -> None:
@@ -719,6 +778,13 @@ def test_main_parses_options(fake_collect: dict[str, Any], tmp_path: Path) -> No
     assert fake_collect["languages"] == ("fr", "ja")
     assert fake_collect["data_dir"] == tmp_path
     assert list((tmp_path / "logs").glob("cartograph_*.log"))
+
+
+def test_main_catalogue_without_prices(fake_collect: dict[str, Any]) -> None:
+    main(["--catalogue", "--no-prices"])
+
+    assert fake_collect["catalogue"] is True
+    assert fake_collect["prices"] is False
 
 
 def test_main_defaults(fake_collect: dict[str, Any]) -> None:
@@ -844,7 +910,7 @@ def test_collect_daily_rotation_reads_oldest_cards_outside_prices(
     requested: list[str] = []
 
     def recording(request: httpx.Request) -> httpx.Response:
-        requested.append(request.url.path)
+        requested.append(request.url.raw_path.decode())
         return fixture_route(request)
 
     with mock_client(recording) as client:
@@ -855,8 +921,44 @@ def test_collect_daily_rotation_reads_oldest_cards_outside_prices(
     catalogue = _steps(summary)["catalogue"]
     assert catalogue["fetched"] == 1
     assert catalogue["changes"]["rotated"] == 1
-    assert requested.count("/v2/ja/cards/PMCG6-055") == 1
-    assert "/v2/en/cards/exu-%253F" not in requested
+    prices = pq.read_table(snapshot_paths(tmp_path, DAY).prices).to_pylist()
+    priced = {f"/v2{card_path(row['language'], row['card_id'])}" for row in prices}
+    cards = [path for path in requested if "/cards/" in path]
+    assert len(cards) == len(set(cards))
+    assert set(cards) - priced == {"/v2/ja/cards/PMCG6-055"}
+
+
+@pytest.mark.usefixtures("isolated_logs")
+def test_main_rotation_stopped_by_outage_writes_catalogue(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    with mock_client(fixture_route) as client:
+        _collect(client, tmp_path, day=date(2026, 10, 25), prices=False)
+    monkeypatch.setattr(batch, "MAX_CONSECUTIVE_FAILURES", 2)
+
+    def rotation_down(request: httpx.Request) -> httpx.Response:
+        path = request.url.path
+        if path.startswith("/v2/en/cards/") or path == "/v2/ja/cards/PMCG6-055":
+            return httpx.Response(500)
+        return fixture_route(request)
+
+    monkeypatch.setattr(run, "TcgdexClient", lambda: mock_client(rotation_down))
+    monkeypatch.setattr(run, "datetime", _FrozenDatetime)
+
+    code = main(["--data-dir", str(tmp_path)])
+
+    paths = snapshot_paths(tmp_path, DAY)
+    catalogue = _steps(json.loads(paths.summary.read_text(encoding="utf-8")))[
+        "catalogue"
+    ]
+    assert code == 1
+    assert catalogue["status"] == "failed"
+    assert "2 échecs d'affilée" in str(catalogue["error"])
+    assert [f["name"] for f in catalogue["files"]] == [
+        paths.cards.name,
+        paths.card_changes.name,
+    ]
+    assert pq.read_table(paths.cards).num_rows == 9
 
 
 def test_collect_daily_without_rotation_reads_only_prices(tmp_path: Path) -> None:
@@ -872,6 +974,32 @@ def test_collect_daily_without_rotation_reads_only_prices(tmp_path: Path) -> Non
     assert catalogue["status"] == "ok"
     assert catalogue["fetched"] == 0
     assert catalogue["changes"]["rotated"] == 0
+
+
+def test_collect_full_catalogue_marks_removed_then_reappeared_card(
+    tmp_path: Path,
+) -> None:
+    with mock_client(fixture_route) as client:
+        _collect(client, tmp_path, day=date(2026, 10, 25), prices=False)
+    with mock_client(_without("pop9-1")) as client:
+        _collect(client, tmp_path, prices=False)
+
+    removed = snapshot_paths(tmp_path, DAY)
+    assert _rows(removed.cards)[("fr", "pop9-1")]["removed_on"] == DAY
+    assert _changes(removed.card_changes) == [
+        ("removed", "en", "pop9-1"),
+        ("removed", "fr", "pop9-1"),
+    ]
+
+    with mock_client(fixture_route) as client:
+        _collect(client, tmp_path, day=DAY + timedelta(days=1), prices=False)
+
+    back = snapshot_paths(tmp_path, DAY + timedelta(days=1))
+    assert _rows(back.cards)[("fr", "pop9-1")]["removed_on"] is None
+    assert _changes(back.card_changes) == [
+        ("reappeared", "en", "pop9-1"),
+        ("reappeared", "fr", "pop9-1"),
+    ]
 
 
 def test_collect_catalogue_day_failed_card_keeps_previous_row(tmp_path: Path) -> None:

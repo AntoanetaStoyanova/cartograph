@@ -11,6 +11,7 @@ Ce module :
 """
 
 import logging
+import math
 import time
 from collections.abc import Callable
 from types import TracebackType
@@ -255,10 +256,13 @@ def _retry_after(response: httpx.Response) -> float | None:
     Returns
     -------
     float | None
-        Attente en secondes, ``None`` si l'en-tête est absent ou n'est pas un
-        nombre (format date HTTP).
+        Attente en secondes, ramenée à 0 si elle est négative ; ``None`` si
+        l'en-tête est absent ou n'est pas un nombre (format date HTTP, ``nan``).
     """
     try:
-        return min(float(response.headers["Retry-After"]), MAX_RETRY_AFTER_S)
+        delay = float(response.headers["Retry-After"])
     except (KeyError, ValueError):
         return None
+    if math.isnan(delay):
+        return None
+    return min(max(delay, 0.0), MAX_RETRY_AFTER_S)

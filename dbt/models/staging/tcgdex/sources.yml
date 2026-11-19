@@ -4,8 +4,8 @@ sources:
   - name: tcgdex
     description: >
       Snapshots publics de TCGdex, dans le dossier de la variable `snapshot_dir`, un fichier
-      `<préfixe>AAAA-MM-JJ.parquet` par jour : catalogue complet (`cards-`, le lundi, chaque jour
-      depuis COL-05), nouvelles cartes (`new-cards-`, s'il y en a), sets (`sets-`, chaque jour).
+      `<préfixe>AAAA-MM-JJ.parquet` par jour : catalogue (`cards-`, chaque jour depuis COL-05,
+      le lundi avant), nouvelles cartes (`new-cards-`, s'il y en a), sets (`sets-`, chaque jour).
       `card-changes-` n'est pas encore lu (DBT-02).
     tables:
       - name: cards
@@ -13,8 +13,10 @@ sources:
           Une ligne par carte, langue et fichier, catalogue complet (`cards-*`) ou nouvelles
           cartes (`new-cards-*`) ; type et date du fichier tirés de son nom (`filename`).
           Un seul motif pour les deux : un motif sans fichier fait échouer `read_parquet`.
+          Colonnes lues par nom : les fichiers antérieurs à COL-05 n'ont ni `fingerprint` ni
+          `removed_on`, lus vides.
         meta:
-          external_location: "read_parquet('{{ var('snapshot_dir') }}/*cards-*.parquet', filename = true)"
+          external_location: "read_parquet('{{ var('snapshot_dir') }}/*cards-*.parquet', filename = true, union_by_name = true)"
         columns:
           - name: language
             data_type: varchar
@@ -54,10 +56,18 @@ sources:
             description: Dernière mise à jour de la fiche chez TCGdex.
           - name: fetched_at
             data_type: timestamp with time zone
-            description: Heure de la collecte.
+            description: Heure de la dernière lecture de la fiche.
+          - name: fingerprint
+            data_type: varchar
+            description: SHA-256 de la fiche hors prix et `updated`, vide avant COL-05.
+          - name: removed_on
+            data_type: date
+            description: >
+              Jour où la carte a disparu de la liste de l'API, vide si elle y figure ; la
+              ligne reste dans les `cards-*` suivants.
           - name: raw_json
             data_type: varchar
-            description: Fiche complète renvoyée par l'API.
+            description: Fiche de l'API, sans les prix.
           - name: filename
             data_type: varchar
             description: Chemin du fichier lu, ajouté par `read_parquet`.
