@@ -27,13 +27,13 @@
 - Session ouverte (`/workspace-init`).
 - Plan fix-audit-2026-11-18 — Étape 2 : Collecte. `FetchResult.error` : `fetch_each` renvoie le partiel au lieu de lever ; prix reçus avant une panne écrits (brut et Parquet, étape `failed`) ; rotation garde les fiches lues de la langue coupée ; catalogue complet, sets et nouvelles cartes restent tout ou rien. `Retry-After` négatif → 0, `nan` → backoff. Logger nommé dans `run.py` (testé par `runpy` en `__main__`). `new_cards` dans le checkpoint. Docstring de `inv collect`. `inv ci` et `inv okflint` verts.
 - Plan fix-audit-2026-11-18 — Étape 3 : Tests et doc restants. Fixture `isolated_logs` dans `conftest.py` (`LOG_DIR` patché dans `config`, `__main__`, `rebuild`, `collect.run`, `suivi.run`, handlers fermés) : `test_suivi_run` n'écrit plus dans `logs/` du dépôt. Tests ajoutés : rotation coupée par une panne via `main`, carte disparue puis revenue en collecte complète, `--catalogue --no-prices`, ensemble exact des fiches de la rotation (`raw_path`, l'ancienne assertion `%253F` ne pouvait pas échouer), prix entiers dans les fixtures, échec du téléchargement dans `inv rebuild`, vrai `.clean` sur le dépôt, lignes Énergie et Émissions. `CONTRIBUTING.md:141` corrigé. Test `-m` : client remplacé par une sous-classe (une lambda fait échouer beartype sur les annotations). `inv ci` (389 tests, 99,4 %) et `inv okflint` verts.
+- Vérifié : la collecte du 19/11 (run 44450348025, succès) a supprimé `cards-2026-11-18.parquet` de la Release `catalogue` (« Supprimé de catalogue » dans le log) ; restent les `cards-` des lundis 02, 09, 16/11 et `cards-2026-11-19`.
+- fix-audit-2026-11-18 clos : critères de fin cochés, entrée de l'audit complétée dans `CURRENT.md`, plan et spec `statut: fait`.
 - Retiré du « Reste à faire » : « Porte 0 franchie le 15/11 » (constat, déjà acquis).
 
 ### Reste à faire
 
-- Vérifier le 19/11 que « Nettoyer les anciens catalogues » a supprimé `cards-2026-11-18.parquet` de la Release `catalogue` (seul critère vérifié à blanc).
-- Antoaneta : commit `test:` de l'étape 3, puis `inv finish` (PR vers `develop`, v0.8.1).
-- fix-audit-2026-11-18, critères de fin : vérifier « chaque test ajouté échoue sans la correction », compléter l'entrée de l'audit dans `.ai-context/CURRENT.md`, puis `statut: fait` (plan et spec).
+- Antoaneta : fusionner la PR `feature/fix-audit-2026-11-18` → `develop`, puis `inv release` (v0.8.1).
 - Planifier DBT-02 (staging des prix) au standard SQL : `/workspace-plan dbt-02`.
 - Avant la porte 1 : relire dans un navigateur les conditions de Cardmarket et de TCGplayer (veille).
 - Rapport de novembre à régénérer en fin de mois (`inv suivi --mois 2026-11 --force`, commentaire gardé), puis `statut: fait` ; mettre à jour les chiffres de `docs/gouvernance/green-it.md`. Chaque début de mois : `inv ci` puis `inv suivi`, commentaire.

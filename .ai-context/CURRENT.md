@@ -34,6 +34,14 @@
 - [WARN] Tests : `--catalogue --no-prices` ; carte disparue en collecte complète ; assertion `%253F` impossible à faire échouer (`test_collect_run.py:859`) ; `Retry-After` négatif ; prix entiers dans les fixtures (`test_fixtures_prices.py:27`, `conftest.py:62`) ; `LOG_DIR` non patché dans `test_suivi_run.py` ; handlers laissés par `test_rebuild.py` ; échec du téléchargement dans `inv rebuild` ; vrai `.clean` jamais passé à `_clean_targets` ; lignes Énergie et Émissions du rapport.
 - [WARN] Doc : README:89 (« lundi ») ; CONTRIBUTING:141 (`__main__.py`), :164 (`is_current`), :189 (« par semaine ») ; `sources.yml:57,60` (`fetched_at`, `raw_json` sans prix) ; docstring de `inv collect` (`tasks/__init__.py:108`).
 
+### Résultat (19/11)
+
+- Corrigé sur `feature/fix-audit-2026-11-18` (v0.8.1) : toutes les trouvailles ci-dessus sauf `clean_branches`, écarté (commande manuelle, cas rare).
+- `fix` dbt : `removed_on` lu, `is_current` et `catalogue_changes` justes avant et après COL-05 (`union_by_name`), échantillon aux deux schémas.
+- `fix` collecte : prix reçus avant une panne écrits (étape `failed`), `Retry-After` négatif ou `nan` ignoré, logger nommé, `new_cards` dans le checkpoint.
+- `test` : trouvailles de audit-tests couvertes, logs des tests isolés (fixture `isolated_logs`).
+- `inv ci` : 389 tests, couverture 99,4 % ; `inv okflint` vert.
+
 ## [2026-10-27] — Initialisation du projet
 
 ### État actuel
