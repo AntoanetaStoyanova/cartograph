@@ -20,7 +20,7 @@
 
 ---
 
-## [2026-11-19] — Audit clos, v0.8.1, DBT-02 et DBT-03 livrés, DBT-04 en cours
+## [2026-11-19] — Audit clos, v0.8.1, DBT-02 et DBT-03 livrés, DBT-04 livré
 
 ### Fait
 
@@ -53,10 +53,11 @@
 - Plan dbt-04-marts-catalogue-prix — Étape 1 : `dim_set` et `dim_card`. Spec passée à `en cours`. Créés : `dbt/models/marts/dim_set.sql` et `.yml` (filtre `serie_id is distinct from 'tcgp'`, un set sans série reste), `dim_card.sql` et `.yml` (Pocket par `not exists` toutes langues, rareté jointe sur `coalesce(rarity, 'None')`), `dbt/tests/assert_card_set_exists.sql` ; colonnes listées une à une (règle sqlfluff AM04, invisible tant que les fichiers étaient non suivis). Tests unitaires : set `tcgp` et set sans série ; carte `tcgp` avec et sans set dans sa langue, rareté vide → `none`, carte retirée et `pl4-AR1` `fr` gardées. Mutation sur la vraie base : sans l'exclusion `pl4` / `fr`, 9 lignes en échec ; remise, vert. `inv ci` (395 tests, dbt 61/61) et `inv okflint` verts.
 - Plan dbt-04-marts-catalogue-prix — Étape 2 : Produits Cardmarket et ambiguïté. Point ouvert tranché (option 1) : `int_cardmarket_products` garde une ligne par produit de toute carte hors Pocket, courante ou retirée, avec `has_current_card` ; `card_count` et `is_ambiguous_product` portent sur les cartes courantes, faux (non évalué) sans carte courante, DBT-06 filtre sur `has_current_card` ; spec et plan mis à jour. Créés : `dbt/models/intermediate/int_cardmarket_products.sql` et `.yml`, `dbt/tests/assert_no_ambiguous_product.sql` (`warn`) ; `dim_card` reprend `is_ambiguous_product` (`not_null` avec `where`). Tests unitaires : deux noms, deux codes, ambigu dans une seule langue, noms différents entre langues, carte retirée d'un autre nom, produit porté seulement par une carte retirée, carte sans produit, carte Pocket. Vraie base : 442 produits ambigus en avertissement. `inv ci` (dbt 69/69) et `inv okflint` verts.
 - Plan dbt-04-marts-catalogue-prix — Étape 3 : `fct_price_snapshot` incrémentale. Créés : `dbt/models/marts/fct_price_snapshot.sql` (`incremental`, `append`, `on_schema_change: fail`, filtre `price_date > coalesce(max(price_date), '1900-01-01')` de la table) et `.yml` (contrat, `unique` sur le grain, `not_null`, `accepted_values` `base` / `reverse_holo`, `relationships` vers `int_cardmarket_products` en erreur). Tests unitaires : premier chargement (`is_incremental: false`, override obligatoire dès qu'un test du modèle le force) et rattrapage J+1 à J+3 sans J-1 ni J ; mutation `>=` : le test de rattrapage échoue. Échantillon : base supprimée puis trois builds, 351 lignes chaque fois, égal au staging, sans doublon. `inv ci` (dbt 79/79) et `inv okflint` verts.
+- Plan dbt-04-marts-catalogue-prix — Étape 4 : Vraie base et documentation. `inv dbt --args "build"` sans sélection vert deux fois (78 succès, 1 avertissement : 442 produits ambigus), second passage sans ligne ajoutée. Comptes notés dans la spec : `dim_set` 206 `en` / 188 `fr` / 204 `ja`, `dim_card` 21 432 / 20 227 / 13 156, `int_cardmarket_products` 30 279 (aucun sans carte courante), `fct_price_snapshot` 1 095 848 lignes, 23 dates, 30 272 produits. Mis à jour : roadmap (DBT-04 coché ; DBT-06 produits distincts, `is_ambiguous_product` après `has_current_card` ; QUA-01 en produits distincts), spec maîtresse (ligne `int_cardmarket_products`, grains des marts), `CONTRIBUTING.md` (marts, exclusion `pl4` / `fr`, incrémental et `--full-refresh`). Critères de la spec cochés sauf « CI GitHub verte », à vérifier sur la PR. `inv ci` et `inv okflint` verts.
 
 ### Reste à faire
 
-- Exécuter docs/plans/dbt-04-marts-catalogue-prix.md — Étape 4 : Vraie base et documentation.
+- DBT-04 : ouvrir la PR (`inv finish`), vérifier la CI GitHub, cocher le dernier critère et passer plan et spec à `statut: fait`.
 - Avant la porte 1 : relire dans un navigateur les conditions de Cardmarket et de TCGplayer (veille).
 - Rapport de novembre à régénérer en fin de mois (`inv suivi --mois 2026-11 --force`, commentaire gardé), puis `statut: fait` ; mettre à jour les chiffres de `docs/gouvernance/green-it.md`. Chaque début de mois : `inv ci` puis `inv suivi`, commentaire.
 - Antoaneta : avant PRO-02, demander aux testeurs leur logiciel de caisse et un fichier d'import exemple.
@@ -65,7 +66,7 @@
 ### Références
 
 - ../docs/specs/dbt-04-marts-catalogue-prix.md, ../docs/plans/dbt-04-marts-catalogue-prix.md
-- dbt/models/marts/dim_set.sql, dim_set.yml, dim_card.sql, dim_card.yml, dbt/tests/assert_card_set_exists.sql, dbt/models/intermediate/int_cardmarket_products.sql, int_cardmarket_products.yml, dbt/tests/assert_no_ambiguous_product.sql, dbt/models/marts/fct_price_snapshot.sql, fct_price_snapshot.yml
+- dbt/models/marts/dim_set.sql, dim_set.yml, dim_card.sql, dim_card.yml, dbt/tests/assert_card_set_exists.sql, dbt/models/intermediate/int_cardmarket_products.sql, int_cardmarket_products.yml, dbt/tests/assert_no_ambiguous_product.sql, dbt/models/marts/fct_price_snapshot.sql, fct_price_snapshot.yml, docs/plans/roadmap-lots.md, spec maîtresse, CONTRIBUTING.md
 - ../docs/specs/dbt-03-intermediate-rarete.md, ../docs/plans/dbt-03-intermediate-rarete.md
 - dbt/seeds/rarity_levels.csv, dbt/seeds/rarity_levels.yml, dbt/tests/assert_rarity_code_single_level.sql, assert_rarity_level_empty_iff_off_scale.sql, dbt/dbt_project.yml, dbt/models/intermediate/int_rarity_mapping.sql, int_rarity_mapping.yml, docs/plans/roadmap-lots.md, CONTRIBUTING.md, dbt/models/staging/tcgdex/stg_tcgdex__cards.yml
 - ../docs/specs/dbt-02-staging-prix.md, ../docs/plans/dbt-02-staging-prix.md
