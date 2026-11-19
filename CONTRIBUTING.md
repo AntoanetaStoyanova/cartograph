@@ -154,18 +154,22 @@ dbt/
 ├── profiles.yml        # profil DuckDB versionné, sans secret
 ├── sample/snapshots/   # échantillon du catalogue et prix fictifs pour la CI (recettes dans sample/README.md)
 ├── analyses/           # requêtes lancées à la demande, sans table créée
-├── macros/             # fonctions Jinja partagées (snapshot_date, is_new_cards)
+├── macros/             # fonctions Jinja partagées (snapshot_date, is_new_cards, not_pocket_set)
 ├── seeds/              # tables relues à la main, chargées par dbt build (rarity_levels)
 ├── tests/              # tests singuliers (une requête qui renvoie les lignes fautives)
 └── models/
     ├── staging/        # stg_<source>__<entité> : nettoyage des sources, en vue
     ├── intermediate/   # int_ : jointures et règles métier, en vue
-    └── marts/          # fct_, dim_, mart_ : tables lues par l'application
+    └── marts/          # fct_, dim_, mart_ : tables lues par l'application (fct_price_snapshot incrémentale)
 ```
 
 Chaque modèle, analyse ou macro `<nom>.sql` a son fichier de propriétés `<nom>.yml` à côté (description, colonnes, tests) ; les sources sont déclarées dans `sources.yml`. Chaque colonne déclare son `data_type` ; les modèles ont un contrat (`contract: enforced: true`) : un type qui ne correspond plus fait échouer `dbt build`. Une règle de calcul (dernière version, `is_current`…) est couverte par un test unitaire dbt (`unit_tests:`, données en `format: sql`, car dbt-duckdb ne lit pas les colonnes d'une source externe). Les modèles de staging du catalogue (`staging/tcgdex/`) sont `stg_tcgdex__cards` (une ligne par carte et par langue, dernière version vue dans un catalogue `cards-*` ou un `new-cards`, `is_current` vrai si la carte est sans `removed_on` dans le dernier catalogue ou dans un `new-cards` postérieur) et `stg_tcgdex__sets` (une ligne par set et par langue, avec date de sortie et série, tirée des `sets-*.parquet`) ; ceux des prix, un par marché, `stg_tcgdex__cardmarket_prices` (finitions `base` et `reverse_holo`, colonnes `cm_*` et `cm_*_holo`) et `stg_tcgdex__tcgplayer_prices` (finitions dépliées de `tcgplayer_json`, liste fermée), au grain produit Cardmarket × finition × date, `0` lu comme absent et sans ligne pour une finition sans prix.
 
 Le seed `rarity_levels.csv` associe chaque nom de rareté collecté (toutes langues) à un code canonique (`rarity_code`, nom anglais en `snake_case`) et à un niveau de 1 à 8 (`rarity_level`, vide pour `none`, `promo` et `pocket`) ; un code n'a qu'un niveau (`tests/assert_rarity_code_single_level.sql`) et seuls `none`, `promo` et `pocket` ont un niveau vide (`tests/assert_rarity_level_empty_iff_off_scale.sql`). `int_rarity_mapping` part des noms réellement collectés (`coalesce(rarity, 'None')`) en jointure gauche sur le seed. Quand `not_null_int_rarity_mapping_rarity_code` échoue, une nouvelle rareté est apparue : l'ajouter au seed (nom exact, code, niveau), puis relancer `dbt build` ; tout l'aval reste bloqué d'ici là.
+
+Les marts du catalogue, `dim_set` et `dim_card`, sont par langue et écartent TCG Pocket (sets de série `tcgp` dans une langue au moins, macro `not_pocket_set`, seule définition de la règle) ; `dim_card` joint la rareté sur `coalesce(rarity, 'None')` et reprend `is_ambiguous_product` de `int_cardmarket_products` (une ligne par produit Cardmarket ; ambigu quand ses cartes courantes ont plusieurs noms ou codes de rareté dans une langue, compté en avertissement par `tests/assert_no_ambiguous_product.sql`). `tests/assert_card_set_exists.sql` vérifie que chaque carte a son set dans sa langue, avec une seule exclusion nommée : `pl4` en `fr`, set absent chez TCGdex dont les 9 cartes `AR` ont un prix. L'étendre seulement pour un set absent de la source dont les cartes ont un produit Cardmarket, après vérification dans les fiches de sets ; la retirer quand TCGdex publie `pl4` en `fr`.
+
+`fct_price_snapshot` (une ligne par produit Cardmarket, finition et date) est incrémentale par ajout : chaque build charge les dates du staging absentes de la table, donc tous les jours manqués après un build arrêté et un fichier plus ancien arrivé après coup. Elle ne relit jamais une date déjà chargée : après un fichier `prices-` remplacé (collecte relancée le même jour), lancer `uv run inv dbt --args "build --full-refresh --select fct_price_snapshot"`, ou `uv run inv rebuild`, qui part d'une base neuve. `dim_card` n'est pas unique sur `cardmarket_product_id` : tout agrégat de prix part de produits distincts.
 
 ### Standard SQL
 

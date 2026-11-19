@@ -1,0 +1,208 @@
+version: 2
+
+models:
+  - name: dim_card
+    config:
+      contract:
+        enforced: true
+    description: >
+      Une ligne par carte et par langue, colonnes de `stg_tcgdex__cards` plus le code et
+      le niveau de rareté (`int_rarity_mapping`, joint sur `coalesce(rarity, 'None')`).
+      Les cartes d'un set de TCG Pocket (`serie_id = 'tcgp'` dans une langue au moins)
+      sont écartées ; les cartes retirées restent, avec `is_current = false`. Les 9 cartes
+      `pl4-AR*` en `fr` n'ont pas de set dans `dim_set` (voir `assert_card_set_exists`).
+      `cardmarket_product_id` n'est pas unique : tout agrégat de prix part de produits
+      distincts.
+    data_tests:
+      - unique:
+          arguments:
+            column_name: "card_id || '|' || language_code"
+    columns:
+      - name: card_id
+        data_type: varchar
+        description: Identifiant TCGdex de la carte, commun aux langues.
+        data_tests:
+          - not_null
+      - name: language_code
+        data_type: varchar
+        description: Langue de la fiche.
+        data_tests:
+          - not_null
+      - name: local_id
+        data_type: varchar
+        description: Numéro dans le set, pas toujours numérique (`33b`, `THREE`).
+      - name: card_name
+        data_type: varchar
+        description: Nom dans la langue de la fiche.
+      - name: set_id
+        data_type: varchar
+        description: Identifiant TCGdex du set.
+      - name: category
+        data_type: varchar
+        description: Catégorie normalisée, commune aux langues.
+      - name: rarity
+        data_type: varchar
+        description: Rareté brute, propre à chaque langue, parfois vide.
+      - name: pokemon_types
+        data_type: varchar[]
+        description: Types d'énergie du Pokémon, dans la langue de la fiche.
+      - name: hp
+        data_type: integer
+        description: Points de vie, vide hors Pokémon.
+      - name: evolution_stage
+        data_type: varchar
+        description: Stade d'évolution, dans la langue de la fiche.
+      - name: dex_ids
+        data_type: integer[]
+        description: Numéros du Pokédex national.
+      - name: illustrator
+        data_type: varchar
+        description: Illustrateur.
+      - name: regulation_mark
+        data_type: varchar
+        description: Marque de règlement (lettre), absente des cartes anciennes.
+      - name: is_legal_standard
+        data_type: boolean
+        description: Jouable en format Standard.
+      - name: is_legal_expanded
+        data_type: boolean
+        description: Jouable en format Étendu.
+      - name: image_url
+        data_type: varchar
+        description: URL de base de l'image (sans qualité ni extension).
+      - name: cardmarket_product_id
+        data_type: bigint
+        description: Produit Cardmarket, clé des prix ; parfois absent.
+      - name: updated_at
+        data_type: timestamp with time zone
+        description: Dernière mise à jour de la fiche chez TCGdex.
+      - name: last_seen_on
+        data_type: date
+        description: >
+          Date du dernier fichier (`cards-` ou `new-cards-`) où la carte figure sans
+          `removed_on` ; vide si aucun fichier conservé ne la montre présente.
+      - name: removed_on
+        data_type: date
+        description: Jour où la carte a disparu de la liste de l'API, vide si elle y figure.
+      - name: is_current
+        data_type: boolean
+        description: >
+          Sans `removed_on`, dans le dernier catalogue (`cards-`) ou dans un `new-cards`
+          postérieur.
+
+      - name: rarity_code
+        data_type: varchar
+        description: Code canonique de la rareté (`int_rarity_mapping`), `none` pour une rareté vide.
+        data_tests:
+          - not_null
+      - name: rarity_level
+        data_type: integer
+        description: Niveau de 1 à 8, vide pour `none` et `promo`.
+      - name: is_ambiguous_product
+        data_type: boolean
+        description: >
+          Repris de `int_cardmarket_products` : le produit relie plusieurs noms ou codes de
+          rareté dans une langue, son prix n'a pas de carte sûre. Vide sans produit.
+        data_tests:
+          - not_null:
+              config:
+                where: "cardmarket_product_id is not null"
+
+unit_tests:
+  - name: dim_card_excludes_pocket_and_maps_rarity
+    description: >
+      Les cartes d'un set `tcgp` sont écartées, même quand ce set manque dans la langue
+      de la carte ; une rareté vide reçoit le code `none` ; une carte retirée est gardée ;
+      une carte sans set dans sa langue (`pl4` en `fr`) est gardée ; l'indicateur de produit
+      ambigu est repris, vide sans produit.
+    model: dim_card
+    given:
+      - input: ref('stg_tcgdex__cards')
+        format: sql
+        rows: |
+          select
+              card_id, language_code, '1' as local_id, 'Carte' as card_name, set_id,
+              'pokemon' as category, rarity, null::varchar[] as pokemon_types, null::integer as hp,
+              null::varchar as evolution_stage, null::integer[] as dex_ids,
+              null::varchar as illustrator, null::varchar as regulation_mark,
+              null::boolean as is_legal_standard, null::boolean as is_legal_expanded,
+              null::varchar as image_url,
+              case when card_id = 'swsh11-1' then 1 end::bigint as cardmarket_product_id,
+              null::timestamptz as updated_at, null::date as last_seen_on,
+              null::date as removed_on, is_current
+          from (values
+              ('swsh11-1', 'fr', 'swsh11', 'Rare', true),
+              ('A1-1', 'fr', 'A1', 'Rare', true),
+              ('A2-1', 'fr', 'A2', 'Rare', true),
+              ('S12-1', 'ja', 'S12', null::varchar, true),
+              ('mep-028', 'fr', 'mep', 'Rare', false),
+              ('pl4-AR1', 'fr', 'pl4', 'Rare', true)
+          ) as t (card_id, language_code, set_id, rarity, is_current)
+      - input: ref('stg_tcgdex__sets')
+        format: sql
+        rows: |
+          select
+              set_id, language_code, 'Set' as set_name, serie_id, 'Série' as serie_name,
+              null::varchar as abbreviation_official, null::varchar as abbreviation_localized,
+              1 as card_count_official, 1 as card_count_total, null::varchar as symbol_url,
+              null::varchar as logo_url, null::date as release_date,
+              '2026-11-19'::date as last_seen_on, true as is_current
+          from (values
+              ('swsh11', 'fr', 'swsh'),
+              ('A1', 'fr', 'tcgp'),
+              ('A2', 'en', 'tcgp'),
+              ('S12', 'ja', 'S'),
+              ('mep', 'fr', 'mep'),
+              ('pl4', 'en', 'pl')
+          ) as t (set_id, language_code, serie_id)
+      - input: ref('int_rarity_mapping')
+        format: sql
+        rows: |
+          select * from (values
+              ('None', 'none', null::integer),
+              ('Rare', 'rare', 3)
+          ) as t (rarity, rarity_code, rarity_level)
+      - input: ref('int_cardmarket_products')
+        format: sql
+        rows: |
+          select
+              1::bigint as cardmarket_product_id, true as has_current_card,
+              1::bigint as card_count, true as is_ambiguous_product
+    expect:
+      rows:
+        - {
+            card_id: swsh11-1,
+            language_code: fr,
+            rarity: Rare,
+            rarity_code: rare,
+            rarity_level: 3,
+            is_current: true,
+            is_ambiguous_product: true,
+          }
+        - {
+            card_id: S12-1,
+            language_code: ja,
+            rarity: null,
+            rarity_code: none,
+            rarity_level: null,
+            is_current: true,
+            is_ambiguous_product: null,
+          }
+        - {
+            card_id: mep-028,
+            language_code: fr,
+            rarity: Rare,
+            rarity_code: rare,
+            rarity_level: 3,
+            is_current: false,
+            is_ambiguous_product: null,
+          }
+        - {
+            card_id: pl4-AR1,
+            language_code: fr,
+            rarity: Rare,
+            rarity_code: rare,
+            rarity_level: 3,
+            is_current: true,
+            is_ambiguous_product: null,
+          }

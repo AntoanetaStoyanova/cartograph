@@ -1,0 +1,13 @@
+version: 2
+
+macros:
+  - name: not_pocket_set
+    description: >
+      Vrai si le set n'est de la série `tcgp` (TCG Pocket, jeu numérique sans prix) dans
+      aucune langue. `not exists` plutôt que `not in`, qu'un `set_id` vide rendrait
+      toujours faux. Seule définition de l'exclusion de Pocket, pour `dim_set`, `dim_card`
+      et `int_cardmarket_products`.
+    arguments:
+      - name: set_id
+        type: string
+        description: Colonne qualifiée qui contient l'identifiant du set (`cards.set_id`).
