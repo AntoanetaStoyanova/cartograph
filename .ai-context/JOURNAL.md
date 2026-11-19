@@ -20,7 +20,7 @@
 
 ---
 
-## [2026-11-19] — Audit : collecte sans perte de prix, tests restants
+## [2026-11-19] — Audit clos, v0.8.1, DBT-02 étape 1
 
 ### Fait
 
@@ -30,11 +30,15 @@
 - Vérifié : la collecte du 19/11 (run 44450348025, succès) a supprimé `cards-2026-11-18.parquet` de la Release `catalogue` (« Supprimé de catalogue » dans le log) ; restent les `cards-` des lundis 02, 09, 16/11 et `cards-2026-11-19`.
 - fix-audit-2026-11-18 clos : critères de fin cochés, entrée de l'audit complétée dans `CURRENT.md`, plan et spec `statut: fait`.
 - Retiré du « Reste à faire » : « Porte 0 franchie le 15/11 » (constat, déjà acquis).
+- v0.8.1 livrée (PR #35 fusionnée, `inv release`).
+- `docs/specs/dbt-02-staging-prix.md` et `docs/plans/dbt-02-staging-prix.md` créés. Décisions : un staging par marché (`stg_tcgdex__cardmarket_prices`, finitions `base` / `reverse_holo` ; `stg_tcgdex__tcgplayer_prices`, 7 finitions), grain produit Cardmarket × finition × date (`card_id` hors grain), `decimal(10, 2)` avec `nullif(…, 0)`, pas de ligne vide, aucun filtre sur `variants`, échantillon de prix fictifs (`4000 + n + 0.37`) versionné et couvert par le test de non-régression ; finitions de FX7 (normale, holo → `base`, reverse → `reverse_holo`) traduites en aval.
+- Spec DBT-02 relue et corrigée : pas de filtre sur `variants` (retiré du hors périmètre, seules les valeurs douteuses vont à QUA-01) ; remplissage des colonnes `_holo` donné colonne par colonne (`cm_trend_holo` à 0 sur 12 284 lignes sur 30 278 le 18/11).
+- Spec et plan DBT-02 : mesures suffixées `_price` (`low_price`, `trend_price`, `avg_price`… ; TCGplayer `mid_price`, `market_price`, `direct_low_price`…) ; correspondance des finitions de FX7 tranchée en DBT-05 (`fct_collection`, marge sur `trend_price` de la finition possédée), DBT-05 ajouté aux mises à jour de la roadmap.
+- Plan dbt-02-staging-prix — Étape 1 : Source et échantillon fictif. Spec passée à `en cours`. `tests/test_fixtures_prices.py` : non-régression sur `dbt/sample/snapshots/prices-*.parquet` (`cm_*` et nombres de `tcgplayer_json` hors `productId` : `0` ou `n + 0.37`), cas négatifs Cardmarket, TCGplayer décimal et entier, présence de prix. `prices-2026-11-17.parquet` (20 produits) et `prices-2026-11-18.parquet` (191) générés depuis les `id_product` du catalogue du 16, recette DuckDB + pyarrow (cast à `PRICE_SCHEMA`, DuckDB écrit des colonnes non nullables) déterministe, dans `dbt/sample/README.md` avec le tableau des cas. Décision : la valeur TCGplayer entière de l'échantillon est `0` (un entier ≥ 4000 sortirait de l'ensemble fictif) ; l'entier non nul sera couvert par les tests unitaires de l'étape 3. Source `tcgdex.prices` dans `sources.yml`, description de la source mise à jour. `inv dbt --sample` vert.
 
 ### Reste à faire
 
-- Antoaneta : fusionner la PR `feature/fix-audit-2026-11-18` → `develop`, puis `inv release` (v0.8.1).
-- Planifier DBT-02 (staging des prix) au standard SQL : `/workspace-plan dbt-02`.
+- Exécuter docs/plans/dbt-02-staging-prix.md — Étape 2 : `stg_tcgdex__cardmarket_prices`.
 - Avant la porte 1 : relire dans un navigateur les conditions de Cardmarket et de TCGplayer (veille).
 - Rapport de novembre à régénérer en fin de mois (`inv suivi --mois 2026-11 --force`, commentaire gardé), puis `statut: fait` ; mettre à jour les chiffres de `docs/gouvernance/green-it.md`. Chaque début de mois : `inv ci` puis `inv suivi`, commentaire.
 - Antoaneta : avant PRO-02, demander aux testeurs leur logiciel de caisse et un fichier d'import exemple.
@@ -42,6 +46,8 @@
 
 ### Références
 
+- ../docs/specs/dbt-02-staging-prix.md, ../docs/plans/dbt-02-staging-prix.md
+- dbt/sample/snapshots/prices-2026-11-17.parquet, prices-2026-11-18.parquet, dbt/sample/README.md, dbt/models/staging/tcgdex/sources.yml, tests/test_fixtures_prices.py
 - docs/plans/fix-audit-2026-11-18.md, docs/specs/fix-audit-2026-11-18.md
 - src/cartograph/bin/collect/ (`__init__`, `batch`, `client`, `run`, `prices`, `catalogue`, `sets`), tasks/__init__.py
 - tests/test_collect_run.py, tests/test_collect_client.py, tests/test_collect_failures.py
