@@ -20,7 +20,7 @@
 
 ---
 
-## [2026-11-19] — Audit clos, v0.8.1, DBT-02 livré, DBT-03 étapes 1-3
+## [2026-11-19] — Audit clos, v0.8.1, DBT-02 et DBT-03 livrés
 
 ### Fait
 
@@ -47,10 +47,11 @@
 - Plan dbt-03-intermediate-rarete — Étape 2 : `int_rarity_mapping`. `.yml` d'abord : contrat, `data_type`, `unique`/`not_null` sur `rarity`, `not_null` en erreur sur `rarity_code`, test unitaire `int_rarity_mapping_one_row_per_collected_name` (vide et `None` → une ligne `None`, `Rare` fr/en/ja → une ligne, nom absent du seed → code et niveau vides), rouge sans modèle puis vert ; échoue bien si le `coalesce` est retiré. `.sql` : `collected` (`distinct coalesce(rarity, 'None')`) → `mapped` (jointure gauche sur `rarity_levels`). `inv ci` (395 tests, dbt 48/48) et `inv okflint` verts.
 - Plan dbt-03-intermediate-rarete — Étape 3 : Vraie base et documentation. `build --select +int_rarity_mapping` vert sur la vraie base : 72 lignes, 72 codes, 49 niveaux. Contrôle de l'ordre (rangs seulement, noté dans la spec) : niveaux 4 et 5 inversés, 6 et 7 aussi ; 291 produits à deux niveaux selon la langue (pour DBT-06). Mis à jour : roadmap (DBT-03 coché ; DBT-04 : `coalesce(rarity, 'None')`, exclusion `tcgp`, 9 cartes sans set, incrémental sur `price_date > max(price_date)` ; DBT-06 : écarts de l'échelle), spec maîtresse (ligne `int_rarity_mapping`), `CONTRIBUTING.md` (`dbt/seeds/` et `dbt/tests/` dans l'arborescence, seed, conduite à tenir quand le test de couverture échoue), description de `rarity` dans `stg_tcgdex__cards.yml`. Critères de la spec cochés sauf « CI GitHub verte », à vérifier sur la PR. `inv ci` et `inv okflint` verts.
 - Revue de DBT-03 (`/cr`) : approuvé avec corrections mineures, faites : test singulier `assert_rarity_level_empty_iff_off_scale.sql` (niveau vide si et seulement si `none`, `promo` ou `pocket` ; échoue bien si `Rare` perd son niveau), `+column_types` limité au seed `rarity_levels` dans `dbt_project.yml`, `CONTRIBUTING.md` à jour. Gardés en INFO : pas de liste fermée des codes, `severity: error` explicite. `inv ci` (dbt 49/49), `inv okflint` et vraie base (12/12) verts.
+- PR #39 (`feature/dbt-03` → `develop`) fusionnée, CI GitHub verte (run 44530060911), branche supprimée : dernier critère coché, plan et spec dbt-03-intermediate-rarete `statut: fait`.
 
 ### Reste à faire
 
-- DBT-03 : `inv finish`, puis vérifier la CI GitHub sur la PR et cocher le dernier critère (plan et spec à passer `statut: fait`).
+- Planifier DBT-04 (`/workspace-plan dbt-04`) : marts du catalogue et des prix.
 - Avant la porte 1 : relire dans un navigateur les conditions de Cardmarket et de TCGplayer (veille).
 - Rapport de novembre à régénérer en fin de mois (`inv suivi --mois 2026-11 --force`, commentaire gardé), puis `statut: fait` ; mettre à jour les chiffres de `docs/gouvernance/green-it.md`. Chaque début de mois : `inv ci` puis `inv suivi`, commentaire.
 - Antoaneta : avant PRO-02, demander aux testeurs leur logiciel de caisse et un fichier d'import exemple.
