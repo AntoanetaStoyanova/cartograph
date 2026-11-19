@@ -1,0 +1,117 @@
+version: 2
+
+models:
+  - name: stg_tcgdex__cardmarket_prices
+    config:
+      contract:
+        enforced: true
+    description: >
+      Une ligne par produit Cardmarket, finition et date de snapshot (`prices-*.parquet`) :
+      colonnes `cm_*` en finition `base`, `cm_*_holo` (`reverseHolo*` de Cardmarket) en
+      `reverse_holo`. `0` est lu comme absent ; une finition sans aucun prix n'a pas de ligne.
+    data_tests:
+      - unique:
+          arguments:
+            column_name: "cardmarket_product_id || '|' || finish || '|' || price_date"
+    columns:
+      - name: cardmarket_product_id
+        data_type: bigint
+        description: Produit Cardmarket (`idProduct`), partagé par plusieurs cartes.
+        data_tests:
+          - not_null
+      - name: finish
+        data_type: varchar
+        description: Finition au sens de Cardmarket, `base` ou `reverse_holo`.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [base, reverse_holo]
+      - name: price_date
+        data_type: date
+        description: Date du snapshot, tirée du nom du fichier.
+        data_tests:
+          - not_null
+      - name: low_price
+        data_type: decimal(10, 2)
+        description: Prix le plus bas proposé, vide si absent.
+      - name: trend_price
+        data_type: decimal(10, 2)
+        description: Prix de tendance de Cardmarket, vide si absent ; prix de référence (DBT-05).
+      - name: avg_price
+        data_type: decimal(10, 2)
+        description: Prix moyen de vente, vide si absent.
+      - name: avg1_price
+        data_type: decimal(10, 2)
+        description: Moyenne des ventes sur 1 jour, vide si absente.
+      - name: avg7_price
+        data_type: decimal(10, 2)
+        description: Moyenne des ventes sur 7 jours, vide si absente.
+      - name: avg30_price
+        data_type: decimal(10, 2)
+        description: Moyenne des ventes sur 30 jours, vide si absente.
+      - name: currency_code
+        data_type: varchar
+        description: Devise des prix.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [EUR]
+      - name: updated_at
+        data_type: timestamp with time zone
+        description: Mise à jour du guide de prix Cardmarket.
+
+unit_tests:
+  - name: stg_tcgdex__cardmarket_prices_unpivots_finishes
+    description: >
+      Un produit donne une ligne `base` et une ligne `reverse_holo` par date, la date
+      tirée du nom du fichier ; `0` devient vide ; pas de ligne `reverse_holo` quand
+      toutes les `cm_*_holo` sont vides ou à 0, ni de ligne pour une finition sans prix.
+    model: stg_tcgdex__cardmarket_prices
+    given:
+      - input: source('tcgdex', 'prices')
+        format: sql
+        rows: |
+          select * from (values
+              ('fr', 'hgss3-1', 1::bigint, null::timestamptz, '2026-11-16 22:00:00+00'::timestamptz, 'EUR', 4001.37::double, 4002.37::double, 4003.37::double, 4004.37::double, 4005.37::double, 4006.37::double, 0::double, 4007.37::double, 4008.37::double, 4009.37::double, 4010.37::double, 4011.37::double, null::varchar, 'snapshots/prices-2026-11-17.parquet'),
+              ('fr', 'hgss3-1', 1, null, '2026-11-17 22:00:00+00', 'EUR', 4101.37, 4102.37, 0, 4104.37, 4105.37, 4106.37, null, null, 0, null, null, null, null, 'snapshots/prices-2026-11-18.parquet'),
+              ('fr', 'hgss3-2', 2, null, '2026-11-17 22:00:00+00', 'EUR', null, 0, null, null, null, null, 0, 0, 0, 0, 0, 0, null, 'snapshots/prices-2026-11-18.parquet')
+          ) as t (language, card_id, id_product, fetched_at, cm_updated, cm_unit, cm_avg, cm_low, cm_trend, cm_avg1, cm_avg7, cm_avg30, cm_avg_holo, cm_low_holo, cm_trend_holo, cm_avg1_holo, cm_avg7_holo, cm_avg30_holo, tcgplayer_json, filename)
+    expect:
+      rows:
+        - {
+            cardmarket_product_id: 1,
+            finish: base,
+            price_date: 2026-11-17,
+            low_price: 4002.37,
+            trend_price: 4003.37,
+            avg_price: 4001.37,
+            avg1_price: 4004.37,
+            avg7_price: 4005.37,
+            avg30_price: 4006.37,
+            currency_code: EUR,
+          }
+        - {
+            cardmarket_product_id: 1,
+            finish: reverse_holo,
+            price_date: 2026-11-17,
+            low_price: 4007.37,
+            trend_price: 4008.37,
+            avg_price: null,
+            avg1_price: 4009.37,
+            avg7_price: 4010.37,
+            avg30_price: 4011.37,
+            currency_code: EUR,
+          }
+        - {
+            cardmarket_product_id: 1,
+            finish: base,
+            price_date: 2026-11-18,
+            low_price: 4102.37,
+            trend_price: null,
+            avg_price: 4101.37,
+            avg1_price: 4104.37,
+            avg7_price: 4105.37,
+            avg30_price: 4106.37,
+            currency_code: EUR,
+          }
