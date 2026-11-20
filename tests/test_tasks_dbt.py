@@ -82,6 +82,11 @@ def test_ci_runs_dbt_on_sample() -> None:
     assert [p.kwargs for p in dbt_calls] == [{"sample": True}]
 
 
+def test_ci_runs_regles_last_with_the_manifest_of_dbt_build() -> None:
+    last = ci.pre[-1]
+    assert (getattr(last, "task", last), last.kwargs) == (regles, {"parse": False})
+
+
 def test_regles_parses_dbt_then_runs_check_module() -> None:
     module = "uv run python -m cartograph.bin.regles_metier"
     c = MockContext(run={PARSE: Result(), module: Result()})

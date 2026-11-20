@@ -109,9 +109,11 @@ def regles(c: Context, parse: bool = True) -> None:
     c.run("uv run python -m cartograph.bin.regles_metier")
 
 
-@task(pre=[check, test, call(dbt, sample=True)])  # type: ignore[misc]
+@task(  # type: ignore[misc]
+    pre=[check, test, call(dbt, sample=True), call(regles, parse=False)]
+)
 def ci(c: Context) -> None:
-    """Lance la suite complète CI : lint, typecheck, tests, dbt sur l'échantillon."""
+    """Lance la CI : lint, typecheck, tests, dbt sur l'échantillon, règles métier."""
 
 
 # ---------------------------------------------------------------------------
