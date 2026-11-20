@@ -90,8 +90,63 @@ Modèles dans `dbt/models/`, macros dans `dbt/macros/`. Un test unitaire dbt est
 | PRX-11 | L'ambiguïté n'est évaluée que pour un produit qui a une carte courante (`has_current_card`) ; sinon elle vaut faux sans avoir été évaluée. | `int_cardmarket_products` | test unitaire `int_cardmarket_products_flags_ambiguity` | DBT-04 |
 | PRX-12 | Un produit pouvant porter plusieurs cartes, tout agrégat de prix compte des produits distincts, pas des cartes. | description de `dim_card` et `fct_price_snapshot` | aucun | DBT-04 |
 
+## RAR — Rareté
+
+La correspondance des raretés est le seed `dbt/seeds/rarity_levels.csv`, relu à la main.
+
+| ID | Règle | Appliquée dans | Garantie par | Origine |
+| -- | ----- | -------------- | ------------ | ------- |
+| RAR-01 | Chaque nom de rareté collecté, quelle que soit sa langue ou son écriture, reçoit un code commun aux langues (nom anglais en `snake_case`, ex. `Commune` et `Common` → `common`) ; la rareté brute reste dans `dim_card`. | seed `rarity_levels`, `int_rarity_mapping`, `dim_card` | `rarity_levels.rarity` et `int_rarity_mapping.rarity` `unique` ; test unitaire `int_rarity_mapping_one_row_per_collected_name` | DBT-03 |
+| RAR-02 | Les raretés sont rangées sur une échelle de 8 niveaux, de 1 (`common`) à 8 ; un code n'a qu'un niveau. L'échelle est provisoire : DBT-06 la revoit sur les prix. | seed `rarity_levels` | `rarity_levels.rarity_level` `accepted_values` ; test singulier `assert_rarity_code_single_level` | DBT-03 |
+| RAR-03 | Trois codes sont hors échelle, sans niveau : `none`, `promo` et `pocket` ; tous les autres en ont un. | seed `rarity_levels` | test singulier `assert_rarity_level_empty_iff_off_scale` | DBT-03 |
+| RAR-04 | Une rareté vide est lue comme `None` et reçoit le code `none`. | `int_rarity_mapping`, `dim_card` (jointure sur `coalesce(rarity, 'None')`) | tests unitaires `int_rarity_mapping_one_row_per_collected_name`, `dim_card_excludes_pocket_and_maps_rarity` | DBT-03, DBT-04 |
+| RAR-05 | Un nom de rareté collecté absent du seed arrête le build : il faut l'ajouter au seed avec son code et son niveau. | `int_rarity_mapping` | `int_rarity_mapping.rarity_code` `not_null` (erreur), `dim_card.rarity_code` `not_null` ; test unitaire `int_rarity_mapping_one_row_per_collected_name` | DBT-03 |
+
+## HIS — Historique
+
+| ID | Règle | Appliquée dans | Garantie par | Origine |
+| -- | ----- | -------------- | ------------ | ------- |
+| HIS-01 | L'historique des prix n'est jamais effacé : chaque build ajoute à `fct_price_snapshot` toutes les dates du staging absentes de la table, donc les jours manqués après un arrêt et un fichier plus ancien arrivé après coup ; une date déjà chargée n'est pas relue. | `fct_price_snapshot` (incrémentale par ajout) | tests unitaires `fct_price_snapshot_first_load`, `fct_price_snapshot_catches_up_missed_days`, `fct_price_snapshot_loads_late_dates` | DBT-04 |
+| HIS-02 | Un fichier `prices-*` remplacé pour une date déjà chargée n'est pris en compte qu'après `dbt build --full-refresh --select fct_price_snapshot` ou `inv rebuild`. | `fct_price_snapshot` (description), `tasks.rebuild` | aucun | DBT-04 |
+| HIS-03 | Un changement de colonnes de `fct_price_snapshot` arrête le build au lieu de modifier la table existante. | `fct_price_snapshot` (`on_schema_change = 'fail'`) | contrat du modèle (`contract.enforced`) | DBT-04 |
+| HIS-04 | La base se reconstruit depuis les Releases : seuls les snapshots absents ou dont le SHA-256 a changé sont téléchargés, et un fichier dont le SHA-256 ne correspond pas est refusé. | `bin.rebuild` (`sync`, `download`) | `tests/test_rebuild.py::test_sync_downloads_only_missing_or_changed`, `tests/test_rebuild.py::test_download_rejects_wrong_sha` | STO-02 |
+| HIS-05 | `inv rebuild` construit une base vide à part et ne remplace `data/cartograph.duckdb` que si le build réussit ; un téléchargement en échec arrête la tâche avant dbt. | `tasks.rebuild` | `tests/test_tasks_rebuild.py::test_rebuild_starts_from_empty_database`, `tests/test_tasks_rebuild.py::test_rebuild_replaces_database_on_success`, `tests/test_tasks_rebuild.py::test_rebuild_keeps_database_when_dbt_fails`, `tests/test_tasks_rebuild.py::test_rebuild_stops_before_dbt_when_download_fails` | STO-02 |
+
+## QUA — Qualité et alertes
+
+| ID | Règle | Appliquée dans | Garantie par | Origine |
+| -- | ----- | -------------- | ------------ | ------- |
+| QUA-01 | Un test dbt est bloquant par défaut : s'il échoue, `dbt build` est en échec et les modèles qui en dépendent ne sont pas construits. | `.yml` des modèles, `dbt/tests/` | aucun (comportement de dbt) | DBT-01 |
+| QUA-02 | Seul test en avertissement, les produits ambigus sont signalés sans bloquer le build : ce sont des erreurs de correspondance connues de TCGdex. | test singulier `assert_no_ambiguous_product` (`severity = 'warn'`) | test singulier `assert_no_ambiguous_product` | DBT-04 |
+| QUA-03 | Chaque modèle déclare ses colonnes et leurs types ; une colonne en trop, absente ou d'un autre type arrête le build. Les types du seed `rarity_levels` sont fixés. | `contract: enforced: true` de chaque modèle, `dbt_project.yml` (`+column_types`) | contrat de chaque modèle (`contract.enforced`) | DBT-01 à DBT-04 |
+| QUA-04 | Les données publiques de test n'ont que des prix fictifs : réponses d'API enregistrées (`4000 + n + 0.37`) et échantillon `dbt/sample/snapshots/` (`0` ou `4000 + n + 0.37`). | `tests/fixtures/`, `dbt/sample/snapshots/` | `tests/test_fixtures_prices.py::test_fixture_prices_are_fictitious`, `tests/test_fixtures_prices.py::test_sample_prices_are_fictitious`, `tests/test_fixtures_prices.py::test_sample_with_real_price_is_detected` | DBT-02, audit du 18 novembre 2026 |
+| QUA-05 | `inv ci` construit et teste dbt sur l'échantillon, dans une base séparée (`data/cartograph.sample.duckdb`), jamais sur la vraie base ; la CI GitHub le lance sur chaque pull request. | `tasks.ci`, `tasks.dbt` (`--sample`), workflow `CI` | `tests/test_tasks_dbt.py::test_ci_runs_dbt_on_sample`, `tests/test_tasks_dbt.py::test_dbt_sample_uses_sample_snapshots_and_database` | DBT-01, CI-01 |
+
+## À venir
+
+Règles décidées pour des lots non livrés (roadmap). Chacune reçoit son identifiant et remonte dans sa famille à la livraison de son lot.
+
+| Lot | Famille | Règle |
+| --- | ------- | ----- |
+| DBT-05 | PRX | La marge d'une carte de la collection se calcule sur le `trend_price` Cardmarket de la finition possédée : normale et holo → `base`, reverse → `reverse_holo`. |
+| DBT-06 | PRX | Les prix de référence et les tendances comptent des produits distincts. |
+| DBT-06 | PRX | Un produit ambigu est exclu ou marqué, après filtre sur les produits qui ont une carte courante (`has_current_card`). |
+| DBT-06 | RAR | L'échelle de `rarity_levels` est revue sur les prix (niveaux 4 et 5, 6 et 7 inversés ; produits à deux niveaux selon la langue), ainsi que la clé du repli par rareté (code ou niveau). |
+| QUA-01 | QUA | Un prix négatif arrête le build. |
+| QUA-01 | QUA | La complétude et la couverture (au moins 98 %, trous acceptés) se comptent en produits distincts. |
+| QUA-01 | QUA | Des données trop anciennes sont signalées (fraîcheur). |
+| QUA-02 | QUA | `dbt build` et ses tests tournent après chaque collecte ; leur échec fait échouer l'exécution. |
+
 ## Règles retirées
 
 | ID | Règle | Retirée le | Remplacée par |
 | -- | ----- | ---------- | ------------- |
 | — | Collecte complète du catalogue chaque lundi (paramètre `catalogue: auto`), les autres jours seulement les nouvelles cartes et les prix. | COL-05 (novembre 2026) | COL-02, COL-06 : catalogue de la veille mis à jour chaque jour, collecte complète à la main seulement |
+
+## Règles sans test
+
+Relevées depuis la colonne `Garantie par`.
+
+- **Collecte** : COL-01 (déclenchement par cron-job.org, surveillé par healthchecks.io), COL-26 (rétention de la Release `catalogue`), toutes deux dans le workflow de `cartograph-data`.
+- **dbt**, à reprendre par QUA-01 : PRX-06 (JSON TCGplayer invalide, date hors ISO 8601), PRX-07 (TCGplayer pour le lien seulement), PRX-08 (aucun filtre sur `variants`), PRX-12 (agrégats en produits distincts), HIS-02 (`--full-refresh` après un fichier de prix remplacé).
+- QUA-01 décrit le comportement de dbt lui-même : rien à tester.

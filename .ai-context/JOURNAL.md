@@ -20,6 +20,27 @@
 
 ---
 
+## [2026-11-20] — GOV-06 étape 3 : rareté, historique, qualité
+
+### Fait
+
+- Session ouverte (`/workspace-init`).
+- Plan gov-06-regles-metier — Étape 3 : Rareté, historique, qualité et règles à venir. `docs/gouvernance/regles-metier.md` : tables RAR (5), HIS (5), QUA (5), sections « À venir » (DBT-05, DBT-06, QUA-01, QUA-02, sans identifiant jusqu'à livraison), « Règles sans test » (collecte : COL-01, COL-26 ; dbt pour QUA-01 : PRX-06, PRX-07, PRX-08, PRX-12, HIS-02). Contrats dbt comptés comme garantie (HIS-03, QUA-03) ; origine de la règle provisoire de l'échelle : DBT-03, revue en DBT-06. `inv ci` et `inv okflint` verts.
+
+### Reste à faire
+
+- Exécuter docs/plans/gov-06-regles-metier.md — Étape 4 : Liens et suivi.
+- Planifier QUA-01, tests dbt (`/workspace-plan qua-01`), après GOV-06 ; complétude et couverture en produits distincts, règles dbt sans test relevées par GOV-06.
+- Avant la porte 1 : relire dans un navigateur les conditions de Cardmarket et de TCGplayer (veille).
+- Rapport de novembre à régénérer en fin de mois (`inv suivi --mois 2026-11 --force`, commentaire gardé), puis `statut: fait` ; mettre à jour les chiffres de `docs/gouvernance/green-it.md`. Chaque début de mois : `inv ci` puis `inv suivi`, commentaire.
+- Antoaneta : avant PRO-02, demander aux testeurs leur logiciel de caisse et un fichier d'import exemple.
+- `cadrage-flux.md` : flux d'export pro (FX7 et FX8, écrans) à ajouter quand PRO-01 et PRO-02 seront planifiés.
+
+### Références
+
+- `docs/plans/gov-06-regles-metier.md`, `docs/specs/gov-06-regles-metier.md`
+- `docs/gouvernance/regles-metier.md`
+
 ## [2026-11-19] — Audit clos, v0.8.1, DBT-02 à DBT-04 livrés, GOV-06 commencé
 
 ### Fait
