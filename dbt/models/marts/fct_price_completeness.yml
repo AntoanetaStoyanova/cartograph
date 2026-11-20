@@ -1,0 +1,100 @@
+version: 2
+
+models:
+  - name: fct_price_completeness
+    config:
+      contract:
+        enforced: true
+    description: >
+      Complétude des prix par date de snapshot : part des produits Cardmarket du catalogue
+      courant (`dim_card.is_current`) qui ont un `trend_price`, sur l'une des deux
+      finitions, ce jour-là. Comptée en produits distincts, jamais en cartes : un produit
+      porté par plusieurs cartes compte une fois (R-PRX-12). Le dénominateur est le
+      catalogue d'aujourd'hui, le même pour toutes les dates. Lue par
+      `assert_price_completeness`, qui ne tourne que sur la vraie base.
+    data_tests:
+      - unique:
+          arguments:
+            column_name: price_date
+    columns:
+      - name: price_date
+        data_type: date
+        description: Date du snapshot.
+        data_tests:
+          - not_null
+      - name: catalog_products
+        data_type: bigint
+        description: Produits Cardmarket distincts des cartes courantes.
+      - name: priced_products
+        data_type: bigint
+        description: Produits du catalogue avec un `trend_price` à cette date.
+      - name: completeness
+        data_type: decimal(5, 4)
+        description: Part des produits du catalogue avec un prix de tendance, de 0 à 1 ; vide sans catalogue.
+
+unit_tests:
+  - name: fct_price_completeness_counts_distinct_products
+    description: >
+      Un produit à deux cartes ou à deux finitions compte une fois ; sont écartés un produit
+      de carte non courante, un produit hors catalogue et une carte sans produit ; un
+      produit sans `trend_price` ou avec un prix sur la seule finition `reverse_holo`.
+    model: fct_price_completeness
+    given:
+      - input: ref('dim_card')
+        format: sql
+        rows: |
+          select * from (values
+              (1::bigint, true), (1, true), (2, false), (3, true), (4, true),
+              (null, true), (6, true)
+          ) as t (cardmarket_product_id, is_current)
+      - input: ref('fct_price_snapshot')
+        format: sql
+        rows: |
+          select * from (values
+              (1::bigint, 'base', '2026-11-19'::date, 4001.37::decimal(10, 2)),
+              (1, 'reverse_holo', '2026-11-19', 4002.37),
+              (2, 'base', '2026-11-19', 4003.37),
+              (3, 'base', '2026-11-19', null),
+              (4, 'reverse_holo', '2026-11-19', 4004.37),
+              (6, 'base', '2026-11-19', 4005.37),
+              (99, 'base', '2026-11-19', 4006.37),
+              (1, 'base', '2026-11-20', 4001.37),
+              (3, 'base', '2026-11-20', null),
+              (4, 'base', '2026-11-20', 4004.37)
+          ) as t (cardmarket_product_id, finish, price_date, trend_price)
+    expect:
+      rows:
+        - {
+            price_date: 2026-11-19,
+            catalog_products: 4,
+            priced_products: 3,
+            completeness: 0.75,
+          }
+        - {
+            price_date: 2026-11-20,
+            catalog_products: 4,
+            priced_products: 2,
+            completeness: 0.5,
+          }
+
+  - name: fct_price_completeness_date_without_trend_price
+    description: Une date sans aucun `trend_price` garde sa ligne, à zéro produit avec prix.
+    model: fct_price_completeness
+    given:
+      - input: ref('dim_card')
+        format: sql
+        rows: select * from (values (1::bigint, true)) as t (cardmarket_product_id, is_current)
+      - input: ref('fct_price_snapshot')
+        format: sql
+        rows: |
+          select * from (values
+              (1::bigint, 'base', '2026-11-19'::date, null::decimal(10, 2))
+          ) as t (cardmarket_product_id, finish, price_date, trend_price)
+    expect:
+      rows:
+        - {
+            price_date: 2026-11-19,
+            catalog_products: 1,
+            priced_products: 0,
+            completeness: 0.0,
+          }

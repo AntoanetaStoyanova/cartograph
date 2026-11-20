@@ -20,20 +20,29 @@
 
 ---
 
-## [2026-11-20] — GOV-06 livré : règles métier
+## [2026-11-20] — QUA-01 livré, GOV-07 planifié
 
 ### Fait
 
 - Session ouverte (`/workspace-init`).
+- Plan qua-01-tests-dbt — Étape 1 : Prix négatif et règles dbt sans test, sur `feature/qua-01`. Test générique `non_negative` (`dbt/macros/non_negative.sql`, `.yml`) sur les six colonnes de prix de `fct_price_snapshot` et de `stg_tcgdex__cardmarket_prices` ; test unitaire `fct_price_snapshot_ignores_replaced_loaded_date` (R-HIS-02) ; mutation `cm_low = -1` : `non_negative` échoue, aval ignoré. Constats pour l'étape 5 : R-PRX-06 (JSON, date) non testable par dbt, R-PRX-07 (`not_null` sur `tcgplayer_product_id`) et R-PRX-08 (test unitaire du staging) déjà garanties, R-PRX-12 reportée à l'étape 3. `inv ci` (93 tests dbt) et `inv okflint` verts.
+- Plan qua-01-tests-dbt — Étape 5 : Règles et documentation. `regles-metier.md` : R-QUA-06 à R-QUA-10 ajoutées, R-PRX-07, R-PRX-08, R-PRX-12 et R-HIS-02 reliées à leurs tests, R-PRX-06 (JSON, date) et R-PRX-07 (usage) restées sans test avec la raison, « À venir » nettoyée (colonne Lot de QUA-02 corrigée). README, `CONTRIBUTING.md`, roadmap (QUA-01 cochée, QUA-02 complétée). Plan et spec QUA-01 passés à `statut: fait`. `inv ci` et `inv okflint` verts.
+- Plan qua-01-tests-dbt — Étape 4 : Rapport de couverture des tests. `src/cartograph/bin/dbt_coverage.py` (`analyse`, `main`), tâche `inv couverture-tests`, `tests/test_dbt_coverage.py` et test de la tâche. Constat réel : 80 colonnes sur 124 sans test (attributs descriptifs gardés par le contrat de type), 16 clés sans `relationships` ; `dim_card.cardmarket_product_id` → `int_cardmarket_products` n'a aucun test de relation. `inv ci` (406 pytest, couverture 99,46 %, 108 dbt) verts.
+- Plan qua-01-tests-dbt — Étape 3 : Indicateur de complétude. Modèle `fct_price_completeness` (une ligne par date : produits distincts du catalogue courant, produits avec `trend_price`, ratio ; 2 tests unitaires dont R-PRX-12), test `assert_price_completeness` (dernière date, `min_completeness` 0.98, tag `donnees_reelles`). Mesure réelle : 99,92 % au 19/11/2026 (30 254 produits sur 30 279). `inv ci` (397 pytest, 108 dbt) verts.
+- Plan qua-01-tests-dbt — Étape 2 : Trous acceptés, couverture et fraîcheur. Modèle `fct_price_history_status` (5 tests unitaires), seed `accepted_gaps` (vide : aucun trou réel du 28/10 au 19/11), variables `min_coverage` et `max_staleness_days`, tests `assert_price_history_coverage` et `assert_price_fresh` (tag `donnees_reelles`), `tasks.dbt` qui exclut le tag avec `--sample` (`build` et `test`), tests pytest adaptés. Mutations sur les données réelles concluantes, build réel 45/45. `inv ci` (397 pytest, 103 dbt) et `inv okflint` verts.
+- `docs/specs/qua-01-tests-dbt.md` et `docs/plans/qua-01-tests-dbt.md` créés (5 étapes). Décisions : fraîcheur et couverture ≥ 98 % sous le tag `donnees_reelles`, exclus de `--sample` et de `inv ci`, logique prouvée par tests unitaires ; complétude en produits distincts, seuil 98 % bloquant, modèle `fct_price_completeness` ; trous acceptés dans le seed `dbt/seeds/accepted_gaps.csv` ; seuils en variables dbt.
 - Plan gov-06-regles-metier — Étape 3 : Rareté, historique, qualité et règles à venir. `docs/gouvernance/regles-metier.md` : tables RAR (5), HIS (5), QUA (5), sections « À venir » (DBT-05, DBT-06, QUA-01, QUA-02, sans identifiant jusqu'à livraison), « Règles sans test » (collecte : COL-01, COL-26 ; dbt pour QUA-01 : PRX-06, PRX-07, PRX-08, PRX-12, HIS-02). Contrats dbt comptés comme garantie (HIS-03, QUA-03) ; origine de la règle provisoire de l'échelle : DBT-03, revue en DBT-06. `inv ci` et `inv okflint` verts.
 - Discussion (`/workspace-discuss`) : résumé du manifest pour un agent écarté (9 modèles, gain faible) ; traçabilité des règles retenue. Plan gov-06, étape 4 : case de renommage `R-<FAMILLE>-<nn>` (spec comprise) et lot GOV-07 dans le sous-point roadmap ajoutés. `inv okflint` vert.
 - Plan gov-06-regles-metier — Étape 4 : Liens et suivi. Identifiants des règles renommés `R-<FAMILLE>-<nn>` (`regles-metier.md`, spec) ; `README.md` (« Collecte » et « Base de données » résumées, lien, ligne « Pilotage ») ; `CONTRIBUTING.md` (tenue à jour dans la même PR) ; roadmap : lignes GOV-06 (cochée) et GOV-07, ordre DBT-04 → GOV-06 → QUA-01 → GOV-07 → QUA-02, mentions dans DBT-05, DBT-06 (validation par Antoaneta), QUA-01 (règles sans test `R-`), QUA-02. Plan et spec GOV-06 passés à `statut: fait` ; `regles-metier.md` reste `en cours` jusqu'à DBT-06. `inv ci` et `inv okflint` verts.
+- Revue (`/cr`) : README (« À venir », « ou « aucun » ») et `CONTRIBUTING.md` (format `R-`, lot d'origine) corrigés ; GOV-06 clos, PR #41 fusionnée dans `develop`, CI verte.
+- `docs/specs/gov-07-tracabilite-regles.md` et `docs/plans/gov-07-tracabilite-regles.md` créés (6 étapes). Décisions : manifeste dbt (`dbt parse` lancé par `inv regles`) ; collecte pytest par sous-processus ; module `bin/regles_metier.py` ; `meta` d'un modèle ou d'une colonne comptée seulement avec un test ou un contrat à ce niveau ; R-QUA-01 comptée sans test, R-PRX-06 et R-PRX-07 en partie ; R-COL-26 et `README.md:67` corrigées (seuls les `cards-*` sont purgés).
 
 ### Reste à faire
 
-- `inv finish` pour la PR GOV-06 vers `develop`.
-- Planifier QUA-01, tests dbt (`/workspace-plan qua-01`), après GOV-06 ; complétude et couverture en produits distincts, règles dbt sans test relevées par GOV-06 ; rapport de couverture tiré de `target/manifest.json` (colonnes sans test, clés sans `relationships`) en tâche `inv`.
-- Planifier GOV-07, traçabilité des règles (`/workspace-plan gov-07`), après QUA-01 et avant DBT-06 : `meta: regles` sur les modèles et les colonnes dbt (au niveau où la règle s'applique), `@pytest.mark.regle` sur les tests de la collecte, contrôle croisé avec `regles-metier.md` branché dans `inv ci`, en échec au moindre écart.
+- Exécuter docs/plans/gov-07-tracabilite-regles.md — Étape 1 : Module de contrôle et tâche `inv regles` (après `inv finish` de QUA-01 et création de `feature/gov-07` depuis `develop`).
+- QUA-01 livré : `/cr` puis `inv finish` (pull request vers `develop`).
+- Éventuel : test `relationships` de `dim_card.cardmarket_product_id` vers `int_cardmarket_products` (seul trou réel du rapport de couverture).
+- À trancher avant QUA-02 : `inv rebuild` lance les tests `donnees_reelles` ; des snapshots de plus de 2 jours font échouer la fraîcheur et la base n'est pas remplacée. Exclure le tag de `rebuild` ou le garder.
 - Avant la porte 1 : relire dans un navigateur les conditions de Cardmarket et de TCGplayer (veille).
 - Rapport de novembre à régénérer en fin de mois (`inv suivi --mois 2026-11 --force`, commentaire gardé), puis `statut: fait` ; mettre à jour les chiffres de `docs/gouvernance/green-it.md`. Chaque début de mois : `inv ci` puis `inv suivi`, commentaire.
 - Antoaneta : avant PRO-02, demander aux testeurs leur logiciel de caisse et un fichier d'import exemple.
@@ -41,6 +50,8 @@
 
 ### Références
 
+- `../docs/specs/gov-07-tracabilite-regles.md`, `../docs/plans/gov-07-tracabilite-regles.md`
+- `../docs/specs/qua-01-tests-dbt.md`, `../docs/plans/qua-01-tests-dbt.md`
 - `docs/plans/gov-06-regles-metier.md`, `docs/specs/gov-06-regles-metier.md`
 - `docs/gouvernance/regles-metier.md`, `README.md`, `CONTRIBUTING.md`, `docs/plans/roadmap-lots.md`
 

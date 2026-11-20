@@ -3,12 +3,17 @@ from pathlib import Path
 import pytest
 from invoke import MockContext, Result
 
-from tasks import ci, dbt
+from tasks import ci, couverture_tests, dbt
 
 BUILD = "uv run dbt build --project-dir dbt --profiles-dir dbt"
 DEBUG = "uv run dbt debug --project-dir dbt --profiles-dir dbt"
 SAMPLE_BUILD = (
-    "uv run dbt build --vars '{snapshot_dir: dbt/sample/snapshots}'"
+    "uv run dbt build --exclude tag:donnees_reelles"
+    " --vars '{snapshot_dir: dbt/sample/snapshots}'"
+    " --project-dir dbt --profiles-dir dbt"
+)
+SAMPLE_DEBUG = (
+    "uv run dbt debug --vars '{snapshot_dir: dbt/sample/snapshots}'"
     " --project-dir dbt --profiles-dir dbt"
 )
 SAMPLE_ENV = {"CARTOGRAPH_DUCKDB": "data/cartograph.sample.duckdb"}
@@ -48,6 +53,31 @@ def test_dbt_sample_uses_sample_snapshots_and_database() -> None:
     assert c.run.call_args.kwargs["env"] == SAMPLE_ENV
 
 
+def test_dbt_sample_keeps_other_commands_unfiltered() -> None:
+    c = MockContext(run={SAMPLE_DEBUG: Result()})
+    dbt(c, args="debug", sample=True)
+    assert _commands(c) == [SAMPLE_DEBUG]
+
+
+def test_dbt_sample_accepts_empty_args() -> None:
+    c = MockContext(run=Result())
+    dbt(c, args="", sample=True)
+    assert "--exclude" not in _commands(c)[0]
+
+
+def test_dbt_builds_real_data_tests_without_sample() -> None:
+    c = MockContext(run={BUILD: Result()})
+    dbt(c)
+    assert "donnees_reelles" not in _commands(c)[0]
+
+
 def test_ci_runs_dbt_on_sample() -> None:
     dbt_calls = [p for p in ci.pre if getattr(p, "task", p) is dbt]
     assert [p.kwargs for p in dbt_calls] == [{"sample": True}]
+
+
+def test_couverture_tests_runs_report_module() -> None:
+    command = "uv run python -m cartograph.bin.dbt_coverage"
+    c = MockContext(run={command: Result()})
+    couverture_tests(c)
+    assert _commands(c) == [command]

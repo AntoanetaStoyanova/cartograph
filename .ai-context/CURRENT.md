@@ -14,6 +14,24 @@
 
 ---
 
+## [2026-11-20] — Audit (tout le dépôt)
+
+### État actuel
+
+- audit-code : 1 confirmée, 0 écartée, 0 à vérifier (+5 INFO).
+- audit-tests : 1 confirmée, 0 écartée, 0 à vérifier (+2 INFO).
+- audit-doc : 1 confirmée (README.md:67 et R-COL-26 fusionnées), 0 écartée, 0 à vérifier (+8 INFO).
+- Aucun CRITICAL. Tokens : code 117 581, tests 27 684, doc 296 798.
+- Couverture partielle : `tests/` surtout par grep, `docs/gouvernance/{green-it,calendrier,veille}.md`, `suivi/` hors `run.py` et `actions.py` non lus.
+
+### Améliorations suggérées
+
+- [WARN] `src/cartograph/bin/collect/run.py:512` — `_collect_sets` écrit `sets-<jour>.parquet` et reste `ok` malgré des sets en échec ; le set absent garde sa ligne de la veille avec `is_current = false` (`stg_tcgdex__sets.sql:28`) → fusionner les fiches manquantes depuis le dernier `sets-*` ou passer l'étape en `failed`.
+- [WARN] `tests/test_tasks_dbt.py:56` — seul `build` est testé avec `--exclude tag:donnees_reelles` ; retirer `test` de `TESTING_COMMANDS` (`tasks/__init__.py:70`) passe inaperçu → test paramétré sur `args="test"`.
+- [WARN] `README.md:67`, `docs/gouvernance/regles-metier.md:58` (R-COL-26) — la doc laisse croire que toute la Release `catalogue` est purgée ; le workflow ne purge que `cards-*` (`cartograph-data/.github/workflows/collect.yml:193-205`) → « seuls les `cards-*` sont purgés ».
+
+---
+
 ## [2026-11-18] — Audit (tout le dépôt)
 
 ### État actuel

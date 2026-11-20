@@ -23,6 +23,10 @@ models:
 
 seeds:
   cartograph:
+    accepted_gaps:
+      +column_types:
+        gap_date: date
+        reason: varchar
     rarity_levels:
       +column_types:
         rarity: varchar
@@ -31,3 +35,6 @@ seeds:
 
 vars:
   snapshot_dir: data/snapshots
+  min_coverage: 0.98
+  max_staleness_days: 2
+  min_completeness: 0.98

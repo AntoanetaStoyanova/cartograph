@@ -66,16 +66,21 @@ DATABASE = Path("data/cartograph.duckdb")
 REBUILD_DATABASE = Path("data/cartograph.rebuild.duckdb")
 SAMPLE_DIR = Path("dbt/sample/snapshots")
 SAMPLE_DATABASE = Path("data/cartograph.sample.duckdb")
+REAL_DATA_TAG = "donnees_reelles"
+TESTING_COMMANDS = {"build", "test"}
 
 
 @task
 def dbt(c: Context, args: str = "build", sample: bool = False) -> None:
-    """Lance dbt (build par défaut) ; --sample : échantillon et base d'échantillon."""
+    """Lance dbt (build par défaut) ; --sample : échantillon, sans tests réels."""
     Path("data").mkdir(exist_ok=True)
     if not sample:
         c.run(_dbt_command(args))
         return
     variables = shlex.quote(f"{{snapshot_dir: {SAMPLE_DIR.as_posix()}}}")
+    command = args.split()[:1]
+    if command and command[0] in TESTING_COMMANDS:
+        args = f"{args} --exclude tag:{REAL_DATA_TAG}"
     c.run(
         _dbt_command(f"{args} --vars {variables}"),
         env={"CARTOGRAPH_DUCKDB": str(SAMPLE_DATABASE)},
@@ -85,6 +90,12 @@ def dbt(c: Context, args: str = "build", sample: bool = False) -> None:
 def _dbt_command(args: str) -> str:
     """Commande dbt sur le projet et le profil de dbt/."""
     return f"uv run dbt {args} --project-dir dbt --profiles-dir dbt"
+
+
+@task
+def couverture_tests(c: Context) -> None:
+    """Liste les colonnes dbt sans test et les clés sans relationships."""
+    c.run("uv run python -m cartograph.bin.dbt_coverage")
 
 
 @task(pre=[check, test, call(dbt, sample=True)])  # type: ignore[misc]

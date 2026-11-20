@@ -1,0 +1,20 @@
+version: 2
+
+seeds:
+  - name: accepted_gaps
+    description: >
+      Jours sans snapshot de prix connus et acceptés, relus à la main : une panne passée ne
+      bloque pas indéfiniment la couverture de l'historique (`fct_price_history_status`).
+      Un jour listé qui a un snapshot, ou hors de la période couverte, est ignoré. Vide au
+      20 novembre 2026 : aucun trou entre le 28 octobre et le 19 novembre 2026, le 9 novembre
+      ayant été rattrapé le soir même.
+    columns:
+      - name: gap_date
+        description: Jour sans snapshot de prix accepté.
+        data_tests:
+          - unique
+          - not_null
+      - name: reason
+        description: Cause du trou, en une phrase.
+        data_tests:
+          - not_null

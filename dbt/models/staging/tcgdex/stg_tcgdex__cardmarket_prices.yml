@@ -35,21 +35,33 @@ models:
       - name: low_price
         data_type: decimal(10, 2)
         description: Prix le plus bas proposé, vide si absent.
+        data_tests:
+          - non_negative
       - name: trend_price
         data_type: decimal(10, 2)
         description: Prix de tendance de Cardmarket, vide si absent ; prix de référence (DBT-05).
+        data_tests:
+          - non_negative
       - name: avg_price
         data_type: decimal(10, 2)
         description: Prix moyen de vente, vide si absent.
+        data_tests:
+          - non_negative
       - name: avg1_price
         data_type: decimal(10, 2)
         description: Moyenne des ventes sur 1 jour, vide si absente.
+        data_tests:
+          - non_negative
       - name: avg7_price
         data_type: decimal(10, 2)
         description: Moyenne des ventes sur 7 jours, vide si absente.
+        data_tests:
+          - non_negative
       - name: avg30_price
         data_type: decimal(10, 2)
         description: Moyenne des ventes sur 30 jours, vide si absente.
+        data_tests:
+          - non_negative
       - name: currency_code
         data_type: varchar
         description: Devise des prix.

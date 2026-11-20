@@ -86,6 +86,8 @@ uv run inv rebuild    # fichiers des Releases, puis dbt build dans data/cartogra
 
 La base contient le catalogue par langue (`dim_card`, `dim_set`, hors TCG Pocket, cartes retirées gardées), la rareté ramenée à un code commun aux langues et l'historique des prix Cardmarket par produit, finition et date (`fct_price_snapshot`). Ses règles (catalogue, prix, rareté, historique, qualité) sont dans [`docs/gouvernance/regles-metier.md`](docs/gouvernance/regles-metier.md), avec le test qui garantit chacune, ou « aucun ».
 
+Des tests de qualité portent sur les prix : prix négatif, complétude (au moins 98 % des produits du catalogue ont un prix de tendance), couverture de l'historique (au moins 98 % des jours, hors trous listés dans le seed `dbt/seeds/accepted_gaps.csv`) et fraîcheur (dernier snapshot de deux jours au plus). Les trois derniers dépendent des données réelles : ils portent le tag `donnees_reelles`, absent de `inv ci`, et tournent avec `uv run inv dbt`. `uv run inv couverture-tests` liste les colonnes sans test et les clés sans `relationships`.
+
 Le détail de chaque colonne et les tests sont dans le `.yml` de chaque modèle (`uv run inv dbt --args "docs generate"`), la construction de la base dans `CONTRIBUTING.md`, section dbt.
 
 ## Mettre à jour depuis le template
