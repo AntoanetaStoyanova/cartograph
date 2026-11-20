@@ -4,7 +4,8 @@ models:
   - name: fct_price_snapshot
     config:
       meta:
-        regles: [R-HIS-03, R-PRX-01, R-QUA-03]
+        regles: [R-PRX-01]
+        regles_contrat: [R-HIS-03, R-QUA-03]
       contract:
         enforced: true
     description: >

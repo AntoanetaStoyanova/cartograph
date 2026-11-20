@@ -4,7 +4,7 @@ models:
   - name: fct_price_completeness
     config:
       meta:
-        regles: [R-QUA-03]
+        regles_contrat: [R-QUA-03]
       contract:
         enforced: true
     description: >

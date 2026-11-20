@@ -22,7 +22,7 @@ Une table par famille. Chaque ligne a cinq colonnes :
 
 Chaque règle a été vérifiée dans le code, pas recopiée des specs. Aucun prix réel n'apparaît ici, seulement des règles et des comptes.
 
-Le lien avec les tests est contrôlé par `uv run inv regles`, lancé par `inv ci` : chaque test dbt (colonne, modèle, test unitaire ou singulier) cite ses règles dans `config: meta: regles`, chaque test Python dans `@pytest.mark.regle("R-…")`. Le contrôle échoue si un test cite une règle absente de ce document, si une règle avec test n'en a aucun, si une règle « aucun » en a un, ou si un identifiant est déclaré deux fois. Les noms de tests de la colonne `Garantie par` ne sont pas comparés : c'est le code qui fait foi.
+Le lien avec les tests est contrôlé par `uv run inv regles`, lancé par `inv ci` : chaque test dbt (colonne, modèle, test unitaire ou singulier) cite ses règles dans `config: meta: regles`, chaque test Python dans `@pytest.mark.regle("R-…")`. Le contrôle échoue si un test cite une règle absente de ce document, si une règle avec test n'en a aucun, si un modèle ou une colonne cite une règle sans test ni contrat, si une règle « aucun » en a un, ou si un identifiant est déclaré deux fois. Les noms de tests de la colonne `Garantie par` ne sont pas comparés : c'est le code qui fait foi.
 
 Une règle abandonnée quitte sa famille et passe dans « Règles retirées », avec sa date et ce qui la remplace. Une règle de la section « À venir » remonte dans sa famille quand son lot est livré.
 

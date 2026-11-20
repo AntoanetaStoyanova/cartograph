@@ -3,7 +3,8 @@ Traçabilité des règles métier : lien entre ``regles-metier.md`` et les tests
 
 Lit les règles du document, les identifiants cités par dbt (``meta: regles`` du
 manifeste) et par pytest (marqueur ``regle``), puis liste les écarts : règle citée
-mais absente du document, règle « testée » sans test, règle « sans test » avec un test,
+mais absente du document, citation d'un modèle ou d'une colonne sans test ni contrat,
+règle « testée » sans test, règle « sans test » avec un test,
 identifiant déclaré deux fois.
 
 Lancé par ``inv regles`` ou ``python -m cartograph.bin.regles_metier`` ; code de sortie
@@ -110,12 +111,12 @@ def parse_rules(text: str) -> list[Rule]:
     return rules
 
 
-def _regles(entry: dict[str, Any], label: str) -> list[str]:
-    """Lit la liste ``regles`` du ``meta`` d'un objet du manifeste."""
+def _regles(entry: dict[str, Any], label: str, key: str = "regles") -> list[str]:
+    """Lit la liste ``key`` du ``meta`` d'un objet du manifeste."""
     meta = {**(entry.get("meta") or {}), **(entry.get("config", {}).get("meta") or {})}
-    value = meta.get("regles", [])
+    value = meta.get(key, [])
     if not isinstance(value, list) or not all(isinstance(r, str) for r in value):
-        raise ValueError(f"{label} : `regles` doit être une liste d'identifiants")
+        raise ValueError(f"{label} : `{key}` doit être une liste d'identifiants")
     return value
 
 
@@ -125,7 +126,9 @@ def dbt_links(manifest: dict[str, Any]) -> list[Link]:
 
     Un test unitaire, singulier ou générique garantit la règle qu'il cite. Un modèle,
     une colonne ou un seed la garantit seulement s'il a un test générique à son niveau
-    (pour un modèle : un test sur le modèle ou l'une de ses colonnes, ou son contrat).
+    (pour un modèle : un test sur le modèle ou l'une de ses colonnes). Les règles que
+    seul le contrat d'un modèle garantit se citent sous ``regles_contrat`` et ne
+    comptent que si ``contract.enforced`` est vrai.
 
     Parameters
     ----------
@@ -140,7 +143,7 @@ def dbt_links(manifest: dict[str, Any]) -> list[Link]:
     Raises
     ------
     ValueError
-        Si ``regles`` n'est pas une liste de textes.
+        Si ``regles`` ou ``regles_contrat`` n'est pas une liste de textes.
     """
     nodes: dict[str, dict[str, Any]] = manifest["nodes"]
     tested: dict[str, set[str | None]] = defaultdict(set)
@@ -153,11 +156,15 @@ def dbt_links(manifest: dict[str, Any]) -> list[Link]:
         if kind == "test":
             links += [Link(r, node_id, True) for r in _regles(node, node_id)]
         elif kind in ("model", "seed"):
-            contract = kind == "model" and node["config"].get("contract", {}).get(
-                "enforced", False
-            )
-            guaranteed = bool(tested[node_id]) or bool(contract)
-            links += [Link(r, node_id, guaranteed) for r in _regles(node, node_id)]
+            links += [
+                Link(r, node_id, bool(tested[node_id])) for r in _regles(node, node_id)
+            ]
+            if kind == "model":
+                contract = bool(node["config"].get("contract", {}).get("enforced"))
+                links += [
+                    Link(r, node_id, contract)
+                    for r in _regles(node, node_id, "regles_contrat")
+                ]
             for column, entry in node["columns"].items():
                 label = f"{node_id}.{column}"
                 links += [
@@ -260,6 +267,8 @@ def check(rules: Sequence[Rule], links: Sequence[Link]) -> list[str]:
             gaps.append(f"{link.source} : cite {link.rule}, absente du document")
         elif link.guarantees:
             guarantors[link.rule].add(link.source)
+        else:
+            gaps.append(f"{link.source} : cite {link.rule} sans test ni contrat")
     for rule in known.values():
         if rule.tested and not guarantors[rule.id]:
             gaps.append(f"{rule.id} : marquée testée, aucun test ne la cite")
@@ -296,7 +305,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     setup_logging("cartograph")
     for path in (args.regles, args.manifest):
         if not path.is_file():
-            logger.error("%s absent (pour le manifeste : lancer inv regles).", path)
+            logger.error("%s absent (pour le manifeste : lancer inv dbt).", path)
             return 1
     rules = parse_rules(args.regles.read_text(encoding="utf-8"))
     try:

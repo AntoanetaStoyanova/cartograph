@@ -99,18 +99,27 @@ def test_dbt_links_column_needs_a_test_on_that_column() -> None:
     }
 
 
-def test_dbt_links_model_counts_with_a_test_or_a_contract() -> None:
-    meta = {"meta": {"regles": ["R-HIS-03"]}}
+def test_dbt_links_model_regles_needs_a_test_not_a_contract() -> None:
+    meta = {"meta": {"regles": ["R-CAT-02"]}}
     with_test = _node("model", "a", config=meta)
-    with_contract = _node("model", "b", config=meta | {"contract": {"enforced": True}})
-    bare = _node("model", "c", config=meta)
-    seed = _node("seed", "d", config=meta | {"contract": {"enforced": True}})
-    manifest = _manifest(with_test, with_contract, bare, seed, _generic("a", "id"))
+    contract_only = _node("model", "b", config=meta | {"contract": {"enforced": True}})
+    seed = _node("seed", "c", config=meta)
+    manifest = _manifest(with_test, contract_only, seed, _generic("a", "id"))
     assert _links(manifest) == {
-        ("R-HIS-03", "model.cartograph.a", True),
-        ("R-HIS-03", "model.cartograph.b", True),
-        ("R-HIS-03", "model.cartograph.c", False),
-        ("R-HIS-03", "seed.cartograph.d", False),
+        ("R-CAT-02", "model.cartograph.a", True),
+        ("R-CAT-02", "model.cartograph.b", False),
+        ("R-CAT-02", "seed.cartograph.c", False),
+    }
+
+
+def test_dbt_links_regles_contrat_needs_an_enforced_contract() -> None:
+    meta = {"meta": {"regles_contrat": ["R-QUA-03"]}}
+    enforced = _node("model", "a", config=meta | {"contract": {"enforced": True}})
+    tested_only = _node("model", "b", config=meta)
+    manifest = _manifest(enforced, tested_only, _generic("b", "id"))
+    assert _links(manifest) == {
+        ("R-QUA-03", "model.cartograph.a", True),
+        ("R-QUA-03", "model.cartograph.b", False),
     }
 
 
@@ -134,7 +143,8 @@ def test_check_unknown_rule() -> None:
 
 def test_check_tested_rule_without_test() -> None:
     assert check(RULES, [Link("R-COL-02", "col", False)]) == [
-        "R-COL-02 : marquée testée, aucun test ne la cite"
+        "R-COL-02 : marquée testée, aucun test ne la cite",
+        "col : cite R-COL-02 sans test ni contrat",
     ]
 
 

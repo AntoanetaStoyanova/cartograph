@@ -4,7 +4,8 @@ models:
   - name: stg_tcgdex__cardmarket_prices
     config:
       meta:
-        regles: [R-PRX-01, R-QUA-03]
+        regles: [R-PRX-01]
+        regles_contrat: [R-QUA-03]
       contract:
         enforced: true
     description: >
