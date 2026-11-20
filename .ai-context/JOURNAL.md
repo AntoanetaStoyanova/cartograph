@@ -20,7 +20,31 @@
 
 ---
 
-## [2026-11-19] — Audit clos, v0.8.1, DBT-02 et DBT-03 livrés, DBT-04 livré
+## [2026-11-20] — GOV-06 livré : règles métier
+
+### Fait
+
+- Session ouverte (`/workspace-init`).
+- Plan gov-06-regles-metier — Étape 3 : Rareté, historique, qualité et règles à venir. `docs/gouvernance/regles-metier.md` : tables RAR (5), HIS (5), QUA (5), sections « À venir » (DBT-05, DBT-06, QUA-01, QUA-02, sans identifiant jusqu'à livraison), « Règles sans test » (collecte : COL-01, COL-26 ; dbt pour QUA-01 : PRX-06, PRX-07, PRX-08, PRX-12, HIS-02). Contrats dbt comptés comme garantie (HIS-03, QUA-03) ; origine de la règle provisoire de l'échelle : DBT-03, revue en DBT-06. `inv ci` et `inv okflint` verts.
+- Discussion (`/workspace-discuss`) : résumé du manifest pour un agent écarté (9 modèles, gain faible) ; traçabilité des règles retenue. Plan gov-06, étape 4 : case de renommage `R-<FAMILLE>-<nn>` (spec comprise) et lot GOV-07 dans le sous-point roadmap ajoutés. `inv okflint` vert.
+- Plan gov-06-regles-metier — Étape 4 : Liens et suivi. Identifiants des règles renommés `R-<FAMILLE>-<nn>` (`regles-metier.md`, spec) ; `README.md` (« Collecte » et « Base de données » résumées, lien, ligne « Pilotage ») ; `CONTRIBUTING.md` (tenue à jour dans la même PR) ; roadmap : lignes GOV-06 (cochée) et GOV-07, ordre DBT-04 → GOV-06 → QUA-01 → GOV-07 → QUA-02, mentions dans DBT-05, DBT-06 (validation par Antoaneta), QUA-01 (règles sans test `R-`), QUA-02. Plan et spec GOV-06 passés à `statut: fait` ; `regles-metier.md` reste `en cours` jusqu'à DBT-06. `inv ci` et `inv okflint` verts.
+
+### Reste à faire
+
+- `inv finish` pour la PR GOV-06 vers `develop`.
+- Planifier QUA-01, tests dbt (`/workspace-plan qua-01`), après GOV-06 ; complétude et couverture en produits distincts, règles dbt sans test relevées par GOV-06 ; rapport de couverture tiré de `target/manifest.json` (colonnes sans test, clés sans `relationships`) en tâche `inv`.
+- Planifier GOV-07, traçabilité des règles (`/workspace-plan gov-07`), après QUA-01 et avant DBT-06 : `meta: regles` sur les modèles et les colonnes dbt (au niveau où la règle s'applique), `@pytest.mark.regle` sur les tests de la collecte, contrôle croisé avec `regles-metier.md` branché dans `inv ci`, en échec au moindre écart.
+- Avant la porte 1 : relire dans un navigateur les conditions de Cardmarket et de TCGplayer (veille).
+- Rapport de novembre à régénérer en fin de mois (`inv suivi --mois 2026-11 --force`, commentaire gardé), puis `statut: fait` ; mettre à jour les chiffres de `docs/gouvernance/green-it.md`. Chaque début de mois : `inv ci` puis `inv suivi`, commentaire.
+- Antoaneta : avant PRO-02, demander aux testeurs leur logiciel de caisse et un fichier d'import exemple.
+- `cadrage-flux.md` : flux d'export pro (FX7 et FX8, écrans) à ajouter quand PRO-01 et PRO-02 seront planifiés.
+
+### Références
+
+- `docs/plans/gov-06-regles-metier.md`, `docs/specs/gov-06-regles-metier.md`
+- `docs/gouvernance/regles-metier.md`, `README.md`, `CONTRIBUTING.md`, `docs/plans/roadmap-lots.md`
+
+## [2026-11-19] — Audit clos, v0.8.1, DBT-02 à DBT-04 livrés, GOV-06 commencé
 
 ### Fait
 
@@ -47,6 +71,7 @@
 - Plan dbt-03-intermediate-rarete — Étape 2 : `int_rarity_mapping`. `.yml` d'abord : contrat, `data_type`, `unique`/`not_null` sur `rarity`, `not_null` en erreur sur `rarity_code`, test unitaire `int_rarity_mapping_one_row_per_collected_name` (vide et `None` → une ligne `None`, `Rare` fr/en/ja → une ligne, nom absent du seed → code et niveau vides), rouge sans modèle puis vert ; échoue bien si le `coalesce` est retiré. `.sql` : `collected` (`distinct coalesce(rarity, 'None')`) → `mapped` (jointure gauche sur `rarity_levels`). `inv ci` (395 tests, dbt 48/48) et `inv okflint` verts.
 - Plan dbt-03-intermediate-rarete — Étape 3 : Vraie base et documentation. `build --select +int_rarity_mapping` vert sur la vraie base : 72 lignes, 72 codes, 49 niveaux. Contrôle de l'ordre (rangs seulement, noté dans la spec) : niveaux 4 et 5 inversés, 6 et 7 aussi ; 291 produits à deux niveaux selon la langue (pour DBT-06). Mis à jour : roadmap (DBT-03 coché ; DBT-04 : `coalesce(rarity, 'None')`, exclusion `tcgp`, 9 cartes sans set, incrémental sur `price_date > max(price_date)` ; DBT-06 : écarts de l'échelle), spec maîtresse (ligne `int_rarity_mapping`), `CONTRIBUTING.md` (`dbt/seeds/` et `dbt/tests/` dans l'arborescence, seed, conduite à tenir quand le test de couverture échoue), description de `rarity` dans `stg_tcgdex__cards.yml`. Critères de la spec cochés sauf « CI GitHub verte », à vérifier sur la PR. `inv ci` et `inv okflint` verts.
 - Revue de DBT-04 (`/cr`) : approuvé avec une correction mineure et deux INFO, tous corrigés. `fct_price_snapshot` filtre sur `price_date not in` les dates de la table au lieu de `> max(price_date)`, qui sautait pour toujours un fichier plus ancien arrivé après coup ; test unitaire `fct_price_snapshot_loads_late_dates` (échoue avec l'ancien filtre). Exclusion de Pocket écrite une fois, macro `dbt/macros/not_pocket_set.sql` (et `.yml`), utilisée par `dim_set`, `dim_card` et `int_cardmarket_products` ; `dim_set` exclut désormais un set `tcgp` dans toutes ses langues (test unitaire étendu). Vraie base : build vert, comptes inchangés. Spec, plan, spec maîtresse, roadmap et `CONTRIBUTING.md` à jour.
+- PR #40 (`feature/dbt-04` → `develop`) fusionnée, CI GitHub verte (run 44553184677) : dernier critère coché, plan et spec dbt-04-marts-catalogue-prix `statut: fait`.
 - Revue de DBT-03 (`/cr`) : approuvé avec corrections mineures, faites : test singulier `assert_rarity_level_empty_iff_off_scale.sql` (niveau vide si et seulement si `none`, `promo` ou `pocket` ; échoue bien si `Rare` perd son niveau), `+column_types` limité au seed `rarity_levels` dans `dbt_project.yml`, `CONTRIBUTING.md` à jour. Gardés en INFO : pas de liste fermée des codes, `severity: error` explicite. `inv ci` (dbt 49/49), `inv okflint` et vraie base (12/12) verts.
 - PR #39 (`feature/dbt-03` → `develop`) fusionnée, CI GitHub verte (run 44530060911), branche supprimée : dernier critère coché, plan et spec dbt-03-intermediate-rarete `statut: fait`.
 - `docs/specs/dbt-04-marts-catalogue-prix.md` et `docs/plans/dbt-04-marts-catalogue-prix.md` créés. Constats (comptes) : Pocket 2 480 `en` / 2 116 `fr` sans produit ; 9 `pl4-AR*` `fr` sans set dans leur langue, produit `278861` ; 30 279 produits tous rattachés ; produits partagés 757 `en`, 724 `fr`, 3 `ja`, dont 439 / 413 / 3 à plusieurs noms ou raretés (erreurs de correspondance TCGdex, ex. `swsh11-130` / `swsh11-201`). Décisions : `dim_set` et `dim_card` par langue, hors sets `tcgp` (toutes langues) ; `pl4` / `fr` gardé, test singulier `assert_card_set_exists` sur (`set_id`, `language_code`) avec exclusion nommée (pas de dbt_utils) ; `fct_price_snapshot` au grain produit, incrémentale `append` sur `price_date > max(price_date)`, `on_schema_change: fail` ; `int_cardmarket_products` avec `is_ambiguous_product` (plusieurs noms ou codes de rareté dans une langue), test `warn` seulement ; DBT-06 exclut ou marque les produits ambigus et agrège par produits distincts.
@@ -56,9 +81,16 @@
 - Plan dbt-04-marts-catalogue-prix — Étape 3 : `fct_price_snapshot` incrémentale. Créés : `dbt/models/marts/fct_price_snapshot.sql` (`incremental`, `append`, `on_schema_change: fail`, filtre `price_date > coalesce(max(price_date), '1900-01-01')` de la table) et `.yml` (contrat, `unique` sur le grain, `not_null`, `accepted_values` `base` / `reverse_holo`, `relationships` vers `int_cardmarket_products` en erreur). Tests unitaires : premier chargement (`is_incremental: false`, override obligatoire dès qu'un test du modèle le force) et rattrapage J+1 à J+3 sans J-1 ni J ; mutation `>=` : le test de rattrapage échoue. Échantillon : base supprimée puis trois builds, 351 lignes chaque fois, égal au staging, sans doublon. `inv ci` (dbt 79/79) et `inv okflint` verts.
 - Plan dbt-04-marts-catalogue-prix — Étape 4 : Vraie base et documentation. `inv dbt --args "build"` sans sélection vert deux fois (78 succès, 1 avertissement : 442 produits ambigus), second passage sans ligne ajoutée. Comptes notés dans la spec : `dim_set` 206 `en` / 188 `fr` / 204 `ja`, `dim_card` 21 432 / 20 227 / 13 156, `int_cardmarket_products` 30 279 (aucun sans carte courante), `fct_price_snapshot` 1 095 848 lignes, 23 dates, 30 272 produits. Mis à jour : roadmap (DBT-04 coché ; DBT-06 produits distincts, `is_ambiguous_product` après `has_current_card` ; QUA-01 en produits distincts), spec maîtresse (ligne `int_cardmarket_products`, grains des marts), `CONTRIBUTING.md` (marts, exclusion `pl4` / `fr`, incrémental et `--full-refresh`). Critères de la spec cochés sauf « CI GitHub verte », à vérifier sur la PR. `inv ci` et `inv okflint` verts.
 
+- `docs/specs/gov-06-regles-metier.md` et `docs/plans/gov-06-regles-metier.md` créés. Décisions : catalogue des règles métier de la collecte et de dbt dans `docs/gouvernance/regles-metier.md` (versionné, `type: reference`), une table par famille (COL, CAT, PRX, RAR, HIS, QUA) avec `ID`, `Règle`, `Appliquée dans`, `Garantie par`, `Origine` ; règles vérifiées dans le code, pas recopiées des specs ; section « À venir » (DBT-05, DBT-06, QUA-01, QUA-02) et « Règles retirées » (collecte du lundi) ; lien aux tests par colonne seulement, sans `meta` dbt ; README renvoie au document ; validation par Antoaneta à la clôture de DBT-06 ; lot GOV-06 entre DBT-04 et QUA-01.
+
+- Plan gov-06-regles-metier — Étape 1 : Squelette et règles de la collecte (COL). Branche `feature/gov-06` créée depuis `develop` (journal pas encore commité). `docs/gouvernance/regles-metier.md` créé (`statut: en cours`) : mode d'emploi, table COL de 26 règles vérifiées dans `src/cartograph/bin/collect/`, chaque test cité retrouvé dans `tests/`. Deux règles sans test : déclenchement par cron-job.org (COL-01) et rétention de la Release `catalogue` (COL-26), toutes deux dans le workflow de `cartograph-data`. Origine « Optimisation de la collecte (9 novembre 2026) » pour COL-15 et COL-20, spec sans identifiant de lot. Collecte du lundi dans « Règles retirées ». Spec passée à `en cours`. `inv ci` et `inv okflint` verts.
+
+- Plan gov-06-regles-metier — Étape 2 : Catalogue et prix (CAT, PRX). `docs/gouvernance/regles-metier.md` : tables CAT (9 règles) et PRX (12 règles), vérifiées dans les modèles, macros et tests dbt ; chaque test unitaire cité retrouvé dans les `.yml`. Sans test : variantes non filtrées (PRX-08), TCGplayer hors prix de référence (PRX-07), agrégats en produits distincts (PRX-12), JSON et date TCGplayer invalides (conversions seulement). Finitions de la collection (normale, holo → `base`, reverse → `reverse_holo`) et prix de référence `trend_price` : appliqués nulle part dans le code, placés dans « À venir » (DBT-05) à l'étape 3. `.pre-commit-config.yaml` : `default_language_version: node: 22.12.0` (Node 12 de WSL trop ancien pour markdownlint-cli2). `inv ci` et `inv okflint` verts.
+
 ### Reste à faire
 
-- DBT-04 : ouvrir la PR (`inv finish`), vérifier la CI GitHub, cocher le dernier critère et passer plan et spec à `statut: fait`.
+- Exécuter docs/plans/gov-06-regles-metier.md — Étape 3 : Rareté, historique, qualité et règles à venir (RAR, HIS, QUA).
+- Planifier QUA-01, tests dbt (`/workspace-plan qua-01`), après GOV-06 ; complétude et couverture en produits distincts, règles dbt sans test relevées par GOV-06.
 - Avant la porte 1 : relire dans un navigateur les conditions de Cardmarket et de TCGplayer (veille).
 - Rapport de novembre à régénérer en fin de mois (`inv suivi --mois 2026-11 --force`, commentaire gardé), puis `statut: fait` ; mettre à jour les chiffres de `docs/gouvernance/green-it.md`. Chaque début de mois : `inv ci` puis `inv suivi`, commentaire.
 - Antoaneta : avant PRO-02, demander aux testeurs leur logiciel de caisse et un fichier d'import exemple.
@@ -66,6 +98,8 @@
 
 ### Références
 
+- ../docs/specs/gov-06-regles-metier.md, ../docs/plans/gov-06-regles-metier.md
+- ../docs/gouvernance/regles-metier.md, src/cartograph/bin/collect/, tests/test_collect_*.py, dbt/models/, dbt/macros/, dbt/tests/, .pre-commit-config.yaml
 - ../docs/specs/dbt-04-marts-catalogue-prix.md, ../docs/plans/dbt-04-marts-catalogue-prix.md
 - dbt/models/marts/dim_set.sql, dim_set.yml, dim_card.sql, dim_card.yml, dbt/tests/assert_card_set_exists.sql, dbt/models/intermediate/int_cardmarket_products.sql, int_cardmarket_products.yml, dbt/tests/assert_no_ambiguous_product.sql, dbt/models/marts/fct_price_snapshot.sql, fct_price_snapshot.yml, dbt/macros/not_pocket_set.sql, not_pocket_set.yml, docs/plans/roadmap-lots.md, spec maîtresse, CONTRIBUTING.md
 - ../docs/specs/dbt-03-intermediate-rarete.md, ../docs/plans/dbt-03-intermediate-rarete.md

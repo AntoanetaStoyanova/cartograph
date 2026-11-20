@@ -32,9 +32,9 @@ cp .env.example .env
 
 ## État du projet
 
-- **En service** : collecte quotidienne des prix, des sets et du catalogue (mis à jour chaque jour, cartes disparues gardées) depuis [TCGdex](https://tcgdex.dev), en français, anglais et japonais (voir « Collecte » et « Collecte automatique ») ; base locale reconstruite avec dbt et DuckDB (voir « Base de données »).
-- **À venir** : prix dans la base, identification d'une carte à partir d'une photo, modèle d'estimation du prix, application locale.
-- **Pilotage** : calendrier, rapports de suivi mensuels (`inv suivi`) et bilan Green IT dans [`docs/gouvernance/`](docs/gouvernance/).
+- **En service** : collecte quotidienne des prix, des sets et du catalogue (mis à jour chaque jour, cartes disparues gardées) depuis [TCGdex](https://tcgdex.dev), en français, anglais et japonais (voir « Collecte » et « Collecte automatique ») ; base locale reconstruite avec dbt et DuckDB, catalogue et historique des prix Cardmarket (voir « Base de données »).
+- **À venir** : collection personnelle et prix de référence dans la base, identification d'une carte à partir d'une photo, modèle d'estimation du prix, application locale.
+- **Pilotage** : calendrier, rapports de suivi mensuels (`inv suivi`), bilan Green IT et [règles métier](docs/gouvernance/regles-metier.md) dans [`docs/gouvernance/`](docs/gouvernance/).
 
 ## Collecte
 
@@ -51,9 +51,9 @@ Les sorties vont dans `data/` (ignoré par Git), un fichier par jour, remplacé 
 - `data/raw/` : réponses brutes de l'API en JSON gzip, **prix compris : jamais publiées** ;
 - `data/runs/` : résumé `collect-AAAA-MM-JJ.json` (statut, nombres, fichiers écrits, sans prix).
 
-Sans `--catalogue`, le catalogue du jour est celui de la veille (le plus récent `cards-*` antérieur au jour) mis à jour : fiches reçues avec les prix, nouvelles cartes, et les 1 000 fiches les plus anciennement lues parmi les autres (option `--rotation N` de `python -m cartograph.bin.collect.run`, 0 pour aucune). Une fiche est modifiée si son empreinte (SHA-256 sans prix ni `updated`) change. Une carte absente des listes de l'API reçoit `removed_on` et reste au catalogue ; une fiche en échec garde sa ligne de la veille.
+Sans `--catalogue`, le catalogue du jour est celui de la veille mis à jour (fiches reçues avec les prix, nouvelles cartes, rotation de 1 000 fiches : option `--rotation N` de `python -m cartograph.bin.collect.run`, 0 pour aucune). Le code de sortie vaut 1 si une étape échoue ; les logs vont dans `logs/`.
 
-Le code de sortie vaut 1 si une étape échoue. Un échec des sets ou des nouvelles cartes ne bloque ni le catalogue ni les prix. Les logs vont dans `logs/`.
+Les règles de la collecte (catalogue de la veille, empreinte, cartes disparues, échecs, prix privés) sont dans [`docs/gouvernance/regles-metier.md`](docs/gouvernance/regles-metier.md), famille COL.
 
 ## Collecte automatique
 
@@ -84,12 +84,7 @@ Relance manuelle : onglet *Actions* de `cartograph-data`, `Collecte`, *Run workf
 uv run inv rebuild    # fichiers des Releases, puis dbt build dans data/cartograph.duckdb
 ```
 
-Les modèles de staging dbt (`dbt/models/staging/tcgdex/`) appliquent ces règles :
-
-- `stg_tcgdex__cards` : une ligne par carte et par langue, dans sa version la plus récente, celle du dernier catalogue (`cards-*`) ou d'un `new-cards` plus récent. Une carte est **courante** (`is_current`) si elle figure sans `removed_on` dans le dernier catalogue, ou dans un `new-cards` postérieur ; une carte retirée de TCGdex est gardée, non courante, avec la date de son retrait (`removed_on`). La catégorie est normalisée (`pokemon`, `trainer`, `energy`) ; la rareté reste brute, propre à chaque langue.
-- `stg_tcgdex__sets` : une ligne par set et par langue, avec date de sortie, série et sigles, tirée des `sets-*.parquet` quotidiens ; un set est courant s'il figure dans le dernier.
-- `stg_tcgdex__cardmarket_prices` : une ligne par produit Cardmarket, finition (`base`, ou `reverse_holo` pour le reverse) et date du fichier `prices-*` ; prix en euros, `0` lu comme absent, aucune ligne pour une finition sans prix.
-- `stg_tcgdex__tcgplayer_prices` : même grain, avec les finitions de TCGplayer (`normal`, `holofoil`, `reverse-holofoil`…) ; prix en dollars et identifiant produit TCGplayer, pour le lien vers sa page.
+La base contient le catalogue par langue (`dim_card`, `dim_set`, hors TCG Pocket, cartes retirées gardées), la rareté ramenée à un code commun aux langues et l'historique des prix Cardmarket par produit, finition et date (`fct_price_snapshot`). Ses règles (catalogue, prix, rareté, historique, qualité) sont dans [`docs/gouvernance/regles-metier.md`](docs/gouvernance/regles-metier.md), avec le test qui garantit chacune, ou « aucun ».
 
 Le détail de chaque colonne et les tests sont dans le `.yml` de chaque modèle (`uv run inv dbt --args "docs generate"`), la construction de la base dans `CONTRIBUTING.md`, section dbt.
 
