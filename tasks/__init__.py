@@ -78,7 +78,8 @@ def dbt(c: Context, args: str = "build", sample: bool = False) -> None:
         c.run(_dbt_command(args))
         return
     variables = shlex.quote(f"{{snapshot_dir: {SAMPLE_DIR.as_posix()}}}")
-    if args.split()[0] in TESTING_COMMANDS:
+    command = args.split()[:1]
+    if command and command[0] in TESTING_COMMANDS:
         args = f"{args} --exclude tag:{REAL_DATA_TAG}"
     c.run(
         _dbt_command(f"{args} --vars {variables}"),

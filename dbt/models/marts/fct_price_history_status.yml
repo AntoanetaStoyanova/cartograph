@@ -10,7 +10,7 @@ models:
       jours attendus vont de la première à la dernière `price_date` de `fct_price_snapshot`,
       moins les jours sans snapshot listés dans le seed `accepted_gaps`. La date de
       référence de la fraîcheur est la variable `reference_date` (aujourd'hui par défaut),
-      fixée dans les tests unitaires. Lus par `assert_price_history_coverage` et
+      fixée dans les tests unitaires. Vue, pour que la fraîcheur soit calculée à chaque test. Lus par `assert_price_history_coverage` et
       `assert_price_fresh`, qui ne tournent que sur la vraie base.
     columns:
       - name: first_date

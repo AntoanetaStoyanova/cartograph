@@ -1,3 +1,6 @@
+-- Vue : la fraîcheur se calcule à chaque test, pas au dernier build.
+{{ config(materialized = 'view') }}
+
 with
 
 bounds as (

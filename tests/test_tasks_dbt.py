@@ -59,6 +59,12 @@ def test_dbt_sample_keeps_other_commands_unfiltered() -> None:
     assert _commands(c) == [SAMPLE_DEBUG]
 
 
+def test_dbt_sample_accepts_empty_args() -> None:
+    c = MockContext(run=Result())
+    dbt(c, args="", sample=True)
+    assert "--exclude" not in _commands(c)[0]
+
+
 def test_dbt_builds_real_data_tests_without_sample() -> None:
     c = MockContext(run={BUILD: Result()})
     dbt(c)

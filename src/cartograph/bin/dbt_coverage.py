@@ -67,7 +67,7 @@ def analyse(manifest: dict[str, Any]) -> Coverage:
         if node["resource_type"] != "test" or not column:
             continue
         tested.add((node["attached_node"], column))
-        if node["test_metadata"]["name"] == "relationships":
+        if node.get("test_metadata", {}).get("name") == "relationships":
             related.add((node["attached_node"], column))
     untested: list[str] = []
     keys: list[str] = []
