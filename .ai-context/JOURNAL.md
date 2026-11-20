@@ -28,10 +28,11 @@
 - Plan gov-06-regles-metier — Étape 3 : Rareté, historique, qualité et règles à venir. `docs/gouvernance/regles-metier.md` : tables RAR (5), HIS (5), QUA (5), sections « À venir » (DBT-05, DBT-06, QUA-01, QUA-02, sans identifiant jusqu'à livraison), « Règles sans test » (collecte : COL-01, COL-26 ; dbt pour QUA-01 : PRX-06, PRX-07, PRX-08, PRX-12, HIS-02). Contrats dbt comptés comme garantie (HIS-03, QUA-03) ; origine de la règle provisoire de l'échelle : DBT-03, revue en DBT-06. `inv ci` et `inv okflint` verts.
 - Discussion (`/workspace-discuss`) : résumé du manifest pour un agent écarté (9 modèles, gain faible) ; traçabilité des règles retenue. Plan gov-06, étape 4 : case de renommage `R-<FAMILLE>-<nn>` (spec comprise) et lot GOV-07 dans le sous-point roadmap ajoutés. `inv okflint` vert.
 - Plan gov-06-regles-metier — Étape 4 : Liens et suivi. Identifiants des règles renommés `R-<FAMILLE>-<nn>` (`regles-metier.md`, spec) ; `README.md` (« Collecte » et « Base de données » résumées, lien, ligne « Pilotage ») ; `CONTRIBUTING.md` (tenue à jour dans la même PR) ; roadmap : lignes GOV-06 (cochée) et GOV-07, ordre DBT-04 → GOV-06 → QUA-01 → GOV-07 → QUA-02, mentions dans DBT-05, DBT-06 (validation par Antoaneta), QUA-01 (règles sans test `R-`), QUA-02. Plan et spec GOV-06 passés à `statut: fait` ; `regles-metier.md` reste `en cours` jusqu'à DBT-06. `inv ci` et `inv okflint` verts.
+- Revue (`/cr`) : README (« À venir », « ou « aucun » ») et `CONTRIBUTING.md` (format `R-`, lot d'origine) corrigés ; GOV-06 clos, PR #41 fusionnée dans `develop`, CI verte.
 
 ### Reste à faire
 
-- `inv finish` pour la PR GOV-06 vers `develop`.
+- `git pull` sur `develop` (PR #41 fusionnée, branche `feature/gov-06` supprimée).
 - Planifier QUA-01, tests dbt (`/workspace-plan qua-01`), après GOV-06 ; complétude et couverture en produits distincts, règles dbt sans test relevées par GOV-06 ; rapport de couverture tiré de `target/manifest.json` (colonnes sans test, clés sans `relationships`) en tâche `inv`.
 - Planifier GOV-07, traçabilité des règles (`/workspace-plan gov-07`), après QUA-01 et avant DBT-06 : `meta: regles` sur les modèles et les colonnes dbt (au niveau où la règle s'applique), `@pytest.mark.regle` sur les tests de la collecte, contrôle croisé avec `regles-metier.md` branché dans `inv ci`, en échec au moindre écart.
 - Avant la porte 1 : relire dans un navigateur les conditions de Cardmarket et de TCGplayer (veille).
