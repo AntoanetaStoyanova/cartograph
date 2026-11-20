@@ -101,3 +101,5 @@ dbt/target/
 dbt/logs/
 dbt/dbt_packages/
 local/
+.claude
+CLAUDE.md
