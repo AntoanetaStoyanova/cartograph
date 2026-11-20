@@ -171,6 +171,8 @@ Les marts du catalogue, `dim_set` et `dim_card`, sont par langue et écartent TC
 
 `fct_price_snapshot` (une ligne par produit Cardmarket, finition et date) est incrémentale par ajout : chaque build charge les dates du staging absentes de la table, donc tous les jours manqués après un build arrêté et un fichier plus ancien arrivé après coup. Elle ne relit jamais une date déjà chargée : après un fichier `prices-` remplacé (collecte relancée le même jour), lancer `uv run inv dbt --args "build --full-refresh --select fct_price_snapshot"`, ou `uv run inv rebuild`, qui part d'une base neuve. `dim_card` n'est pas unique sur `cardmarket_product_id` : tout agrégat de prix part de produits distincts.
 
+Les règles métier de la collecte et de dbt sont listées dans `docs/gouvernance/regles-metier.md`. Un lot qui ajoute, change ou retire une règle met ce document à jour dans la même pull request : nouvelle ligne avec un identifiant jamais réutilisé, test qui la garantit (ou « aucun »), et règle retirée déplacée dans « Règles retirées » avec sa date et ce qui la remplace.
+
 ### Standard SQL
 
 Le SQL de `dbt/models/` et `dbt/analyses/` suit le style de dbt Labs, vérifié par sqlfluff (`.sqlfluff`, dialecte `duckdb`) à chaque commit, donc dans `inv ci` :
