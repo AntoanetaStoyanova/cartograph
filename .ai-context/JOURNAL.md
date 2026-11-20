@@ -31,7 +31,7 @@
 
 ### Reste à faire
 
-- Commiter l'étape 4 puis `inv finish` pour la PR GOV-06 vers `develop`.
+- `inv finish` pour la PR GOV-06 vers `develop`.
 - Planifier QUA-01, tests dbt (`/workspace-plan qua-01`), après GOV-06 ; complétude et couverture en produits distincts, règles dbt sans test relevées par GOV-06 ; rapport de couverture tiré de `target/manifest.json` (colonnes sans test, clés sans `relationships`) en tâche `inv`.
 - Planifier GOV-07, traçabilité des règles (`/workspace-plan gov-07`), après QUA-01 et avant DBT-06 : `meta: regles` sur les modèles et les colonnes dbt (au niveau où la règle s'applique), `@pytest.mark.regle` sur les tests de la collecte, contrôle croisé avec `regles-metier.md` branché dans `inv ci`, en échec au moindre écart.
 - Avant la porte 1 : relire dans un navigateur les conditions de Cardmarket et de TCGplayer (veille).

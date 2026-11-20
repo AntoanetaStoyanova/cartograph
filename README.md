@@ -32,8 +32,8 @@ cp .env.example .env
 
 ## État du projet
 
-- **En service** : collecte quotidienne des prix, des sets et du catalogue (mis à jour chaque jour, cartes disparues gardées) depuis [TCGdex](https://tcgdex.dev), en français, anglais et japonais (voir « Collecte » et « Collecte automatique ») ; base locale reconstruite avec dbt et DuckDB (voir « Base de données »).
-- **À venir** : prix dans la base, identification d'une carte à partir d'une photo, modèle d'estimation du prix, application locale.
+- **En service** : collecte quotidienne des prix, des sets et du catalogue (mis à jour chaque jour, cartes disparues gardées) depuis [TCGdex](https://tcgdex.dev), en français, anglais et japonais (voir « Collecte » et « Collecte automatique ») ; base locale reconstruite avec dbt et DuckDB, catalogue et historique des prix Cardmarket (voir « Base de données »).
+- **À venir** : collection personnelle et prix de référence dans la base, identification d'une carte à partir d'une photo, modèle d'estimation du prix, application locale.
 - **Pilotage** : calendrier, rapports de suivi mensuels (`inv suivi`), bilan Green IT et [règles métier](docs/gouvernance/regles-metier.md) dans [`docs/gouvernance/`](docs/gouvernance/).
 
 ## Collecte
@@ -84,7 +84,7 @@ Relance manuelle : onglet *Actions* de `cartograph-data`, `Collecte`, *Run workf
 uv run inv rebuild    # fichiers des Releases, puis dbt build dans data/cartograph.duckdb
 ```
 
-La base contient le catalogue par langue (`dim_card`, `dim_set`, hors TCG Pocket, cartes retirées gardées), la rareté ramenée à un code commun aux langues et l'historique des prix Cardmarket par produit, finition et date (`fct_price_snapshot`). Ses règles (catalogue, prix, rareté, historique, qualité) sont dans [`docs/gouvernance/regles-metier.md`](docs/gouvernance/regles-metier.md), avec le test qui garantit chacune.
+La base contient le catalogue par langue (`dim_card`, `dim_set`, hors TCG Pocket, cartes retirées gardées), la rareté ramenée à un code commun aux langues et l'historique des prix Cardmarket par produit, finition et date (`fct_price_snapshot`). Ses règles (catalogue, prix, rareté, historique, qualité) sont dans [`docs/gouvernance/regles-metier.md`](docs/gouvernance/regles-metier.md), avec le test qui garantit chacune, ou « aucun ».
 
 Le détail de chaque colonne et les tests sont dans le `.yml` de chaque modèle (`uv run inv dbt --args "docs generate"`), la construction de la base dans `CONTRIBUTING.md`, section dbt.
 
