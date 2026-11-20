@@ -23,6 +23,9 @@ models:
         data_tests:
           - not_null
       - name: finish
+        config:
+          meta:
+            regles: [R-PRX-06]
         data_type: varchar
         description: Finition au sens de TCGplayer ; une finition inconnue arrête le build.
         data_tests:
@@ -58,6 +61,9 @@ models:
         data_type: decimal(10, 2)
         description: Prix le plus bas TCGplayer Direct, vide si absent.
       - name: currency_code
+        config:
+          meta:
+            regles: [R-PRX-02]
         data_type: varchar
         description: Devise des prix.
         data_tests:
@@ -69,6 +75,9 @@ models:
         data_type: timestamp with time zone
         description: Mise à jour des prix TCGplayer.
       - name: tcgplayer_product_id
+        config:
+          meta:
+            regles: [R-PRX-07]
         data_type: bigint
         description: Produit TCGplayer de la finition, pour le lien F26.
         data_tests:
@@ -76,6 +85,9 @@ models:
 
 unit_tests:
   - name: stg_tcgdex__tcgplayer_prices_unpivots_finishes
+    config:
+      meta:
+        regles: [R-PRX-04, R-PRX-05, R-PRX-07]
     description: >
       Une ligne par clé de finition de `tcgplayer_json`, sans `unit` ni `updated` ; une
       valeur entière est lue en décimal, `0` devient vide ; une finition sans prix et un

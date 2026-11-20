@@ -3,6 +3,8 @@ version: 2
 models:
   - name: stg_tcgdex__sets
     config:
+      meta:
+        regles: [R-CAT-07]
       contract:
         enforced: true
     description: >
@@ -19,6 +21,9 @@ models:
         data_tests:
           - not_null
       - name: language_code
+        config:
+          meta:
+            regles: [R-CAT-06]
         data_type: varchar
         description: Langue du set.
         data_tests:
@@ -65,6 +70,9 @@ models:
 
 unit_tests:
   - name: stg_tcgdex__sets_keeps_latest_version
+    config:
+      meta:
+        regles: [R-CAT-07]
     description: >
       Un set est rendu une fois par langue, avec ses informations du dernier snapshot
       où il figure ; un set absent du dernier snapshot a is_current à faux.
