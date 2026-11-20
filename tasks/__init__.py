@@ -66,16 +66,20 @@ DATABASE = Path("data/cartograph.duckdb")
 REBUILD_DATABASE = Path("data/cartograph.rebuild.duckdb")
 SAMPLE_DIR = Path("dbt/sample/snapshots")
 SAMPLE_DATABASE = Path("data/cartograph.sample.duckdb")
+REAL_DATA_TAG = "donnees_reelles"
+TESTING_COMMANDS = {"build", "test"}
 
 
 @task
 def dbt(c: Context, args: str = "build", sample: bool = False) -> None:
-    """Lance dbt (build par défaut) ; --sample : échantillon et base d'échantillon."""
+    """Lance dbt (build par défaut) ; --sample : échantillon, sans tests réels."""
     Path("data").mkdir(exist_ok=True)
     if not sample:
         c.run(_dbt_command(args))
         return
     variables = shlex.quote(f"{{snapshot_dir: {SAMPLE_DIR.as_posix()}}}")
+    if args.split()[0] in TESTING_COMMANDS:
+        args = f"{args} --exclude tag:{REAL_DATA_TAG}"
     c.run(
         _dbt_command(f"{args} --vars {variables}"),
         env={"CARTOGRAPH_DUCKDB": str(SAMPLE_DATABASE)},

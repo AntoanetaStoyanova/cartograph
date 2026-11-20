@@ -8,7 +8,12 @@ from tasks import ci, dbt
 BUILD = "uv run dbt build --project-dir dbt --profiles-dir dbt"
 DEBUG = "uv run dbt debug --project-dir dbt --profiles-dir dbt"
 SAMPLE_BUILD = (
-    "uv run dbt build --vars '{snapshot_dir: dbt/sample/snapshots}'"
+    "uv run dbt build --exclude tag:donnees_reelles"
+    " --vars '{snapshot_dir: dbt/sample/snapshots}'"
+    " --project-dir dbt --profiles-dir dbt"
+)
+SAMPLE_DEBUG = (
+    "uv run dbt debug --vars '{snapshot_dir: dbt/sample/snapshots}'"
     " --project-dir dbt --profiles-dir dbt"
 )
 SAMPLE_ENV = {"CARTOGRAPH_DUCKDB": "data/cartograph.sample.duckdb"}
@@ -46,6 +51,18 @@ def test_dbt_sample_uses_sample_snapshots_and_database() -> None:
     dbt(c, sample=True)
     assert _commands(c) == [SAMPLE_BUILD]
     assert c.run.call_args.kwargs["env"] == SAMPLE_ENV
+
+
+def test_dbt_sample_keeps_other_commands_unfiltered() -> None:
+    c = MockContext(run={SAMPLE_DEBUG: Result()})
+    dbt(c, args="debug", sample=True)
+    assert _commands(c) == [SAMPLE_DEBUG]
+
+
+def test_dbt_builds_real_data_tests_without_sample() -> None:
+    c = MockContext(run={BUILD: Result()})
+    dbt(c)
+    assert "donnees_reelles" not in _commands(c)[0]
 
 
 def test_ci_runs_dbt_on_sample() -> None:

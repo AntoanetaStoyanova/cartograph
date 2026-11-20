@@ -1,0 +1,177 @@
+version: 2
+
+models:
+  - name: fct_price_history_status
+    config:
+      contract:
+        enforced: true
+    description: >
+      Une ligne : couverture de l'historique des prix et fraîcheur du dernier snapshot. Les
+      jours attendus vont de la première à la dernière `price_date` de `fct_price_snapshot`,
+      moins les jours sans snapshot listés dans le seed `accepted_gaps`. La date de
+      référence de la fraîcheur est la variable `reference_date` (aujourd'hui par défaut),
+      fixée dans les tests unitaires. Lus par `assert_price_history_coverage` et
+      `assert_price_fresh`, qui ne tournent que sur la vraie base.
+    columns:
+      - name: first_date
+        data_type: date
+        description: Première date de snapshot de prix.
+      - name: last_date
+        data_type: date
+        description: Dernière date de snapshot de prix.
+      - name: expected_days
+        data_type: bigint
+        description: Jours de la période, hors trous acceptés.
+      - name: covered_days
+        data_type: bigint
+        description: Jours de la période qui ont un snapshot.
+      - name: accepted_gap_days
+        data_type: bigint
+        description: Jours de la période sans snapshot, listés dans `accepted_gaps`.
+      - name: coverage
+        data_type: decimal(5, 4)
+        description: Part des jours attendus qui ont un snapshot, de 0 à 1 ; vide sans historique.
+      - name: staleness_days
+        data_type: bigint
+        description: Jours entre la dernière date de snapshot et la date de référence.
+
+unit_tests:
+  - name: fct_price_history_status_complete_history
+    description: Cinq jours consécutifs sans trou ; couverture de 1, fraîcheur d'un jour.
+    model: fct_price_history_status
+    overrides:
+      vars:
+        reference_date: "2026-11-21"
+    given:
+      - input: ref('fct_price_snapshot')
+        format: sql
+        rows: |
+          select * from (values
+              ('2026-11-16'::date), ('2026-11-16'), ('2026-11-17'), ('2026-11-18'),
+              ('2026-11-19'), ('2026-11-20')
+          ) as t (price_date)
+      - input: ref('accepted_gaps')
+        format: sql
+        rows: select null::date as gap_date, null::varchar as reason where false
+    expect:
+      rows:
+        - {
+            first_date: 2026-11-16,
+            last_date: 2026-11-20,
+            expected_days: 5,
+            covered_days: 5,
+            accepted_gap_days: 0,
+            coverage: 1.0,
+            staleness_days: 1,
+          }
+
+  - name: fct_price_history_status_unaccepted_gap
+    description: Le 18/11 manque et n'est pas accepté ; quatre jours sur cinq, couverture de 0,8.
+    model: fct_price_history_status
+    overrides:
+      vars:
+        reference_date: "2026-11-21"
+    given:
+      - input: ref('fct_price_snapshot')
+        format: sql
+        rows: |
+          select * from (values
+              ('2026-11-16'::date), ('2026-11-17'), ('2026-11-19'), ('2026-11-20')
+          ) as t (price_date)
+      - input: ref('accepted_gaps')
+        format: sql
+        rows: select null::date as gap_date, null::varchar as reason where false
+    expect:
+      rows:
+        - {
+            first_date: 2026-11-16,
+            last_date: 2026-11-20,
+            expected_days: 5,
+            covered_days: 4,
+            accepted_gap_days: 0,
+            coverage: 0.8,
+            staleness_days: 1,
+          }
+
+  - name: fct_price_history_status_accepted_gap
+    description: >
+      Le 18/11 manque et est accepté : il sort des jours attendus ; un jour accepté qui a un
+      snapshot (17/11) et un jour hors période (01/11) sont ignorés.
+    model: fct_price_history_status
+    overrides:
+      vars:
+        reference_date: "2026-11-21"
+    given:
+      - input: ref('fct_price_snapshot')
+        format: sql
+        rows: |
+          select * from (values
+              ('2026-11-16'::date), ('2026-11-17'), ('2026-11-19'), ('2026-11-20')
+          ) as t (price_date)
+      - input: ref('accepted_gaps')
+        format: sql
+        rows: |
+          select * from (values
+              ('2026-11-18'::date, 'panne'), ('2026-11-17', 'rattrapé'), ('2026-11-01', 'ancien')
+          ) as t (gap_date, reason)
+    expect:
+      rows:
+        - {
+            first_date: 2026-11-16,
+            last_date: 2026-11-20,
+            expected_days: 4,
+            covered_days: 4,
+            accepted_gap_days: 1,
+            coverage: 1.0,
+            staleness_days: 1,
+          }
+
+  - name: fct_price_history_status_stale_snapshot
+    description: Dernier snapshot le 20/11 et date de référence le 25/11 ; fraîcheur de cinq jours.
+    model: fct_price_history_status
+    overrides:
+      vars:
+        reference_date: "2026-11-25"
+    given:
+      - input: ref('fct_price_snapshot')
+        format: sql
+        rows: select * from (values ('2026-11-19'::date), ('2026-11-20')) as t (price_date)
+      - input: ref('accepted_gaps')
+        format: sql
+        rows: select null::date as gap_date, null::varchar as reason where false
+    expect:
+      rows:
+        - {
+            first_date: 2026-11-19,
+            last_date: 2026-11-20,
+            expected_days: 2,
+            covered_days: 2,
+            accepted_gap_days: 0,
+            coverage: 1.0,
+            staleness_days: 5,
+          }
+
+  - name: fct_price_history_status_empty_history
+    description: Sans snapshot, couverture et fraîcheur sont vides (les tests échouent).
+    model: fct_price_history_status
+    overrides:
+      vars:
+        reference_date: "2026-11-21"
+    given:
+      - input: ref('fct_price_snapshot')
+        format: sql
+        rows: select null::date as price_date where false
+      - input: ref('accepted_gaps')
+        format: sql
+        rows: select null::date as gap_date, null::varchar as reason where false
+    expect:
+      rows:
+        - {
+            first_date: null,
+            last_date: null,
+            expected_days: 0,
+            covered_days: 0,
+            accepted_gap_days: 0,
+            coverage: null,
+            staleness_days: null,
+          }
