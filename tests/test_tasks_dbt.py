@@ -47,6 +47,8 @@ def test_dbt_creates_data_dir(tmp_path: Path) -> None:
     assert (tmp_path / "data").is_dir()
 
 
+@pytest.mark.regle("R-QUA-05")
+@pytest.mark.regle("R-QUA-10")
 def test_dbt_sample_uses_sample_snapshots_and_database() -> None:
     c = MockContext(run={SAMPLE_BUILD: Result()})
     dbt(c, sample=True)
@@ -54,6 +56,7 @@ def test_dbt_sample_uses_sample_snapshots_and_database() -> None:
     assert c.run.call_args.kwargs["env"] == SAMPLE_ENV
 
 
+@pytest.mark.regle("R-QUA-10")
 def test_dbt_sample_keeps_other_commands_unfiltered() -> None:
     c = MockContext(run={SAMPLE_DEBUG: Result()})
     dbt(c, args="debug", sample=True)
@@ -66,12 +69,14 @@ def test_dbt_sample_accepts_empty_args() -> None:
     assert "--exclude" not in _commands(c)[0]
 
 
+@pytest.mark.regle("R-QUA-10")
 def test_dbt_builds_real_data_tests_without_sample() -> None:
     c = MockContext(run={BUILD: Result()})
     dbt(c)
     assert "donnees_reelles" not in _commands(c)[0]
 
 
+@pytest.mark.regle("R-QUA-05")
 def test_ci_runs_dbt_on_sample() -> None:
     dbt_calls = [p for p in ci.pre if getattr(p, "task", p) is dbt]
     assert [p.kwargs for p in dbt_calls] == [{"sample": True}]

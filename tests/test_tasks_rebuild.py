@@ -44,6 +44,7 @@ def test_rebuild_syncs_then_builds_into_temporary_database() -> None:
     assert c.run.call_args_list[1].kwargs["env"] == {"CARTOGRAPH_DUCKDB": str(TMP)}
 
 
+@pytest.mark.regle("R-HIS-05")
 def test_rebuild_replaces_database_on_success() -> None:
     rebuild(_context())
     assert DB.read_bytes() == b"new"
@@ -57,6 +58,8 @@ def test_rebuild_skip_download() -> None:
     assert _commands(c) == [BUILD]
 
 
+@pytest.mark.regle("R-HIS-02")
+@pytest.mark.regle("R-HIS-05")
 def test_rebuild_starts_from_empty_database(tmp_path: Path) -> None:
     TMP.write_bytes(b"stale")
     Path(f"{TMP}.wal").write_bytes(b"stale wal")
@@ -68,6 +71,7 @@ def test_rebuild_starts_from_empty_database(tmp_path: Path) -> None:
     assert not Path(f"{TMP}.wal").exists()
 
 
+@pytest.mark.regle("R-HIS-05")
 def test_rebuild_keeps_database_when_dbt_fails() -> None:
     with pytest.raises(Exit, match="inchangée"):
         rebuild(_context(build_exit=1))
@@ -76,6 +80,7 @@ def test_rebuild_keeps_database_when_dbt_fails() -> None:
     assert not TMP.exists()
 
 
+@pytest.mark.regle("R-HIS-05")
 def test_rebuild_stops_before_dbt_when_download_fails() -> None:
     c = _context()
 

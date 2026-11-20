@@ -54,6 +54,7 @@ def _steps(summary: dict[str, object]) -> dict[str, dict[str, object]]:
     return steps
 
 
+@pytest.mark.regle("R-COL-04")
 def test_collect_with_catalogue_writes_all_files(
     tcgdex_client: TcgdexClient, tmp_path: Path
 ) -> None:
@@ -85,6 +86,7 @@ def test_collect_with_catalogue_writes_all_files(
     )
 
 
+@pytest.mark.regle("R-COL-20")
 def test_collect_interrupted_prices_keep_catalogue_summary(
     tcgdex_client: TcgdexClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -113,6 +115,7 @@ def test_collect_interrupted_prices_keep_catalogue_summary(
     ("catalogue", "prices", "writes"),
     [(True, True, 3), (True, False, 2), (False, True, 4)],
 )
+@pytest.mark.regle("R-COL-20")
 def test_collect_writes_summary_after_each_step(
     tcgdex_client: TcgdexClient,
     tmp_path: Path,
@@ -167,6 +170,7 @@ def test_collect_interrupted_sets_keep_catalogue_summary(
     assert steps["prices"]["error"] == "étape interrompue avant la fin"
 
 
+@pytest.mark.regle("R-COL-17")
 def test_collect_failed_sets_keep_catalogue_and_prices(tmp_path: Path) -> None:
     with mock_client(_down("/v2/ja/sets")) as client:
         summary = _collect(client, tmp_path)
@@ -207,6 +211,7 @@ def test_collect_bad_set_fails_sets_only(tmp_path: Path) -> None:
     assert steps["prices"]["status"] == "ok"
 
 
+@pytest.mark.regle("R-COL-04")
 def test_collect_without_catalogue_collects_sets_first(tmp_path: Path) -> None:
     _old_catalogue(tmp_path, "SV7-065")
     requested: list[str] = []
@@ -228,6 +233,7 @@ def test_collect_without_catalogue_collects_sets_first(tmp_path: Path) -> None:
     assert steps["prices"]["status"] == "ok"
 
 
+@pytest.mark.regle("R-COL-17")
 def test_collect_failed_sets_keep_new_cards_and_prices(tmp_path: Path) -> None:
     _old_catalogue(tmp_path, "SV7-065")
 
@@ -278,6 +284,7 @@ def _old_catalogue(tmp_path: Path, *card_ids: str) -> None:
         _collect(client, tmp_path, day=date(2026, 10, 25), prices=False)
 
 
+@pytest.mark.regle("R-COL-13")
 def test_collect_new_card_has_card_and_price(tmp_path: Path) -> None:
     _old_catalogue(tmp_path, "SV7-065")
     requested: list[str] = []
@@ -306,6 +313,7 @@ def test_collect_new_card_has_card_and_price(tmp_path: Path) -> None:
     assert steps["prices"]["fetched"] == 5
 
 
+@pytest.mark.regle("R-COL-13")
 def test_collect_new_card_with_known_product_is_not_doubled(tmp_path: Path) -> None:
     with mock_client(_without_language_card("fr", "swsh3-136")) as client:
         _collect(client, tmp_path, day=date(2026, 10, 25), prices=False)
@@ -349,6 +357,7 @@ def test_collect_new_cards_leak_no_price(
     assert "pricing" not in public
 
 
+@pytest.mark.regle("R-COL-13")
 def test_collect_without_new_card_writes_no_file(
     tcgdex_client: TcgdexClient, tmp_path: Path
 ) -> None:
@@ -363,6 +372,7 @@ def test_collect_without_new_card_writes_no_file(
     assert not snapshot_paths(tmp_path, DAY).new_cards.exists()
 
 
+@pytest.mark.regle("R-COL-17")
 def test_collect_failed_card_list_keeps_prices(tmp_path: Path) -> None:
     _old_catalogue(tmp_path, "SV7-065")
 
@@ -378,6 +388,7 @@ def test_collect_failed_card_list_keeps_prices(tmp_path: Path) -> None:
 
 
 @pytest.mark.usefixtures("isolated_logs")
+@pytest.mark.regle("R-COL-21")
 def test_main_returns_one_when_new_cards_fail(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -442,6 +453,7 @@ def test_collect_prices_without_catalogue_fails(
     assert not snapshot_paths(tmp_path, DAY).prices.exists()
 
 
+@pytest.mark.regle("R-COL-16")
 def test_collect_failed_language_writes_no_catalogue_but_prices(
     tcgdex_client: TcgdexClient, tmp_path: Path
 ) -> None:
@@ -501,6 +513,7 @@ def test_collect_prices_only_records_failed_cards_with_language(
     assert prices["fetched"] == 4
 
 
+@pytest.mark.regle("R-COL-15")
 def test_collect_with_catalogue_requests_each_card_once(
     tmp_path: Path, caplog: pytest.LogCaptureFixture
 ) -> None:
@@ -524,6 +537,7 @@ def test_collect_with_catalogue_requests_each_card_once(
     assert pq.read_table(paths.prices).num_rows == 5
 
 
+@pytest.mark.regle("R-COL-22")
 def test_collect_same_day_replaces_files(
     tcgdex_client: TcgdexClient, tmp_path: Path
 ) -> None:
@@ -538,6 +552,7 @@ def test_collect_same_day_replaces_files(
     assert pq.read_table(paths.prices).num_rows == 5
 
 
+@pytest.mark.regle("R-COL-24")
 def test_collect_summary_contains_no_price(
     tcgdex_client: TcgdexClient, tmp_path: Path
 ) -> None:
@@ -550,6 +565,7 @@ def test_collect_summary_contains_no_price(
     assert "pricing" not in text
 
 
+@pytest.mark.regle("R-COL-05")
 def test_collect_uses_utc_timestamps(
     tcgdex_client: TcgdexClient, tmp_path: Path
 ) -> None:
@@ -560,6 +576,7 @@ def test_collect_uses_utc_timestamps(
     )
 
 
+@pytest.mark.regle("R-COL-05")
 def test_collect_day_is_utc_date_of_start(
     tcgdex_client: TcgdexClient, tmp_path: Path
 ) -> None:
@@ -572,6 +589,7 @@ def test_collect_day_is_utc_date_of_start(
     assert snapshot_paths(tmp_path, DAY).cards.exists()
 
 
+@pytest.mark.regle("R-COL-18")
 def test_collect_prices_stopped_by_outage_writes_prices_received(
     tcgdex_client: TcgdexClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -673,6 +691,7 @@ def _patched(card: Any, change: dict[str, Any]) -> Any:
 
 
 @pytest.mark.parametrize("catalogue", [False, True])
+@pytest.mark.regle("R-COL-19")
 def test_collect_bad_price_keeps_raw_prices_and_leaks_nothing(
     tcgdex_client: TcgdexClient,
     tmp_path: Path,
@@ -698,6 +717,7 @@ def test_collect_bad_price_keeps_raw_prices_and_leaks_nothing(
     assert "4999.37" not in caplog.text
 
 
+@pytest.mark.regle("R-COL-19")
 def test_collect_bad_card_keeps_raw_catalogue(tmp_path: Path) -> None:
     handler = _with_card("/v2/fr/cards/pop9-1", {"updated": 12345})
 
@@ -787,6 +807,7 @@ def test_main_catalogue_without_prices(fake_collect: dict[str, Any]) -> None:
     assert fake_collect["prices"] is False
 
 
+@pytest.mark.regle("R-COL-02")
 def test_main_defaults(fake_collect: dict[str, Any]) -> None:
     main([])
 
@@ -797,6 +818,7 @@ def test_main_defaults(fake_collect: dict[str, Any]) -> None:
     assert fake_collect["data_dir"] == run.DATA_DIR
 
 
+@pytest.mark.regle("R-COL-21")
 def test_main_returns_one_when_a_step_fails(fake_collect: dict[str, Any]) -> None:
     fake_collect["status"] = "failed"
 
@@ -813,6 +835,7 @@ def test_main_returns_one_when_a_step_fails(fake_collect: dict[str, Any]) -> Non
         ["--rotation", "mille"],
     ],
 )
+@pytest.mark.regle("R-COL-03")
 def test_main_rejects_invalid_options(
     fake_collect: dict[str, Any], argv: list[str]
 ) -> None:
@@ -842,6 +865,7 @@ def _changes(path: Path) -> list[tuple[str, str, str]]:
     )
 
 
+@pytest.mark.regle("R-COL-06")
 def test_collect_daily_writes_catalogue_and_changes(tmp_path: Path) -> None:
     _old_catalogue(tmp_path, "SV7-065")
 
@@ -866,6 +890,7 @@ def test_collect_daily_writes_catalogue_and_changes(tmp_path: Path) -> None:
     assert _changes(paths.card_changes) == [("new", "ja", "SV7-065")]
 
 
+@pytest.mark.regle("R-COL-11")
 def test_collect_daily_failed_price_card_keeps_previous_row(tmp_path: Path) -> None:
     old_day = date(2026, 10, 25)
     with mock_client(fixture_route) as client:
@@ -902,6 +927,7 @@ def test_collect_daily_marks_removed_card_and_skips_its_price(tmp_path: Path) ->
     assert _steps(summary)["prices"]["failed"] == []
 
 
+@pytest.mark.regle("R-COL-08")
 def test_collect_daily_rotation_reads_oldest_cards_outside_prices(
     tmp_path: Path,
 ) -> None:
@@ -929,6 +955,7 @@ def test_collect_daily_rotation_reads_oldest_cards_outside_prices(
 
 
 @pytest.mark.usefixtures("isolated_logs")
+@pytest.mark.regle("R-COL-18")
 def test_main_rotation_stopped_by_outage_writes_catalogue(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -976,6 +1003,7 @@ def test_collect_daily_without_rotation_reads_only_prices(tmp_path: Path) -> Non
     assert catalogue["changes"]["rotated"] == 0
 
 
+@pytest.mark.regle("R-COL-10")
 def test_collect_full_catalogue_marks_removed_then_reappeared_card(
     tmp_path: Path,
 ) -> None:
@@ -1002,6 +1030,7 @@ def test_collect_full_catalogue_marks_removed_then_reappeared_card(
     ]
 
 
+@pytest.mark.regle("R-COL-11")
 def test_collect_catalogue_day_failed_card_keeps_previous_row(tmp_path: Path) -> None:
     old_day = date(2026, 10, 25)
     with mock_client(fixture_route) as client:
@@ -1019,6 +1048,7 @@ def test_collect_catalogue_day_failed_card_keeps_previous_row(tmp_path: Path) ->
     assert _changes(paths.card_changes) == []
 
 
+@pytest.mark.regle("R-COL-22")
 def test_collect_same_day_rerun_starts_from_previous_catalogue(tmp_path: Path) -> None:
     _old_catalogue(tmp_path, "SV7-065")
 
@@ -1031,6 +1061,7 @@ def test_collect_same_day_rerun_starts_from_previous_catalogue(tmp_path: Path) -
     assert _changes(paths.card_changes) == [("new", "ja", "SV7-065")]
 
 
+@pytest.mark.regle("R-COL-06")
 def test_collect_two_daily_runs_chain_catalogues(tmp_path: Path) -> None:
     _old_catalogue(tmp_path, "SV7-065")
     first, second = date(2026, 10, 26), date(2026, 10, 27)
@@ -1050,6 +1081,7 @@ def test_collect_two_daily_runs_chain_catalogues(tmp_path: Path) -> None:
     assert rows[("ja", "SV7-065")]["removed_on"] is None
 
 
+@pytest.mark.regle("R-COL-23")
 def test_collect_daily_catalogue_leaks_no_price(tmp_path: Path) -> None:
     _old_catalogue(tmp_path, "SV7-065")
     prices = price_values([load_fixture(n) for names in CARDS.values() for n in names])

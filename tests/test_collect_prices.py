@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any
 
 import pyarrow as pa
+import pytest
 
 from cartograph.bin.collect.catalogue import fetch_catalogue
 from cartograph.bin.collect.client import TcgdexClient
@@ -55,6 +56,7 @@ def _catalogue_file(
     return read_catalogue(path)
 
 
+@pytest.mark.regle("R-COL-14")
 def test_price_targets_deduplicates_european_products() -> None:
     catalogues = {
         "en": [load_fixture("en_swsh3-136")],
@@ -77,6 +79,7 @@ def test_price_targets_keeps_japanese_products() -> None:
     ]
 
 
+@pytest.mark.regle("R-COL-14")
 def test_price_targets_skips_cards_without_id_product() -> None:
     catalogues = {
         "fr": [{"id": "sans-pricing"}, _card("sans-cardmarket", None)],
@@ -199,6 +202,7 @@ def test_price_targets_from_catalogue_without_requested_language(
     )
 
 
+@pytest.mark.regle("R-COL-14")
 def test_price_targets_from_catalogue_ignores_removed_cards(tmp_path: Path) -> None:
     catalogue = _catalogue_file(
         tmp_path,
@@ -286,6 +290,7 @@ def test_prices_from_cards_reports_absent_cards() -> None:
     assert result.failed == ["ja/S7D-019"]
 
 
+@pytest.mark.regle("R-COL-15")
 def test_prices_from_cards_matches_fetch_prices(tcgdex_client: TcgdexClient) -> None:
     cards = {
         language: fetch_catalogue(tcgdex_client, language).items

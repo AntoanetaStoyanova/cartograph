@@ -48,6 +48,7 @@ def test_long_failure_list_is_truncated() -> None:
     assert "… et 5 autres" in markdown
 
 
+@pytest.mark.regle("R-COL-24")
 def test_real_summary_contains_no_price() -> None:
     summary = json.loads(REAL_SUMMARY.read_text(encoding="utf-8"))
 

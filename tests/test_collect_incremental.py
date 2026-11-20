@@ -2,6 +2,7 @@ from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
 import pyarrow as pa
+import pytest
 
 from cartograph.bin.collect.catalogue import ListingDiff
 from cartograph.bin.collect.incremental import (
@@ -29,6 +30,7 @@ def _base() -> Any:
     )
 
 
+@pytest.mark.regle("R-COL-09")
 def test_changed_cards_separates_changed_and_identical() -> None:
     fresh = {**load_fixture("fr_swsh3-136"), "updated": "2026-11-18T08:00:00Z"}
     corrected = {**load_fixture("ja_SV7-065"), "rarity": "SAR"}
@@ -82,6 +84,7 @@ def _aged_base() -> pa.Table:
     )
 
 
+@pytest.mark.regle("R-COL-08")
 def test_rotation_ids_oldest_first_without_targets_and_removed() -> None:
     targets = [PriceTarget("ja", "S7D-019", 571601)]
 
@@ -117,6 +120,7 @@ def _rows(table: pa.Table) -> dict[tuple[str, str], dict[str, Any]]:
     return {(row["language"], row["card_id"]): row for row in table.to_pylist()}
 
 
+@pytest.mark.regle("R-COL-10")
 def test_apply_listing_sets_and_clears_removed_on() -> None:
     base = _aged_base()
     diff = ListingDiff(
@@ -163,6 +167,7 @@ def test_merge_catalogue_keeps_removed_on_of_replaced_card() -> None:
     assert _rows(merged)[("en", "swsh3-136")]["removed_on"] == date(2026, 11, 17)
 
 
+@pytest.mark.regle("R-COL-12")
 def test_card_changes_table_lists_each_change() -> None:
     base = _aged_base()
     listed = apply_listing(

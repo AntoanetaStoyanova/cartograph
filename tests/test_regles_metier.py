@@ -1,4 +1,5 @@
 import json
+import tomllib
 from pathlib import Path
 from typing import Any
 
@@ -227,3 +228,10 @@ def test_main_returns_one_when_collection_fails(
 
     monkeypatch.setattr(regles_metier, "marker_links", fail)
     assert main(args) == 1
+
+
+def test_pytest_config_registers_regle_and_rejects_unknown_markers() -> None:
+    config = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
+    options = config["tool"]["pytest"]["ini_options"]
+    assert "--strict-markers" in options["addopts"]
+    assert any(marker.startswith("regle(") for marker in options["markers"])

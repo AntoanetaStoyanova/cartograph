@@ -39,12 +39,14 @@ line-ending = "auto"
 [tool.pytest.ini_options]
 testpaths = ["tests", "src"]
 addopts = [
+    "--strict-markers",
     "--doctest-modules",
     "--cov=src/cartograph",
     "--cov-report=term-missing",
     "--cov-report=html",
 ]
 pythonpath = ["."]
+markers = ["regle(id): règle métier de regles-metier.md garantie par le test"]
 
 [tool.coverage.run]
 source = ["src"]
