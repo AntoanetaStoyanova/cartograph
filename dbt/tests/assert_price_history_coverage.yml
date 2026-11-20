@@ -1,0 +1,7 @@
+version: 2
+
+data_tests:
+  - name: assert_price_history_coverage
+    config:
+      meta:
+        regles: [R-QUA-08]

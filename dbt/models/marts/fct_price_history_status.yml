@@ -3,6 +3,8 @@ version: 2
 models:
   - name: fct_price_history_status
     config:
+      meta:
+        regles: [R-QUA-03]
       contract:
         enforced: true
     description: >
@@ -37,6 +39,9 @@ models:
 
 unit_tests:
   - name: fct_price_history_status_complete_history
+    config:
+      meta:
+        regles: [R-QUA-08]
     description: Cinq jours consécutifs sans trou ; couverture de 1, fraîcheur d'un jour.
     model: fct_price_history_status
     overrides:
@@ -66,6 +71,9 @@ unit_tests:
           }
 
   - name: fct_price_history_status_unaccepted_gap
+    config:
+      meta:
+        regles: [R-QUA-08]
     description: Le 18/11 manque et n'est pas accepté ; quatre jours sur cinq, couverture de 0,8.
     model: fct_price_history_status
     overrides:
@@ -94,6 +102,9 @@ unit_tests:
           }
 
   - name: fct_price_history_status_accepted_gap
+    config:
+      meta:
+        regles: [R-QUA-08]
     description: >
       Le 18/11 manque et est accepté : il sort des jours attendus ; un jour accepté qui a un
       snapshot (17/11) et un jour hors période (01/11) sont ignorés.
@@ -127,6 +138,9 @@ unit_tests:
           }
 
   - name: fct_price_history_status_stale_snapshot
+    config:
+      meta:
+        regles: [R-QUA-09]
     description: Dernier snapshot le 20/11 et date de référence le 25/11 ; fraîcheur de cinq jours.
     model: fct_price_history_status
     overrides:
@@ -152,6 +166,9 @@ unit_tests:
           }
 
   - name: fct_price_history_status_empty_history
+    config:
+      meta:
+        regles: [R-QUA-08, R-QUA-09]
     description: Sans snapshot, couverture et fraîcheur sont vides (les tests échouent).
     model: fct_price_history_status
     overrides:

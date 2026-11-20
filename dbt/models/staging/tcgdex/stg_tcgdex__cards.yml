@@ -4,7 +4,7 @@ models:
   - name: stg_tcgdex__cards
     config:
       meta:
-        regles: [R-CAT-02]
+        regles: [R-CAT-02, R-QUA-03]
       contract:
         enforced: true
     description: >

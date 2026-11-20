@@ -3,6 +3,8 @@ version: 2
 models:
   - name: fct_price_completeness
     config:
+      meta:
+        regles: [R-QUA-03]
       contract:
         enforced: true
     description: >
@@ -36,7 +38,7 @@ unit_tests:
   - name: fct_price_completeness_counts_distinct_products
     config:
       meta:
-        regles: [R-QUA-07]
+        regles: [R-PRX-12, R-QUA-07]
     description: >
       Un produit à deux cartes ou à deux finitions compte une fois ; sont écartés un produit
       de carte non courante, un produit hors catalogue et une carte sans produit ; un
@@ -81,6 +83,9 @@ unit_tests:
           }
 
   - name: fct_price_completeness_date_without_trend_price
+    config:
+      meta:
+        regles: [R-PRX-12, R-QUA-07]
     description: Une date sans aucun `trend_price` garde sa ligne, à zéro produit avec prix.
     model: fct_price_completeness
     given:

@@ -1,0 +1,7 @@
+version: 2
+
+data_tests:
+  - name: assert_no_ambiguous_product
+    config:
+      meta:
+        regles: [R-PRX-10, R-QUA-02]

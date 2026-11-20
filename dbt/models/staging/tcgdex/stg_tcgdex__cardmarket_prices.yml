@@ -4,7 +4,7 @@ models:
   - name: stg_tcgdex__cardmarket_prices
     config:
       meta:
-        regles: [R-PRX-01]
+        regles: [R-PRX-01, R-QUA-03]
       contract:
         enforced: true
     description: >
@@ -38,31 +38,49 @@ models:
         data_tests:
           - not_null
       - name: low_price
+        config:
+          meta:
+            regles: [R-QUA-06]
         data_type: decimal(10, 2)
         description: Prix le plus bas proposé, vide si absent.
         data_tests:
           - non_negative
       - name: trend_price
+        config:
+          meta:
+            regles: [R-QUA-06]
         data_type: decimal(10, 2)
         description: Prix de tendance de Cardmarket, vide si absent ; prix de référence (DBT-05).
         data_tests:
           - non_negative
       - name: avg_price
+        config:
+          meta:
+            regles: [R-QUA-06]
         data_type: decimal(10, 2)
         description: Prix moyen de vente, vide si absent.
         data_tests:
           - non_negative
       - name: avg1_price
+        config:
+          meta:
+            regles: [R-QUA-06]
         data_type: decimal(10, 2)
         description: Moyenne des ventes sur 1 jour, vide si absente.
         data_tests:
           - non_negative
       - name: avg7_price
+        config:
+          meta:
+            regles: [R-QUA-06]
         data_type: decimal(10, 2)
         description: Moyenne des ventes sur 7 jours, vide si absente.
         data_tests:
           - non_negative
       - name: avg30_price
+        config:
+          meta:
+            regles: [R-QUA-06]
         data_type: decimal(10, 2)
         description: Moyenne des ventes sur 30 jours, vide si absente.
         data_tests:

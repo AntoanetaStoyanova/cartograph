@@ -3,6 +3,8 @@ version: 2
 models:
   - name: dim_set
     config:
+      meta:
+        regles: [R-QUA-03]
       contract:
         enforced: true
     description: >
@@ -64,6 +66,9 @@ models:
 
 unit_tests:
   - name: dim_set_excludes_pocket
+    config:
+      meta:
+        regles: [R-CAT-08]
     description: >
       Un set de la série `tcgp` est écarté, dans toutes ses langues même si une autre
       langue le classe ailleurs ; un set sans série est gardé.

@@ -3,6 +3,8 @@ version: 2
 models:
   - name: stg_tcgdex__tcgplayer_prices
     config:
+      meta:
+        regles: [R-QUA-03]
       contract:
         enforced: true
     description: >
