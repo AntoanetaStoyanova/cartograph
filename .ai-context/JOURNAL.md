@@ -20,7 +20,7 @@
 
 ---
 
-## [2026-11-20] — GOV-06 livré, QUA-01 planifié
+## [2026-11-20] — QUA-01 livré, GOV-07 planifié
 
 ### Fait
 
@@ -35,13 +35,14 @@
 - Discussion (`/workspace-discuss`) : résumé du manifest pour un agent écarté (9 modèles, gain faible) ; traçabilité des règles retenue. Plan gov-06, étape 4 : case de renommage `R-<FAMILLE>-<nn>` (spec comprise) et lot GOV-07 dans le sous-point roadmap ajoutés. `inv okflint` vert.
 - Plan gov-06-regles-metier — Étape 4 : Liens et suivi. Identifiants des règles renommés `R-<FAMILLE>-<nn>` (`regles-metier.md`, spec) ; `README.md` (« Collecte » et « Base de données » résumées, lien, ligne « Pilotage ») ; `CONTRIBUTING.md` (tenue à jour dans la même PR) ; roadmap : lignes GOV-06 (cochée) et GOV-07, ordre DBT-04 → GOV-06 → QUA-01 → GOV-07 → QUA-02, mentions dans DBT-05, DBT-06 (validation par Antoaneta), QUA-01 (règles sans test `R-`), QUA-02. Plan et spec GOV-06 passés à `statut: fait` ; `regles-metier.md` reste `en cours` jusqu'à DBT-06. `inv ci` et `inv okflint` verts.
 - Revue (`/cr`) : README (« À venir », « ou « aucun » ») et `CONTRIBUTING.md` (format `R-`, lot d'origine) corrigés ; GOV-06 clos, PR #41 fusionnée dans `develop`, CI verte.
+- `docs/specs/gov-07-tracabilite-regles.md` et `docs/plans/gov-07-tracabilite-regles.md` créés (6 étapes). Décisions : manifeste dbt (`dbt parse` lancé par `inv regles`) ; collecte pytest par sous-processus ; module `bin/regles_metier.py` ; `meta` d'un modèle ou d'une colonne comptée seulement avec un test ou un contrat à ce niveau ; R-QUA-01 comptée sans test, R-PRX-06 et R-PRX-07 en partie ; R-COL-26 et `README.md:67` corrigées (seuls les `cards-*` sont purgés).
 
 ### Reste à faire
 
-- QUA-01 livré : `/cr` puis `inv finish` (pull request vers `develop`), puis `/workspace-plan gov-07`.
+- Exécuter docs/plans/gov-07-tracabilite-regles.md — Étape 1 : Module de contrôle et tâche `inv regles` (après `inv finish` de QUA-01 et création de `feature/gov-07` depuis `develop`).
+- QUA-01 livré : `/cr` puis `inv finish` (pull request vers `develop`).
 - Éventuel : test `relationships` de `dim_card.cardmarket_product_id` vers `int_cardmarket_products` (seul trou réel du rapport de couverture).
 - À trancher avant QUA-02 : `inv rebuild` lance les tests `donnees_reelles` ; des snapshots de plus de 2 jours font échouer la fraîcheur et la base n'est pas remplacée. Exclure le tag de `rebuild` ou le garder.
-- Planifier GOV-07, traçabilité des règles (`/workspace-plan gov-07`), après QUA-01 et avant DBT-06 : `meta: regles` sur les modèles et les colonnes dbt (au niveau où la règle s'applique), `@pytest.mark.regle` sur les tests de la collecte, contrôle croisé avec `regles-metier.md` branché dans `inv ci`, en échec au moindre écart.
 - Avant la porte 1 : relire dans un navigateur les conditions de Cardmarket et de TCGplayer (veille).
 - Rapport de novembre à régénérer en fin de mois (`inv suivi --mois 2026-11 --force`, commentaire gardé), puis `statut: fait` ; mettre à jour les chiffres de `docs/gouvernance/green-it.md`. Chaque début de mois : `inv ci` puis `inv suivi`, commentaire.
 - Antoaneta : avant PRO-02, demander aux testeurs leur logiciel de caisse et un fichier d'import exemple.
@@ -49,6 +50,7 @@
 
 ### Références
 
+- `../docs/specs/gov-07-tracabilite-regles.md`, `../docs/plans/gov-07-tracabilite-regles.md`
 - `../docs/specs/qua-01-tests-dbt.md`, `../docs/plans/qua-01-tests-dbt.md`
 - `docs/plans/gov-06-regles-metier.md`, `docs/specs/gov-06-regles-metier.md`
 - `docs/gouvernance/regles-metier.md`, `README.md`, `CONTRIBUTING.md`, `docs/plans/roadmap-lots.md`
