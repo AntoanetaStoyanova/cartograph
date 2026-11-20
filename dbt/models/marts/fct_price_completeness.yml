@@ -34,6 +34,9 @@ models:
 
 unit_tests:
   - name: fct_price_completeness_counts_distinct_products
+    config:
+      meta:
+        regles: [R-QUA-07]
     description: >
       Un produit à deux cartes ou à deux finitions compte une fois ; sont écartés un produit
       de carte non courante, un produit hors catalogue et une carte sans produit ; un

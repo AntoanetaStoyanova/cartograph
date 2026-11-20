@@ -47,6 +47,9 @@ models:
         data_tests:
           - not_null
       - name: low_price
+        config:
+          meta:
+            regles: [R-QUA-06]
         data_type: decimal(10, 2)
         description: Prix le plus bas proposé, vide si absent.
         data_tests:

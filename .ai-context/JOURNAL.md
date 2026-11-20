@@ -36,11 +36,11 @@
 - Plan gov-06-regles-metier — Étape 4 : Liens et suivi. Identifiants des règles renommés `R-<FAMILLE>-<nn>` (`regles-metier.md`, spec) ; `README.md` (« Collecte » et « Base de données » résumées, lien, ligne « Pilotage ») ; `CONTRIBUTING.md` (tenue à jour dans la même PR) ; roadmap : lignes GOV-06 (cochée) et GOV-07, ordre DBT-04 → GOV-06 → QUA-01 → GOV-07 → QUA-02, mentions dans DBT-05, DBT-06 (validation par Antoaneta), QUA-01 (règles sans test `R-`), QUA-02. Plan et spec GOV-06 passés à `statut: fait` ; `regles-metier.md` reste `en cours` jusqu'à DBT-06. `inv ci` et `inv okflint` verts.
 - Revue (`/cr`) : README (« À venir », « ou « aucun » ») et `CONTRIBUTING.md` (format `R-`, lot d'origine) corrigés ; GOV-06 clos, PR #41 fusionnée dans `develop`, CI verte.
 - `docs/specs/gov-07-tracabilite-regles.md` et `docs/plans/gov-07-tracabilite-regles.md` créés (6 étapes). Décisions : manifeste dbt (`dbt parse` lancé par `inv regles`) ; collecte pytest par sous-processus ; module `bin/regles_metier.py` ; `meta` d'un modèle ou d'une colonne comptée seulement avec un test ou un contrat à ce niveau ; R-QUA-01 comptée sans test, R-PRX-06 et R-PRX-07 en partie ; R-COL-26 et `README.md:67` corrigées (seuls les `cards-*` sont purgés).
+- Plan gov-07-tracabilite-regles — Étape 1 : Module de contrôle et tâche `inv regles`, sur `feature/gov-07`. `src/cartograph/bin/regles_metier.py` (`parse_rules`, `dbt_links`, `marker_links`, `check`, `main`, plugin pytest), tâche `regles` (`--no-parse`), `tests/test_regles_metier.py` (19), tests de la tâche. Sondage dbt 1.12.7 : `meta` lu pour colonne, test unitaire et test singulier en `dbt/tests/<nom>.yml` ; `dbt parse` ne touche aucune base ; `regles` posé sur `low_price` (R-QUA-06), `fct_price_completeness_counts_distinct_products` (R-QUA-07), `assert_price_fresh` (R-QUA-09). Réel : 67 règles, 3 citations, 61 écarts attendus. Décisions dans la spec (`--no-parse` en CI, macros sans `regles`, `marker_links`).
 
 ### Reste à faire
 
-- Exécuter docs/plans/gov-07-tracabilite-regles.md — Étape 1 : Module de contrôle et tâche `inv regles` (après `inv finish` de QUA-01 et création de `feature/gov-07` depuis `develop`).
-- QUA-01 livré : `/cr` puis `inv finish` (pull request vers `develop`).
+- Exécuter docs/plans/gov-07-tracabilite-regles.md — Étape 2 : Marqueur `regle` sur les tests Python.
 - Éventuel : test `relationships` de `dim_card.cardmarket_product_id` vers `int_cardmarket_products` (seul trou réel du rapport de couverture).
 - À trancher avant QUA-02 : `inv rebuild` lance les tests `donnees_reelles` ; des snapshots de plus de 2 jours font échouer la fraîcheur et la base n'est pas remplacée. Exclure le tag de `rebuild` ou le garder.
 - Avant la porte 1 : relire dans un navigateur les conditions de Cardmarket et de TCGplayer (veille).
@@ -51,6 +51,7 @@
 ### Références
 
 - `../docs/specs/gov-07-tracabilite-regles.md`, `../docs/plans/gov-07-tracabilite-regles.md`
+- `src/cartograph/bin/regles_metier.py`, `tests/test_regles_metier.py`, `tasks/__init__.py`
 - `../docs/specs/qua-01-tests-dbt.md`, `../docs/plans/qua-01-tests-dbt.md`
 - `docs/plans/gov-06-regles-metier.md`, `docs/specs/gov-06-regles-metier.md`
 - `docs/gouvernance/regles-metier.md`, `README.md`, `CONTRIBUTING.md`, `docs/plans/roadmap-lots.md`

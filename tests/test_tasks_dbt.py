@@ -3,9 +3,10 @@ from pathlib import Path
 import pytest
 from invoke import MockContext, Result
 
-from tasks import ci, couverture_tests, dbt
+from tasks import ci, couverture_tests, dbt, regles
 
 BUILD = "uv run dbt build --project-dir dbt --profiles-dir dbt"
+PARSE = "uv run dbt parse --project-dir dbt --profiles-dir dbt"
 DEBUG = "uv run dbt debug --project-dir dbt --profiles-dir dbt"
 SAMPLE_BUILD = (
     "uv run dbt build --exclude tag:donnees_reelles"
@@ -74,6 +75,21 @@ def test_dbt_builds_real_data_tests_without_sample() -> None:
 def test_ci_runs_dbt_on_sample() -> None:
     dbt_calls = [p for p in ci.pre if getattr(p, "task", p) is dbt]
     assert [p.kwargs for p in dbt_calls] == [{"sample": True}]
+
+
+def test_regles_parses_dbt_then_runs_check_module() -> None:
+    module = "uv run python -m cartograph.bin.regles_metier"
+    c = MockContext(run={PARSE: Result(), module: Result()})
+    regles(c)
+    assert _commands(c) == [PARSE, module]
+    assert c.run.call_args_list[0].kwargs["env"] == SAMPLE_ENV
+
+
+def test_regles_without_parse_runs_only_check_module() -> None:
+    module = "uv run python -m cartograph.bin.regles_metier"
+    c = MockContext(run={module: Result()})
+    regles(c, parse=False)
+    assert _commands(c) == [module]
 
 
 def test_couverture_tests_runs_report_module() -> None:
