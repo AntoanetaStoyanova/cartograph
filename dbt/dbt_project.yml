@@ -37,3 +37,4 @@ vars:
   snapshot_dir: data/snapshots
   min_coverage: 0.98
   max_staleness_days: 2
+  min_completeness: 0.98
