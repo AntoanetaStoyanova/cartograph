@@ -91,6 +91,12 @@ def _dbt_command(args: str) -> str:
     return f"uv run dbt {args} --project-dir dbt --profiles-dir dbt"
 
 
+@task
+def couverture_tests(c: Context) -> None:
+    """Liste les colonnes dbt sans test et les clés sans relationships."""
+    c.run("uv run python -m cartograph.bin.dbt_coverage")
+
+
 @task(pre=[check, test, call(dbt, sample=True)])  # type: ignore[misc]
 def ci(c: Context) -> None:
     """Lance la suite complète CI : lint, typecheck, tests, dbt sur l'échantillon."""

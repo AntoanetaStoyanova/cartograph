@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 from invoke import MockContext, Result
 
-from tasks import ci, dbt
+from tasks import ci, couverture_tests, dbt
 
 BUILD = "uv run dbt build --project-dir dbt --profiles-dir dbt"
 DEBUG = "uv run dbt debug --project-dir dbt --profiles-dir dbt"
@@ -68,3 +68,10 @@ def test_dbt_builds_real_data_tests_without_sample() -> None:
 def test_ci_runs_dbt_on_sample() -> None:
     dbt_calls = [p for p in ci.pre if getattr(p, "task", p) is dbt]
     assert [p.kwargs for p in dbt_calls] == [{"sample": True}]
+
+
+def test_couverture_tests_runs_report_module() -> None:
+    command = "uv run python -m cartograph.bin.dbt_coverage"
+    c = MockContext(run={command: Result()})
+    couverture_tests(c)
+    assert _commands(c) == [command]
