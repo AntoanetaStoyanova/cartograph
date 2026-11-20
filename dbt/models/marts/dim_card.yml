@@ -3,6 +3,8 @@ version: 2
 models:
   - name: dim_card
     config:
+      meta:
+        regles_contrat: [R-QUA-03]
       contract:
         enforced: true
     description: >
@@ -91,6 +93,9 @@ models:
           postérieur.
 
       - name: rarity_code
+        config:
+          meta:
+            regles: [R-RAR-05]
         data_type: varchar
         description: Code canonique de la rareté (`int_rarity_mapping`), `none` pour une rareté vide.
         data_tests:
@@ -110,6 +115,9 @@ models:
 
 unit_tests:
   - name: dim_card_excludes_pocket_and_maps_rarity
+    config:
+      meta:
+        regles: [R-CAT-04, R-CAT-08, R-RAR-04]
     description: >
       Les cartes d'un set `tcgp` sont écartées, même quand ce set manque dans la langue
       de la carte ; une rareté vide reçoit le code `none` ; une carte retirée est gardée ;

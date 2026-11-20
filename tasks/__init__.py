@@ -98,9 +98,22 @@ def couverture_tests(c: Context) -> None:
     c.run("uv run python -m cartograph.bin.dbt_coverage")
 
 
-@task(pre=[check, test, call(dbt, sample=True)])  # type: ignore[misc]
+@task
+def regles(c: Context, parse: bool = True) -> None:
+    """Contrôle le lien entre regles-metier.md et les tests dbt et pytest."""
+    if parse:
+        c.run(
+            _dbt_command("parse"),
+            env={"CARTOGRAPH_DUCKDB": str(SAMPLE_DATABASE)},
+        )
+    c.run("uv run python -m cartograph.bin.regles_metier")
+
+
+@task(  # type: ignore[misc]
+    pre=[check, test, call(dbt, sample=True), call(regles, parse=False)]
+)
 def ci(c: Context) -> None:
-    """Lance la suite complète CI : lint, typecheck, tests, dbt sur l'échantillon."""
+    """Lance la CI : lint, typecheck, tests, dbt sur l'échantillon, règles métier."""
 
 
 # ---------------------------------------------------------------------------

@@ -57,6 +57,7 @@ def _real_looking(path: Path) -> list[str]:
 @pytest.mark.parametrize(
     "path", sorted(FIXTURES_DIR.glob("*.json")), ids=lambda p: p.name
 )
+@pytest.mark.regle("R-QUA-04")
 def test_fixture_prices_are_fictitious(path: Path) -> None:
     offending = _real_looking(path)
 
@@ -110,6 +111,7 @@ def _real_looking_parquet(path: Path) -> list[str]:
 @pytest.mark.parametrize(
     "path", sorted(SAMPLE_DIR.glob("prices-*.parquet")), ids=lambda p: p.name
 )
+@pytest.mark.regle("R-QUA-04")
 def test_sample_prices_are_fictitious(path: Path) -> None:
     offending = _real_looking_parquet(path)
 
@@ -125,6 +127,7 @@ def test_sample_prices_are_fictitious(path: Path) -> None:
     ],
     ids=["cardmarket", "tcgplayer-float", "tcgplayer-int"],
 )
+@pytest.mark.regle("R-QUA-04")
 def test_sample_with_real_price_is_detected(
     tmp_path: Path, cm_avg: float | None, tcgplayer: dict[str, Any] | None
 ) -> None:

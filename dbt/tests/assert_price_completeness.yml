@@ -1,0 +1,7 @@
+version: 2
+
+data_tests:
+  - name: assert_price_completeness
+    config:
+      meta:
+        regles: [R-QUA-07]

@@ -1,0 +1,7 @@
+version: 2
+
+data_tests:
+  - name: assert_rarity_level_empty_iff_off_scale
+    config:
+      meta:
+        regles: [R-RAR-03]

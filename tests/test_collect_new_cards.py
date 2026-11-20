@@ -1,6 +1,8 @@
 from datetime import UTC, datetime
 from pathlib import Path
 
+import pytest
+
 from cartograph.bin.collect.prices import PriceTarget, new_card_targets
 from cartograph.bin.collect.snapshot import (
     catalogue_table,
@@ -24,6 +26,7 @@ def test_new_card_targets_exclude_known_products(tmp_path: Path) -> None:
     assert new_card_targets(table, known) == [PriceTarget("ja", "SV7-065", 779079)]
 
 
+@pytest.mark.regle("R-COL-07")
 def test_latest_catalogue_ignores_new_cards(tmp_path: Path) -> None:
     (tmp_path / "cards-2026-11-16.parquet").touch()
     (tmp_path / "new-cards-2026-11-18.parquet").touch()

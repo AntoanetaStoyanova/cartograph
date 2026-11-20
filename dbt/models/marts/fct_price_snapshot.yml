@@ -3,6 +3,9 @@ version: 2
 models:
   - name: fct_price_snapshot
     config:
+      meta:
+        regles: [R-PRX-01]
+        regles_contrat: [R-HIS-03, R-QUA-03]
       contract:
         enforced: true
     description: >
@@ -21,6 +24,9 @@ models:
             column_name: "cardmarket_product_id || '|' || finish || '|' || price_date"
     columns:
       - name: cardmarket_product_id
+        config:
+          meta:
+            regles: [R-PRX-09]
         data_type: bigint
         description: >
           Produit Cardmarket (`idProduct`). Rattaché aux cartes par `dim_card`, qui n'est pas
@@ -34,6 +40,9 @@ models:
               config:
                 severity: error
       - name: finish
+        config:
+          meta:
+            regles: [R-PRX-03]
         data_type: varchar
         description: Finition au sens de Cardmarket, `base` ou `reverse_holo`.
         data_tests:
@@ -47,31 +56,49 @@ models:
         data_tests:
           - not_null
       - name: low_price
+        config:
+          meta:
+            regles: [R-QUA-06]
         data_type: decimal(10, 2)
         description: Prix le plus bas proposé, vide si absent.
         data_tests:
           - non_negative
       - name: trend_price
+        config:
+          meta:
+            regles: [R-QUA-06]
         data_type: decimal(10, 2)
         description: Prix de tendance de Cardmarket, vide si absent ; prix de référence (DBT-05).
         data_tests:
           - non_negative
       - name: avg_price
+        config:
+          meta:
+            regles: [R-QUA-06]
         data_type: decimal(10, 2)
         description: Prix moyen de vente, vide si absent.
         data_tests:
           - non_negative
       - name: avg1_price
+        config:
+          meta:
+            regles: [R-QUA-06]
         data_type: decimal(10, 2)
         description: Moyenne des ventes sur 1 jour, vide si absente.
         data_tests:
           - non_negative
       - name: avg7_price
+        config:
+          meta:
+            regles: [R-QUA-06]
         data_type: decimal(10, 2)
         description: Moyenne des ventes sur 7 jours, vide si absente.
         data_tests:
           - non_negative
       - name: avg30_price
+        config:
+          meta:
+            regles: [R-QUA-06]
         data_type: decimal(10, 2)
         description: Moyenne des ventes sur 30 jours, vide si absente.
         data_tests:
@@ -87,6 +114,9 @@ models:
 
 unit_tests:
   - name: fct_price_snapshot_first_load
+    config:
+      meta:
+        regles: [R-HIS-01, R-HIS-02]
     description: Au premier chargement, toutes les lignes du staging sont reprises.
     model: fct_price_snapshot
     overrides:
@@ -124,6 +154,9 @@ unit_tests:
         - { cardmarket_product_id: 1, finish: base, price_date: 2026-11-20 }
 
   - name: fct_price_snapshot_catches_up_missed_days
+    config:
+      meta:
+        regles: [R-HIS-01]
     description: >
       Table arrêtée au 17/11 (jour J), staging du 16/11 au 20/11 : seuls les 18, 19 et
       20/11 sont ajoutés, ni J-1 ni J.
@@ -169,6 +202,9 @@ unit_tests:
         - { cardmarket_product_id: 1, finish: base, price_date: 2026-11-20 }
 
   - name: fct_price_snapshot_loads_late_dates
+    config:
+      meta:
+        regles: [R-HIS-01]
     description: >
       Table chargée les 16 et 18/11, fichier du 17/11 arrivé après coup : le 17/11 est
       ajouté (deux finitions) avec les 19 et 20/11, ni le 16 ni le 18.
@@ -219,6 +255,9 @@ unit_tests:
         - { cardmarket_product_id: 1, finish: base, price_date: 2026-11-20 }
 
   - name: fct_price_snapshot_ignores_replaced_loaded_date
+    config:
+      meta:
+        regles: [R-HIS-02]
     description: >
       Fichier du 17/11 remplacé après son chargement (prix changé) : la date déjà présente
       n'est pas relue, seul le 18/11 est ajouté ; `--full-refresh` ou `inv rebuild`

@@ -1,0 +1,7 @@
+version: 2
+
+data_tests:
+  - name: assert_rarity_code_single_level
+    config:
+      meta:
+        regles: [R-RAR-02]

@@ -3,6 +3,9 @@ version: 2
 models:
   - name: stg_tcgdex__cards
     config:
+      meta:
+        regles: [R-CAT-02]
+        regles_contrat: [R-QUA-03]
       contract:
         enforced: true
     description: >
@@ -20,6 +23,9 @@ models:
         data_tests:
           - not_null
       - name: language_code
+        config:
+          meta:
+            regles: [R-CAT-06]
         data_type: varchar
         description: Langue de la fiche.
         data_tests:
@@ -41,6 +47,9 @@ models:
         data_tests:
           - not_null
       - name: category
+        config:
+          meta:
+            regles: [R-CAT-05]
         data_type: varchar
         description: Catégorie normalisée, commune aux langues.
         data_tests:
@@ -100,6 +109,9 @@ models:
 
 unit_tests:
   - name: stg_tcgdex__cards_keeps_latest_version
+    config:
+      meta:
+        regles: [R-CAT-01, R-CAT-02, R-CAT-05]
     description: >
       Une carte modifiée est rendue dans sa version la plus récente, une carte absente
       du dernier snapshot est gardée avec is_current à faux, la catégorie est normalisée.
@@ -142,6 +154,9 @@ unit_tests:
           }
 
   - name: stg_tcgdex__cards_counts_new_cards
+    config:
+      meta:
+        regles: [R-CAT-03]
     description: >
       Une carte d'un `new-cards` postérieur au dernier catalogue est courante, y compris
       une carte retirée puis revenue ; une carte d'un `new-cards` antérieur est rendue
@@ -191,6 +206,9 @@ unit_tests:
           }
 
   - name: stg_tcgdex__cards_reads_removed_on
+    config:
+      meta:
+        regles: [R-CAT-03, R-CAT-04]
     description: >
       Une carte marquée `removed_on` dans le dernier catalogue n'est plus courante et
       garde la date du dernier fichier où elle était présente ; une carte revenue

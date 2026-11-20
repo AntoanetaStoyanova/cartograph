@@ -76,6 +76,7 @@ uv run pytest          # lance tous les tests + coverage
 - Les doctests comptent (`--doctest-modules` activé)
 - Un test = un comportement précis, pas une fonction
 - Nommage : `test_<comportement>.py`, fonctions `test_<ce_qui_est_verifie>()`
+- Un test qui garantit une règle de `docs/gouvernance/regles-metier.md` porte `@pytest.mark.regle("R-COL-02")` (un marqueur par règle, `--strict-markers` actif)
 
 ---
 
@@ -113,8 +114,9 @@ uv run inv finish      # inv ci et inv okflint, push, puis pull request vers dev
 `inv finish` refuse une autre branche qu'une `feature/…` et un arbre de travail non propre ; si la pull request existe déjà, il affiche son lien. Si la branche modifie `src/`, `tasks/`, `dbt/models/` ou `dbt/macros/` sans aucun commit `feat`, `fix`, `refactor` ou `perf` (seuls préfixes qui font monter la version), il affiche les commits et demande confirmation avant le push ; « n » ou Entrée arrête la tâche, le temps d'un `git commit --amend`. Les contrôles se lancent aussi seuls :
 
 ```bash
-uv run inv ci          # pre-commit sur tous les fichiers, mypy, pytest, dbt build sur l'échantillon
+uv run inv ci          # pre-commit sur tous les fichiers, mypy, pytest, dbt build sur l'échantillon, inv regles
 uv run inv okflint     # en-tête et liens des specs et plans locaux de docs/
+uv run inv regles      # lien entre regles-metier.md et les tests (dbt parse, puis contrôle) ; --no-parse réutilise dbt/target/manifest.json
 ```
 
 `uv run inv clean` supprime les fichiers générés (caches, couverture, `dbt/target/`, base échantillon, `docs/_build/`) déclarés dans `.clean`, à la racine : un motif glob par ligne, relatif à la racine, `/` final pour un dossier, `#` pour un commentaire. Pour nettoyer un nouveau fichier généré, ajouter son motif à `.clean` plutôt qu'écrire un `rm`. La tâche échoue sans rien supprimer si un motif touche un fichier suivi par Git, sort du dépôt ou atteint un chemin protégé (`.env`, `.venv/`, `.git/`, `data/snapshots/`, `data/raw/`, `data/cartograph.duckdb`, `docs/plans/`, `docs/specs/`). `inv finish` et `inv release` la lancent à la fin ; `inv ci` non, pour garder `htmlcov/` et `dbt/target/` après un échec.
@@ -174,6 +176,8 @@ Les marts du catalogue, `dim_set` et `dim_card`, sont par langue et écartent TC
 La qualité des prix a trois niveaux. Le test générique `non_negative` (`macros/non_negative.sql`) couvre les colonnes de prix de `stg_tcgdex__cardmarket_prices` et de `fct_price_snapshot`. `fct_price_completeness` (une ligne par date : produits distincts du catalogue courant, produits avec `trend_price`, ratio) et `fct_price_history_status` (une ligne : couverture des jours et fraîcheur, hors les jours du seed `accepted_gaps`) portent la logique, vérifiée par des tests unitaires ; `assert_price_completeness`, `assert_price_history_coverage` et `assert_price_fresh` n'en lisent que le résultat, avec les seuils `min_completeness`, `min_coverage` et `max_staleness_days` de `dbt_project.yml`. Ces trois tests portent le tag `donnees_reelles` : `inv dbt --sample` (donc `inv ci`) les exclut des commandes `build` et `test`, car l'échantillon est figé ; `inv dbt` et `inv rebuild` les lancent sur la vraie base. Un trou d'historique passé et expliqué s'ajoute à `dbt/seeds/accepted_gaps.csv` (`gap_date`, `reason`). `uv run inv couverture-tests` lit `dbt/target/manifest.json` et liste les colonnes sans test et les clés sans `relationships` (après un `inv dbt`).
 
 Les règles métier de la collecte et de dbt sont listées dans `docs/gouvernance/regles-metier.md`. Un lot qui ajoute, change ou retire une règle met ce document à jour dans la même pull request : nouvelle ligne avec un identifiant `R-<FAMILLE>-<nn>` jamais réutilisé, test qui la garantit (ou « aucun ») et lot d'origine, et règle retirée déplacée dans « Règles retirées » avec sa date et ce qui la remplace.
+
+`uv run inv regles` (dans `inv ci`) relie ce document aux tests et échoue si un test cite une règle absente, si une règle avec test n'en a aucun, si un modèle ou une colonne cite une règle sans test (ni contrat pour `regles_contrat`), si une règle « aucun » en a un, ou si un identifiant est en double. Côté dbt, un test (unitaire, singulier dans `dbt/tests/<nom>.yml`) ou un modèle, une colonne ou un seed qui a un test porte `config: meta: regles: [R-…]` ; une règle que seul le contrat d'un modèle garantit (R-QUA-03, R-HIS-03) se cite sous `meta: regles_contrat`, qui ne compte que si `contract.enforced` est vrai. Côté Python, un test porte `@pytest.mark.regle("R-…")`. Un lot qui ajoute une règle la relie à son test dans la même pull request ; un test qui reçoit une règle « aucun » change sa ligne du document en même temps.
 
 ### Standard SQL
 

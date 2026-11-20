@@ -3,6 +3,8 @@ version: 2
 models:
   - name: int_rarity_mapping
     config:
+      meta:
+        regles_contrat: [R-QUA-03]
       contract:
         enforced: true
     description: >
@@ -13,12 +15,18 @@ models:
       `coalesce(rarity, 'None')`.
     columns:
       - name: rarity
+        config:
+          meta:
+            regles: [R-RAR-01]
         data_type: varchar
         description: Nom de rareté tel que collecté ; `None` couvre aussi la rareté vide.
         data_tests:
           - unique
           - not_null
       - name: rarity_code
+        config:
+          meta:
+            regles: [R-RAR-05]
         data_type: varchar
         description: >
           Code canonique commun aux langues (`common`, `secret_rare`…) ; `pocket` pour TCG
@@ -33,6 +41,9 @@ models:
 
 unit_tests:
   - name: int_rarity_mapping_one_row_per_collected_name
+    config:
+      meta:
+        regles: [R-RAR-01, R-RAR-04, R-RAR-05]
     description: >
       Une rareté vide et `None` donnent la seule ligne `None` ; `Rare` en `fr`, `en` et `ja`
       donne une seule ligne ; un nom absent du seed donne un `rarity_code` et un

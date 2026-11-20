@@ -3,6 +3,8 @@ version: 2
 models:
   - name: int_cardmarket_products
     config:
+      meta:
+        regles_contrat: [R-QUA-03]
       contract:
         enforced: true
     description: >
@@ -38,6 +40,9 @@ models:
 
 unit_tests:
   - name: int_cardmarket_products_flags_ambiguity
+    config:
+      meta:
+        regles: [R-PRX-10, R-PRX-11]
     description: >
       Deux noms ou deux codes de rareté dans une langue rendent le produit ambigu, même
       si une seule langue l'est ; des noms différents entre langues, non ; une carte

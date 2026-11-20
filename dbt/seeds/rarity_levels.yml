@@ -8,6 +8,9 @@ seeds:
       absent de ce fichier arrête le build (`int_rarity_mapping`) : l'ajouter ici.
     columns:
       - name: rarity
+        config:
+          meta:
+            regles: [R-RAR-01]
         description: Nom de rareté tel que collecté par TCGdex ; `None` couvre aussi la rareté vide.
         data_tests:
           - unique
@@ -19,6 +22,9 @@ seeds:
         data_tests:
           - not_null
       - name: rarity_level
+        config:
+          meta:
+            regles: [R-RAR-02]
         description: Niveau de 1 (`common`) à 8 (`secret_rare`…), vide pour `none`, `promo` et `pocket`.
         data_tests:
           - accepted_values:

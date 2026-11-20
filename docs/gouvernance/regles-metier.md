@@ -22,6 +22,8 @@ Une table par famille. Chaque ligne a cinq colonnes :
 
 Chaque règle a été vérifiée dans le code, pas recopiée des specs. Aucun prix réel n'apparaît ici, seulement des règles et des comptes.
 
+Le lien avec les tests est contrôlé par `uv run inv regles`, lancé par `inv ci` : chaque test dbt (colonne, modèle, test unitaire ou singulier) cite ses règles dans `config: meta: regles`, chaque test Python dans `@pytest.mark.regle("R-…")`. Le contrôle échoue si un test cite une règle absente de ce document, si une règle avec test n'en a aucun, si un modèle ou une colonne cite une règle sans test ni contrat, si une règle « aucun » en a un, ou si un identifiant est déclaré deux fois. Les noms de tests de la colonne `Garantie par` ne sont pas comparés : c'est le code qui fait foi.
+
 Une règle abandonnée quitte sa famille et passe dans « Règles retirées », avec sa date et ce qui la remplace. Une règle de la section « À venir » remonte dans sa famille quand son lot est livré.
 
 ## COL — Collecte
@@ -55,7 +57,7 @@ Code dans `src/cartograph/bin/collect/`, tests dans `tests/test_collect_*.py`. L
 | R-COL-23 | Les prix sont privés : `prices-*` et les réponses brutes vont dans le dépôt privé `cartograph-prices` ; `cards-*`, `sets-*`, `new-cards-*` et `card-changes-*` ne contiennent aucun prix et sont publics (Release `catalogue` de `cartograph-data`). | `snapshot.catalogue_table`, `manifest._release`, workflow `Collecte` | `tests/test_collect_snapshot.py::test_card_table_contains_no_price`, `tests/test_collect_run.py::test_collect_daily_catalogue_leaks_no_price`, `tests/test_collect_manifest.py::test_new_cards_parquet_is_public_and_raw_is_private`, `tests/test_collect_manifest.py::test_catalogue_parquet_goes_to_public_release` | COL-T8, décision d'Antoaneta |
 | R-COL-24 | Le résumé, le bilan d'exécution et le manifeste ne contiennent aucun prix. | `run._write_summary`, `report.py`, `manifest.build_manifest` | `tests/test_collect_run.py::test_collect_summary_contains_no_price`, `tests/test_collect_report.py::test_real_summary_contains_no_price`, `tests/test_collect_manifest.py::test_real_summary_contains_no_price` | SUR-01, STO-01 |
 | R-COL-25 | Un manifeste est commité chaque jour dans `cartograph-data`, même si la collecte échoue : statut des étapes, lignes, octets et SHA-256 de chaque fichier envoyé. | `manifest.build_manifest`, workflow `Collecte` | `tests/test_collect_manifest.py::test_successful_collection_lists_files_with_release_and_sha256`, `tests/test_collect_manifest.py::test_no_summary_gives_empty_steps_and_files` | STO-01 |
-| R-COL-26 | La Release `catalogue` ne garde que le `cards-*` le plus récent et ceux des lundis. | workflow `Collecte` de `cartograph-data` | aucun | COL-05 |
+| R-COL-26 | Seuls les `cards-*` de la Release `catalogue` sont purgés : le plus récent, celui du jour et ceux des lundis sont gardés ; `sets-*`, `new-cards-*` et `card-changes-*` ne sont jamais supprimés. | workflow `Collecte` de `cartograph-data` (étape « Nettoyer les anciens catalogues ») | aucun | COL-05 |
 
 ## CAT — Catalogue
 
@@ -147,8 +149,12 @@ Règles décidées pour des lots non livrés (roadmap). Chacune reçoit son iden
 
 ## Règles sans test
 
-Relevées depuis la colonne `Garantie par`.
+Relevées depuis la colonne `Garantie par` : « aucun » en début de cellule. `inv regles` échoue si l'une d'elles est citée par un test.
 
-- **Collecte** : R-COL-01 (déclenchement par cron-job.org, surveillé par healthchecks.io), R-COL-26 (rétention de la Release `catalogue`), toutes deux dans le workflow de `cartograph-data`.
-- **dbt** : R-PRX-06 pour le JSON TCGplayer invalide et la date hors ISO 8601 (un test dbt ne peut pas attendre l'échec d'un build), R-PRX-07 pour l'absence d'usage de TCGplayer comme prix de référence (choix de modèle).
-- R-QUA-01 décrit le comportement de dbt lui-même : rien à tester.
+- **Collecte** : R-COL-01 (déclenchement par cron-job.org, surveillé par healthchecks.io), R-COL-26 (purge des `cards-*` de la Release `catalogue`), toutes deux dans le workflow de `cartograph-data`, hors du code testé.
+- **dbt** : R-QUA-01 décrit le comportement de dbt lui-même : rien à tester.
+
+Deux règles ont un test pour une partie seulement et comptent comme testées ; le reste n'a pas de test :
+
+- R-PRX-06 : le JSON TCGplayer invalide et la date hors ISO 8601 (un test dbt ne peut pas attendre l'échec d'un build).
+- R-PRX-07 : l'absence d'usage de TCGplayer comme prix de référence (choix de modèle).

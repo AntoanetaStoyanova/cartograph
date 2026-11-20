@@ -3,6 +3,9 @@ version: 2
 models:
   - name: stg_tcgdex__cardmarket_prices
     config:
+      meta:
+        regles: [R-PRX-01]
+        regles_contrat: [R-QUA-03]
       contract:
         enforced: true
     description: >
@@ -20,6 +23,9 @@ models:
         data_tests:
           - not_null
       - name: finish
+        config:
+          meta:
+            regles: [R-PRX-03]
         data_type: varchar
         description: Finition au sens de Cardmarket, `base` ou `reverse_holo`.
         data_tests:
@@ -33,36 +39,57 @@ models:
         data_tests:
           - not_null
       - name: low_price
+        config:
+          meta:
+            regles: [R-QUA-06]
         data_type: decimal(10, 2)
         description: Prix le plus bas proposé, vide si absent.
         data_tests:
           - non_negative
       - name: trend_price
+        config:
+          meta:
+            regles: [R-QUA-06]
         data_type: decimal(10, 2)
         description: Prix de tendance de Cardmarket, vide si absent ; prix de référence (DBT-05).
         data_tests:
           - non_negative
       - name: avg_price
+        config:
+          meta:
+            regles: [R-QUA-06]
         data_type: decimal(10, 2)
         description: Prix moyen de vente, vide si absent.
         data_tests:
           - non_negative
       - name: avg1_price
+        config:
+          meta:
+            regles: [R-QUA-06]
         data_type: decimal(10, 2)
         description: Moyenne des ventes sur 1 jour, vide si absente.
         data_tests:
           - non_negative
       - name: avg7_price
+        config:
+          meta:
+            regles: [R-QUA-06]
         data_type: decimal(10, 2)
         description: Moyenne des ventes sur 7 jours, vide si absente.
         data_tests:
           - non_negative
       - name: avg30_price
+        config:
+          meta:
+            regles: [R-QUA-06]
         data_type: decimal(10, 2)
         description: Moyenne des ventes sur 30 jours, vide si absente.
         data_tests:
           - non_negative
       - name: currency_code
+        config:
+          meta:
+            regles: [R-PRX-02]
         data_type: varchar
         description: Devise des prix.
         data_tests:
@@ -76,6 +103,9 @@ models:
 
 unit_tests:
   - name: stg_tcgdex__cardmarket_prices_unpivots_finishes
+    config:
+      meta:
+        regles: [R-CAT-01, R-PRX-03, R-PRX-04, R-PRX-05, R-PRX-08]
     description: >
       Un produit donne une ligne `base` et une ligne `reverse_holo` par date, la date
       tirée du nom du fichier ; `0` devient vide ; pas de ligne `reverse_holo` quand

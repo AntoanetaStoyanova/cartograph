@@ -137,6 +137,7 @@ def test_download_fetches_with_clobber_and_checks_sha(
     assert (folder / "a.parquet").read_bytes() == b"good"
 
 
+@pytest.mark.regle("R-HIS-04")
 def test_download_rejects_wrong_sha(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -157,6 +158,7 @@ def stub_sync(monkeypatch: pytest.MonkeyPatch, assets: list[Asset]) -> list[str]
     return downloaded
 
 
+@pytest.mark.regle("R-HIS-04")
 def test_sync_downloads_only_missing_or_changed(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,

@@ -24,6 +24,7 @@ def _data_dir(tmp_path: Path) -> Path:
     return tmp_path
 
 
+@pytest.mark.regle("R-COL-25")
 def test_successful_collection_lists_files_with_release_and_sha256(
     tmp_path: Path,
 ) -> None:
@@ -56,6 +57,7 @@ def test_successful_collection_lists_files_with_release_and_sha256(
     ]
 
 
+@pytest.mark.regle("R-COL-23")
 def test_catalogue_parquet_goes_to_public_release(tmp_path: Path) -> None:
     data_dir = _data_dir(tmp_path)
     (data_dir / "snapshots" / f"cards-{DAY}.parquet").write_bytes(b"cards")
@@ -110,6 +112,7 @@ def test_missing_file_has_no_sha256(tmp_path: Path) -> None:
     assert manifest["files"][1]["sha256"] is None
 
 
+@pytest.mark.regle("R-COL-25")
 def test_no_summary_gives_empty_steps_and_files(tmp_path: Path) -> None:
     manifest = build_manifest(None, tmp_path, DAY, 42, 120)
 
@@ -118,6 +121,7 @@ def test_no_summary_gives_empty_steps_and_files(tmp_path: Path) -> None:
     assert manifest["files"] == []
 
 
+@pytest.mark.regle("R-COL-24")
 def test_real_summary_contains_no_price(tmp_path: Path) -> None:
     summary = json.loads(REAL_SUMMARY.read_text(encoding="utf-8"))
 
@@ -150,6 +154,7 @@ def test_main_withoutmake_summary(
     assert json.loads(capsys.readouterr().out)["summary"] is False
 
 
+@pytest.mark.regle("R-COL-23")
 def test_new_cards_parquet_is_public_and_raw_is_private(tmp_path: Path) -> None:
     files = [
         {"name": f"new-cards-{DAY}.parquet", "rows": 1, "bytes": 4},

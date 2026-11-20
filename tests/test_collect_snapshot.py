@@ -87,6 +87,7 @@ def test_write_parquet_leaves_no_temporary_file(tmp_path: Path) -> None:
     assert list(tmp_path.iterdir()) == [path]
 
 
+@pytest.mark.regle("R-COL-22")
 def test_write_atomic_failure_keeps_previous_file(tmp_path: Path) -> None:
     path = tmp_path / "t.parquet"
     write_parquet(_table(), path, ["card_id"])
@@ -259,6 +260,7 @@ def test_card_table_matches_schema() -> None:
     assert json.loads(row["raw_json"]) == strip_prices(cards[2])
 
 
+@pytest.mark.regle("R-COL-23")
 def test_card_table_contains_no_price() -> None:
     cards = [load_fixture(name) for name in FR_CARDS + JA_CARDS]
     prices = price_values(cards)
@@ -323,6 +325,7 @@ def test_card_fingerprint_same_for_card_and_raw_json() -> None:
     assert card_fingerprint(card) == card_fingerprint(json.loads(raw_json))
 
 
+@pytest.mark.regle("R-COL-09")
 def test_card_fingerprint_ignores_updated_and_pricing() -> None:
     card = load_fixture("fr_swsh3-136")
     changed = copy.deepcopy(card)
@@ -377,6 +380,7 @@ def test_read_catalogue_keeps_current_catalogue(tmp_path: Path) -> None:
     assert read_catalogue(path).to_pylist() == table.to_pylist()
 
 
+@pytest.mark.regle("R-COL-07")
 def test_latest_catalogue_before_day_skips_same_day(tmp_path: Path) -> None:
     for name in [
         "cards-2026-11-17.parquet",

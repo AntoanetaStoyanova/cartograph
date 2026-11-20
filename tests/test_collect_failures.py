@@ -88,6 +88,7 @@ def test_list_card_ids_propagates_error() -> None:
         fetch_catalogue(client, "fr")
 
 
+@pytest.mark.regle("R-COL-18")
 def test_fetch_prices_stops_after_consecutive_failures() -> None:
     calls: list[str] = []
 

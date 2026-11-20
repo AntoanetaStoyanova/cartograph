@@ -36,6 +36,7 @@ def test_fetch_catalogue_returns_full_cards(tcgdex_client: TcgdexClient) -> None
     assert result.failed == []
 
 
+@pytest.mark.regle("R-COL-03")
 def test_fetch_catalogue_rejects_unknown_language(
     tcgdex_client: TcgdexClient,
 ) -> None:
@@ -139,6 +140,7 @@ def test_listing_diff_rejects_unknown_language() -> None:
         listing_diff(client, ["de"], _catalogue({"fr": ["pop9-1"]}))
 
 
+@pytest.mark.regle("R-COL-10")
 def test_listing_diff_empty_listing_removes_nothing() -> None:
     catalogue = _catalogue({"fr": ["exu-%3F", "pop9-1"]})
 

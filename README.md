@@ -53,7 +53,7 @@ Les sorties vont dans `data/` (ignoré par Git), un fichier par jour, remplacé 
 
 Sans `--catalogue`, le catalogue du jour est celui de la veille mis à jour (fiches reçues avec les prix, nouvelles cartes, rotation de 1 000 fiches : option `--rotation N` de `python -m cartograph.bin.collect.run`, 0 pour aucune). Le code de sortie vaut 1 si une étape échoue ; les logs vont dans `logs/`.
 
-Les règles de la collecte (catalogue de la veille, empreinte, cartes disparues, échecs, prix privés) sont dans [`docs/gouvernance/regles-metier.md`](docs/gouvernance/regles-metier.md), famille COL.
+Les règles de la collecte (catalogue de la veille, empreinte, cartes disparues, échecs, prix privés) sont dans [`docs/gouvernance/regles-metier.md`](docs/gouvernance/regles-metier.md), famille COL. Chaque règle est reliée à ses tests (`@pytest.mark.regle` côté Python, `meta: regles` côté dbt) et `uv run inv regles`, lancé par `inv ci`, échoue au moindre écart avec le document.
 
 ## Collecte automatique
 
@@ -64,7 +64,7 @@ Le workflow `Collecte` du dépôt public [`cartograph-data`](https://github.com/
 - catalogue chaque jour : celui de la veille mis à jour avec les fiches reçues par les prix, les nouvelles cartes et une rotation de 1 000 fiches (quelques minutes), puis `card-changes-*` ;
 - collecte complète du catalogue seulement à la main (paramètre `catalogue` à `oui`, 2 h 30 à 3 h 15 selon les erreurs 503 de TCGdex), pour un amorçage ou une réparation, les prix étant lus dans ses fiches ;
 - résumé écrit après chaque étape suivie d'une autre, puis à la fin : une exécution coupée pendant les sets, les nouvelles cartes ou les prix publie quand même ce qui est écrit ;
-- `cards-*`, `card-changes-*`, `sets-*` et `new-cards-*.parquet` publiés dans la Release `catalogue` de `cartograph-data`, qui ne garde que le `cards-*` le plus récent et ceux des lundis ;
+- `cards-*`, `card-changes-*`, `sets-*` et `new-cards-*.parquet` publiés dans la Release `catalogue` de `cartograph-data`, dont seuls les `cards-*` sont purgés (le plus récent, celui du jour et ceux des lundis sont gardés) ;
 - prix et brut envoyés dans la Release `data-AAAA-MM` du dépôt privé `cartograph-prices` (secret `PRICES_TOKEN`) ;
 - résumé et log gardés 7 jours en artefact, sans aucun prix ;
 - manifeste `manifest/AAAA/AAAA-MM-JJ.json` commité dans `cartograph-data`, même si la collecte échoue : statut des étapes, fichiers envoyés (Release, lignes, octets, SHA-256) et taille du dépôt, sans aucun prix. Il est calculé avant les envois et donne la Release de chaque fichier ; `sha256sum` d'un fichier téléchargé doit redonner son `sha256`.

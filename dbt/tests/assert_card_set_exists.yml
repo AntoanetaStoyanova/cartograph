@@ -1,0 +1,7 @@
+version: 2
+
+data_tests:
+  - name: assert_card_set_exists
+    config:
+      meta:
+        regles: [R-CAT-09]
